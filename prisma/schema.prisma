@@ -1,0 +1,224 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_CLIENT
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationTemplateType {
+  TICKET_CREATED
+  STATUS_CHANGED
+  NEW_COMMENT
+  TICKET_RESOLVED
+  TICKET_ASSIGNED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  RETRYING
+}
+
+// ============================================================================
+// MODELS
+// ============================================================================
+
+model Company {
+  id            String   @id @default(cuid())
+  name          String
+  subdomain     String   @unique // For tenant resolution
+  contactEmail  String
+  whatsappLink  String?
+  notes         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  users                User[]
+  tickets              Ticket[]
+  notificationSettings NotificationSettings?
+  emailTemplates       EmailTemplate[]
+  notificationLogs     NotificationLog[]
+  
+  @@map("companies")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   
+  password  String
+  role      Role
+  companyId String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  company        Company?        @relation(fields: [companyId], references: [id])
+  createdTickets Ticket[]        @relation("TicketCreator")
+  comments       TicketComment[]
+  
+  // Composite unique constraint for tenant isolation
+  @@unique([email, companyId])
+  @@map("users")
+}
+
+model Ticket {
+  id          String         @id @default(cuid())
+  title       String
+  description String
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  category    String?
+  companyId   String         // Always required for tenant scoping
+  createdById String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  // Relations
+  company          Company           @relation(fields: [companyId], references: [id])
+  createdBy        User              @relation("TicketCreator", fields: [createdById], references: [id])
+  comments         TicketComment[]
+  images           TicketImage[]
+  notificationLogs NotificationLog[]
+  
+  @@map("tickets")
+}
+
+model TicketComment {
+  id        String   @id @default(cuid())
+  ticketId  String
+  authorId  String
+  message   String
+  internal  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  
+  // Relations
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+  
+  @@map("ticket_comments")
+}
+
+model TicketImage {
+  id         String   @id @default(cuid())
+  ticketId   String
+  filename   String
+  url        String
+  size       Int
+  mimeType   String
+  uploadedAt DateTime @default(now())
+  
+  // Relations
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  
+  @@map("ticket_images")
+}
+
+model NotificationSettings {
+  id                        String   @id @default(cuid())
+  companyId                 String   @unique
+  emailNotificationsEnabled Boolean  @default(true)
+  notifyOnStatusChange      Boolean  @default(true)
+  notifyOnNewComments       Boolean  @default(true)
+  notifyOnTicketAssignment  Boolean  @default(false)
+  notifyOnTicketResolution  Boolean  @default(true)
+  customEmailTemplates      Boolean  @default(false)
+  recipientEmails           String[] @default([])
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  
+  // Relations
+  company Company @relation(fields: [companyId], references: [id])
+  
+  @@map("notification_settings")
+}
+
+model EmailTemplate {
+  id           String                   @id @default(cuid())
+  companyId    String
+  templateType NotificationTemplateType
+  subject      String
+  htmlBody     String
+  textBody     String
+  isActive     Boolean                  @default(true)
+  createdAt    DateTime                 @default(now())
+  updatedAt    DateTime                 @updatedAt
+  
+  // Relations
+  company Company @relation(fields: [companyId], references: [id])
+  
+  @@unique([companyId, templateType])
+  @@map("email_templates")
+}
+
+model NotificationLog {
+  id             String                   @id @default(cuid())
+  companyId      String
+  ticketId       String?
+  templateType   NotificationTemplateType
+  recipientEmail String
+  subject        String
+  status         NotificationStatus       @default(PENDING)
+  sentAt         DateTime?
+  errorMessage   String?
+  createdAt      DateTime                 @default(now())
+  
+  // Relations
+  company Company @relation(fields: [companyId], references: [id])
+  ticket  Ticket? @relation(fields: [ticketId], references: [id])
+  
+  @@map("notification_logs")
+}
+
+model SMTPSettings {
+  id              String    @id @default(cuid())
+  host            String
+  port            Int
+  secure          Boolean   @default(true)
+  username        String
+  password        String    // Encrypted with AES-256-GCM
+  senderEmail     String
+  senderName      String
+  isActive        Boolean   @default(false)
+  lastTestedAt    DateTime?
+  lastTestSuccess Boolean?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String
+  updatedBy       String
+  
+  @@map("smtp_settings")
+}
