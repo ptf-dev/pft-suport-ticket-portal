@@ -7,7 +7,7 @@ async function main() {
   console.log('🌱 Starting database seed...')
 
   // Hash password for all users
-  const hashedPassword = await bcrypt.hash('!!password.123!!', 10)
+  const hashedPassword = await bcrypt.hash('password123', 10)
 
   // Create Admin User
   console.log('Creating admin user...')
