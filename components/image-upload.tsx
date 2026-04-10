@@ -111,6 +111,7 @@ export default function ImageUpload({
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {previews.map((preview, index) => (
             <div key={index} className="relative group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={preview}
                 alt={`Preview ${index + 1}`}

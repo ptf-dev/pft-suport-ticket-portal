@@ -231,7 +231,7 @@ export default async function ClientTicketDetailPage({
             <CardContent className="pt-6">
               <h3 className="font-semibold text-blue-900 mb-2">Need Help?</h3>
               <p className="text-sm text-blue-800 mb-4">
-                Our support team typically responds within 24 hours. For urgent issues, please mark your ticket as "Urgent".
+                Our support team typically responds within 24 hours. For urgent issues, please mark your ticket as &quot;Urgent&quot;.
               </p>
               <Link href="/portal/tickets/new">
                 <Button variant="outline" size="sm" className="w-full">
