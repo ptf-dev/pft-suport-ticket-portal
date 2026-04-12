@@ -6,6 +6,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { CommentForm } from './comment-form'
+import { EditTicketForm } from './edit-ticket-form'
+import { AddAttachmentsForm } from './add-attachments-form'
 
 /**
  * Client Ticket Detail Page
@@ -98,6 +100,17 @@ export default async function ClientTicketDetailPage({
             {ticket.priority}
           </Badge>
         </div>
+      </div>
+
+      {/* Edit and Add Attachments Actions */}
+      <div className="flex gap-2">
+        <EditTicketForm
+          ticketId={ticket.id}
+          initialTitle={ticket.title}
+          initialDescription={ticket.description}
+          initialCategory={ticket.category || undefined}
+        />
+        <AddAttachmentsForm ticketId={ticket.id} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
