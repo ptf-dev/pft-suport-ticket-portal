@@ -100,7 +100,7 @@ export async function POST(
         data: {
           ticketId: params.id,
           filename,
-          url: `/uploads/tickets/${params.id}/${filename}`,
+          url: `/api/uploads/tickets/${params.id}/${filename}`,
           size: file.size,
           mimeType: file.type,
         },
