@@ -93,10 +93,10 @@ function LoginForm() {
               </svg>
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center text-gray-900">
+          <CardTitle className="text-2xl font-bold text-center text-gray-900 dark:text-white">
             {tenantInfo ? tenantInfo.name : 'PropFirmsTech'}
           </CardTitle>
-          <CardDescription className="text-center text-base">
+          <CardDescription className="text-center text-base dark:text-gray-400">
             Sign in to access your support portal
           </CardDescription>
         </CardHeader>
@@ -112,7 +112,7 @@ function LoginForm() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+              <Label htmlFor="email" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Email Address
               </Label>
               <Input
@@ -128,7 +128,7 @@ function LoginForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+              <Label htmlFor="password" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Password
               </Label>
               <Input
@@ -166,9 +166,9 @@ function LoginForm() {
           </form>
 
           {tenantInfo && (
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-xs text-center text-gray-500">
-                Accessing: <span className="font-mono font-semibold text-primary-600">{tenantInfo.subdomain}.propfirmstech.com</span>
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                Accessing: <span className="font-mono font-semibold text-primary-600 dark:text-primary-400">{tenantInfo.subdomain}.propfirmstech.com</span>
               </p>
             </div>
           )}

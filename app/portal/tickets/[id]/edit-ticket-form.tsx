@@ -71,7 +71,7 @@ export function EditTicketForm({
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="title">Title</Label>
+            <Label htmlFor="title" className="dark:text-gray-300">Title</Label>
             <Input
               id="title"
               value={title}
@@ -82,19 +82,19 @@ export function EditTicketForm({
           </div>
 
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description" className="dark:text-gray-300">Description</Label>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
               disabled={isLoading}
-              className="w-full min-h-[150px] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="w-full min-h-[150px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
 
           <div>
-            <Label htmlFor="category">Category (Optional)</Label>
+            <Label htmlFor="category" className="dark:text-gray-300">Category (Optional)</Label>
             <Input
               id="category"
               value={category}
@@ -105,7 +105,7 @@ export function EditTicketForm({
           </div>
 
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md border border-red-200 dark:border-red-800">
               {error}
             </div>
           )}

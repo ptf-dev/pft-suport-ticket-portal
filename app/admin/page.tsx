@@ -66,8 +66,8 @@ export default async function AdminDashboard() {
                 {statusCounts.OPEN > 0 ? `${((statusCounts.OPEN / totalTickets) * 100).toFixed(0)}%` : '0%'}
               </Badge>
             </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{statusCounts.OPEN}</div>
-            <div className="text-sm font-medium text-gray-600">Open Tickets</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.OPEN}</div>
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Open Tickets</div>
           </CardContent>
         </Card>
 
@@ -82,8 +82,8 @@ export default async function AdminDashboard() {
                 {statusCounts.IN_PROGRESS > 0 ? `${((statusCounts.IN_PROGRESS / totalTickets) * 100).toFixed(0)}%` : '0%'}
               </Badge>
             </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{statusCounts.IN_PROGRESS}</div>
-            <div className="text-sm font-medium text-gray-600">In Progress</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.IN_PROGRESS}</div>
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</div>
           </CardContent>
         </Card>
 
@@ -98,8 +98,8 @@ export default async function AdminDashboard() {
                 {statusCounts.WAITING_CLIENT > 0 ? `${((statusCounts.WAITING_CLIENT / totalTickets) * 100).toFixed(0)}%` : '0%'}
               </Badge>
             </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{statusCounts.WAITING_CLIENT}</div>
-            <div className="text-sm font-medium text-gray-600">Waiting Client</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.WAITING_CLIENT}</div>
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Waiting Client</div>
           </CardContent>
         </Card>
 
@@ -114,8 +114,8 @@ export default async function AdminDashboard() {
                 {statusCounts.RESOLVED > 0 ? `${((statusCounts.RESOLVED / totalTickets) * 100).toFixed(0)}%` : '0%'}
               </Badge>
             </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{statusCounts.RESOLVED}</div>
-            <div className="text-sm font-medium text-gray-600">Resolved</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.RESOLVED}</div>
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Resolved</div>
           </CardContent>
         </Card>
 
@@ -130,19 +130,19 @@ export default async function AdminDashboard() {
                 {statusCounts.CLOSED > 0 ? `${((statusCounts.CLOSED / totalTickets) * 100).toFixed(0)}%` : '0%'}
               </Badge>
             </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{statusCounts.CLOSED}</div>
-            <div className="text-sm font-medium text-gray-600">Closed</div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.CLOSED}</div>
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Closed</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Recent Tickets Table */}
       <Card className="shadow-md">
-        <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+        <CardHeader className="border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-xl">Recent Tickets</CardTitle>
-              <p className="text-sm text-gray-600 mt-1">Latest support requests across all companies</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Latest support requests across all companies</p>
             </div>
             <Link href="/admin/tickets">
               <Button variant="outline" size="sm">
@@ -153,61 +153,61 @@ export default async function AdminDashboard() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                     Ticket
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                     Company
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                     Priority
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                     Created
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
                 {recentTickets.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
                           <span className="text-3xl">📭</span>
                         </div>
-                        <p className="text-sm font-medium text-gray-500">No tickets found</p>
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No tickets found</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
                   recentTickets.map((ticket) => (
-                    <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-lg flex items-center justify-center">
                             <span className="text-lg">🎫</span>
                           </div>
                           <div>
-                            <div className="text-sm font-semibold text-gray-900 line-clamp-1">
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
                               {ticket.title}
                             </div>
-                            <div className="text-xs text-gray-500 font-mono">
+                            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                               #{ticket.id.slice(0, 8)}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
                           {ticket.company.name}
                         </div>
                       </td>
@@ -244,7 +244,7 @@ export default async function AdminDashboard() {
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 font-medium">
+                        <div className="text-sm text-gray-900 dark:text-white font-medium">
                           {new Date(ticket.createdAt).toLocaleDateString('en-US', { 
                             month: 'short', 
                             day: 'numeric',
@@ -255,7 +255,7 @@ export default async function AdminDashboard() {
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <Link
                           href={`/admin/tickets/${ticket.id}`}
-                          className="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm transition-colors"
                         >
                           View →
                         </Link>

@@ -58,12 +58,12 @@ export default async function AdminTicketDetailPage({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
           <span>Ticket #{ticket.id.slice(0, 8)}</span>
           <span>•</span>
           <span>{ticket.company.name}</span>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900">{ticket.title}</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{ticket.title}</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -75,7 +75,7 @@ export default async function AdminTicketDetailPage({
               <CardTitle>Description</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ticket.description}</p>
             </CardContent>
           </Card>
 
@@ -122,7 +122,7 @@ export default async function AdminTicketDetailPage({
             </CardHeader>
             <CardContent>
               {ticket.comments.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                   No comments yet
                 </p>
               ) : (
@@ -132,13 +132,13 @@ export default async function AdminTicketDetailPage({
                       key={comment.id}
                       className={`p-4 rounded-lg border ${
                         comment.internal
-                          ? 'bg-yellow-50 border-yellow-200'
-                          : 'bg-gray-50 border-gray-200'
+                          ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
+                          : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
                             {comment.author.name}
                           </span>
                           <Badge variant="secondary" className="text-xs">
@@ -150,11 +150,11 @@ export default async function AdminTicketDetailPage({
                             </Badge>
                           )}
                         </div>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {new Date(comment.createdAt).toLocaleString()}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                         {comment.message}
                       </p>
                     </div>
@@ -163,7 +163,7 @@ export default async function AdminTicketDetailPage({
               )}
               
               {/* Comment Form */}
-              <div className="border-t pt-6">
+              <div className="border-t dark:border-gray-700 pt-6">
                 <CommentForm ticketId={ticket.id} isAdmin={true} />
               </div>
             </CardContent>
@@ -180,7 +180,7 @@ export default async function AdminTicketDetailPage({
             <CardContent className="space-y-4">
               {/* Current Status */}
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
                   Current Status
                 </label>
                 <Badge
@@ -205,7 +205,7 @@ export default async function AdminTicketDetailPage({
 
               {/* Current Priority */}
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-2">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
                   Current Priority
                 </label>
                 <Badge
@@ -233,31 +233,31 @@ export default async function AdminTicketDetailPage({
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <div className="text-sm font-medium text-gray-700">Company</div>
-                <div className="text-sm text-gray-900">{ticket.company.name}</div>
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Company</div>
+                <div className="text-sm text-gray-900 dark:text-white">{ticket.company.name}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700">Contact Email</div>
-                <div className="text-sm text-gray-900">{ticket.company.contactEmail}</div>
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Contact Email</div>
+                <div className="text-sm text-gray-900 dark:text-white">{ticket.company.contactEmail}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700">Created By</div>
-                <div className="text-sm text-gray-900">{ticket.createdBy.name}</div>
-                <div className="text-xs text-gray-500">{ticket.createdBy.email}</div>
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Created By</div>
+                <div className="text-sm text-gray-900 dark:text-white">{ticket.createdBy.name}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">{ticket.createdBy.email}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700">Category</div>
-                <div className="text-sm text-gray-900">{ticket.category || 'N/A'}</div>
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</div>
+                <div className="text-sm text-gray-900 dark:text-white">{ticket.category || 'N/A'}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700">Created</div>
-                <div className="text-sm text-gray-900">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Created</div>
+                <div className="text-sm text-gray-900 dark:text-white">
                   {new Date(ticket.createdAt).toLocaleString()}
                 </div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700">Last Updated</div>
-                <div className="text-sm text-gray-900">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Last Updated</div>
+                <div className="text-sm text-gray-900 dark:text-white">
                   {new Date(ticket.updatedAt).toLocaleString()}
                 </div>
               </div>

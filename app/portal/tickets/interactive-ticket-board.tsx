@@ -118,7 +118,7 @@ export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
           onDragLeave={() => setDragOverColumn(null)}
         >
           {/* Column Header */}
-          <div className="p-4 pb-3 border-b-2 border-gray-200 bg-white rounded-t-xl">
+          <div className="p-4 pb-3 border-b-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-t-xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${
@@ -128,7 +128,7 @@ export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
                   column.status === 'RESOLVED' ? 'bg-green-500' :
                   'bg-gray-500'
                 }`} />
-                <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wide">
+                <h3 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wide">
                   {column.label}
                 </h3>
               </div>
@@ -141,9 +141,9 @@ export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
           {/* Column Cards */}
           <div className="p-3 space-y-3 flex-1 min-h-[300px]">
             {column.tickets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 bg-white rounded-lg border-2 border-dashed border-gray-300">
-                <p className="text-sm text-gray-400 font-medium">No tickets</p>
-                <p className="text-xs text-gray-300 mt-1">Drag tickets here</p>
+              <div className="flex flex-col items-center justify-center h-32 bg-white dark:bg-gray-800 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+                <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">No tickets</p>
+                <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Drag tickets here</p>
               </div>
             ) : (
               column.tickets.map(ticket => (
@@ -156,7 +156,7 @@ export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
                 >
                   <Card className={`
                     hover:shadow-xl hover:scale-[1.02] transition-all duration-200 cursor-move
-                    border-l-4 bg-white relative
+                    border-l-4 bg-white dark:bg-gray-800 relative
                     ${ticket.priority === 'URGENT' ? 'border-l-red-500' :
                       ticket.priority === 'HIGH' ? 'border-l-orange-500' :
                       ticket.priority === 'MEDIUM' ? 'border-l-yellow-500' :
@@ -166,7 +166,7 @@ export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
                     <CardContent className="p-4">
                       {/* Drag Handle */}
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600">
+                        <div className="w-6 h-6 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400">
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                           </svg>
@@ -191,26 +191,26 @@ export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
 
                       {/* Title - Clickable */}
                       <Link href={`/portal/tickets/${ticket.id}`} className="block">
-                        <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2 leading-tight hover:text-blue-600 transition-colors">
+                        <h4 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 leading-tight hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                           {ticket.title}
                         </h4>
                       </Link>
 
                       {/* Description Preview */}
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2 leading-relaxed">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2 leading-relaxed">
                         {ticket.description}
                       </p>
 
                       {/* Category */}
                       {ticket.category && (
-                        <div className="inline-flex items-center gap-1 text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded-full mb-3">
+                        <div className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full mb-3">
                           <span>📁</span>
                           <span className="font-medium">{ticket.category}</span>
                         </div>
                       )}
 
                       {/* Meta Info */}
-                      <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-100 dark:border-gray-700">
                         <div className="flex items-center gap-3">
                           {ticket._count.comments > 0 && (
                             <span className="flex items-center gap-1 font-medium">
@@ -229,7 +229,7 @@ export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
                       </div>
 
                       {/* Ticket ID */}
-                      <div className="text-xs text-gray-400 mt-2 font-mono">
+                      <div className="text-xs text-gray-400 dark:text-gray-500 mt-2 font-mono">
                         #{ticket.id.slice(0, 8)}
                       </div>
                     </CardContent>
