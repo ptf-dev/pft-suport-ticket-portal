@@ -25,6 +25,12 @@ interface TicketFiltersProps {
 const STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING_CLIENT', 'RESOLVED', 'CLOSED']
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
 
+// Virtual/composite filter options (not real DB statuses)
+const VIRTUAL_STATUSES = [
+  { value: 'NOT_RESOLVED', label: 'Not Resolved' },
+  { value: 'ACTIVE_ONLY', label: 'Active (excl. Waiting & Resolved)' },
+]
+
 export function TicketFilters({ companies, currentFilters }: TicketFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -91,11 +97,20 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
             className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             <option value="">All Statuses</option>
-            {STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {status.replace('_', ' ')}
-              </option>
-            ))}
+            <optgroup label="Quick Filters">
+              {VIRTUAL_STATUSES.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Specific Status">
+              {STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status.replace('_', ' ')}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </div>
 

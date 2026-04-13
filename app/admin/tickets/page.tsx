@@ -30,7 +30,13 @@ export default async function AdminTicketsPage({
   }
   
   if (searchParams.status) {
-    where.status = searchParams.status as TicketStatus
+    if (searchParams.status === 'NOT_RESOLVED') {
+      where.status = { in: ['OPEN', 'IN_PROGRESS', 'WAITING_CLIENT'] as TicketStatus[] }
+    } else if (searchParams.status === 'ACTIVE_ONLY') {
+      where.status = { in: ['OPEN', 'IN_PROGRESS'] as TicketStatus[] }
+    } else {
+      where.status = searchParams.status as TicketStatus
+    }
   }
   
   if (searchParams.priority) {
