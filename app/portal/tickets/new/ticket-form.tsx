@@ -140,9 +140,9 @@ export function TicketForm() {
   return (
     <form onSubmit={handleSubmit}>
       <Card className="shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary-50 to-blue-50 border-b">
+        <CardHeader className="bg-gradient-to-r from-primary-50 to-blue-50 dark:from-gray-800 dark:to-gray-800 border-b dark:border-gray-700">
           <CardTitle className="text-xl">Ticket Details</CardTitle>
-          <p className="text-sm text-gray-600 mt-1">Fill in the information below to create your support ticket</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Fill in the information below to create your support ticket</p>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
           {/* General Error */}
@@ -157,7 +157,7 @@ export function TicketForm() {
 
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-sm font-semibold text-gray-700">
+            <Label htmlFor="title" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Title <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -169,7 +169,7 @@ export function TicketForm() {
               disabled={isSubmitting}
               className="text-base"
             />
-            <p className="text-xs text-gray-500 flex items-center gap-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
               <span>💡</span>
               <span>Provide a clear, concise title that describes your issue</span>
             </p>
@@ -183,7 +183,7 @@ export function TicketForm() {
 
           {/* Priority */}
           <div className="space-y-2">
-            <Label htmlFor="priority" className="text-sm font-semibold text-gray-700">
+            <Label htmlFor="priority" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Priority <span className="text-red-500">*</span>
             </Label>
             <Select
@@ -200,7 +200,7 @@ export function TicketForm() {
                 </option>
               ))}
             </Select>
-            <p className="text-xs text-gray-500 flex items-center gap-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
               <span>🎯</span>
               <span>Choose the urgency level of your issue</span>
             </p>
@@ -214,7 +214,7 @@ export function TicketForm() {
 
           {/* Category */}
           <div className="space-y-2">
-            <Label htmlFor="category" className="text-sm font-semibold text-gray-700">Category</Label>
+            <Label htmlFor="category" className="text-sm font-semibold text-gray-700 dark:text-gray-300">Category</Label>
             <Select
               id="category"
               name="category"
@@ -228,7 +228,7 @@ export function TicketForm() {
                 </option>
               ))}
             </Select>
-            <p className="text-xs text-gray-500 flex items-center gap-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
               <span>📁</span>
               <span>Help us route your ticket to the right team</span>
             </p>
@@ -242,7 +242,7 @@ export function TicketForm() {
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-semibold text-gray-700">
+            <Label htmlFor="description" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
               Description <span className="text-red-500">*</span>
             </Label>
             <textarea
@@ -260,9 +260,9 @@ Please include:
 • Any relevant account or transaction details"
               required
               disabled={isSubmitting}
-              className="flex w-full rounded-md border border-gray-300 bg-white px-4 py-3 text-base ring-offset-white placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
+              className="flex w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-3 text-base text-gray-900 dark:text-gray-100 ring-offset-white dark:ring-offset-gray-900 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
             />
-            <p className="text-xs text-gray-500 flex items-center gap-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
               <span>📝</span>
               <span>The more details you provide, the faster we can help you</span>
             </p>
@@ -276,8 +276,8 @@ Please include:
 
           {/* Image Upload */}
           <div className="space-y-2">
-            <Label htmlFor="images" className="text-sm font-semibold text-gray-700">Attachments</Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50 hover:bg-gray-100 transition-colors">
+            <Label htmlFor="images" className="text-sm font-semibold text-gray-700 dark:text-gray-300">Attachments</Label>
+            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
               <input
                 type="file"
                 id="images"
@@ -292,7 +292,7 @@ Please include:
                 className="cursor-pointer flex flex-col items-center"
               >
                 <svg
-                  className="w-16 h-16 text-gray-400 mb-3"
+                  className="w-16 h-16 text-gray-400 dark:text-gray-500 mb-3"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -304,10 +304,10 @@ Please include:
                     d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                   />
                 </svg>
-                <span className="text-base text-gray-700 font-medium mb-1">
+                <span className="text-base text-gray-700 dark:text-gray-300 font-medium mb-1">
                   Click to upload images or drag and drop
                 </span>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                   PNG, JPG, GIF up to 10MB (max 5 files)
                 </span>
               </label>
@@ -316,28 +316,28 @@ Please include:
             {/* Selected Files */}
             {selectedFiles.length > 0 && (
               <div className="mt-4 space-y-2">
-                <p className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <span>📎</span>
                   <span>Selected files ({selectedFiles.length}/5):</span>
                 </p>
                 {selectedFiles.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between bg-white border border-gray-200 p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                    className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <span className="text-2xl">🖼️</span>
-                      <span className="text-sm text-gray-700 truncate font-medium">
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate font-medium">
                         {file.name}
                       </span>
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                         ({(file.size / 1024 / 1024).toFixed(2)} MB)
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => removeFile(index)}
-                      className="text-red-600 hover:text-red-800 text-sm font-medium ml-3 px-3 py-1 rounded hover:bg-red-50 transition-colors"
+                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium ml-3 px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       Remove
                     </button>
@@ -348,7 +348,7 @@ Please include:
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between bg-gray-50 border-t py-4">
+        <CardFooter className="flex justify-between bg-gray-50 dark:bg-gray-800 border-t dark:border-gray-700 py-4">
           <Link href="/portal/tickets">
             <Button type="button" variant="outline" disabled={isSubmitting} className="shadow-sm">
               Cancel

@@ -63,14 +63,14 @@ export default async function ClientTicketDetailPage({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-            <Link href="/portal/tickets" className="hover:text-primary-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
+            <Link href="/portal/tickets" className="hover:text-primary-600 dark:hover:text-primary-400">
               ← Back to Tickets
             </Link>
             <span>•</span>
             <span>#{ticket.id.slice(0, 8)}</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">{ticket.title}</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{ticket.title}</h1>
         </div>
         <div className="flex items-center gap-2">
           <Badge
@@ -122,7 +122,7 @@ export default async function ClientTicketDetailPage({
               <CardTitle>Description</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-700 whitespace-pre-wrap">{ticket.description}</p>
+              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ticket.description}</p>
             </CardContent>
           </Card>
 
@@ -169,29 +169,29 @@ export default async function ClientTicketDetailPage({
             </CardHeader>
             <CardContent className="space-y-4">
               {ticket.comments.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                   No comments yet. Be the first to comment!
                 </p>
               ) : (
                 ticket.comments.map((comment) => (
                   <div
                     key={comment.id}
-                    className="p-4 rounded-lg border bg-gray-50 border-gray-200"
+                    className="p-4 rounded-lg border bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
                           {comment.author.name}
                         </span>
                         <Badge variant="secondary" className="text-xs">
                           {comment.author.role}
                         </Badge>
                       </div>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
                         {new Date(comment.createdAt).toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                       {comment.message}
                     </p>
                   </div>
@@ -199,7 +199,7 @@ export default async function ClientTicketDetailPage({
               )}
 
               {/* Comment Form */}
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                 <CommentForm ticketId={ticket.id} />
               </div>
             </CardContent>
@@ -216,23 +216,23 @@ export default async function ClientTicketDetailPage({
             <CardContent className="space-y-3">
               {ticket.category && (
                 <div>
-                  <div className="text-sm font-medium text-gray-700">Category</div>
-                  <div className="text-sm text-gray-900">{ticket.category}</div>
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</div>
+                  <div className="text-sm text-gray-900 dark:text-white">{ticket.category}</div>
                 </div>
               )}
               <div>
-                <div className="text-sm font-medium text-gray-700">Created By</div>
-                <div className="text-sm text-gray-900">{ticket.createdBy.name}</div>
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Created By</div>
+                <div className="text-sm text-gray-900 dark:text-white">{ticket.createdBy.name}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700">Created</div>
-                <div className="text-sm text-gray-900">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Created</div>
+                <div className="text-sm text-gray-900 dark:text-white">
                   {new Date(ticket.createdAt).toLocaleString()}
                 </div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700">Last Updated</div>
-                <div className="text-sm text-gray-900">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Last Updated</div>
+                <div className="text-sm text-gray-900 dark:text-white">
                   {new Date(ticket.updatedAt).toLocaleString()}
                 </div>
               </div>
@@ -240,10 +240,10 @@ export default async function ClientTicketDetailPage({
           </Card>
 
           {/* Help Card */}
-          <Card className="bg-blue-50 border-blue-200">
+          <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
             <CardContent className="pt-6">
-              <h3 className="font-semibold text-blue-900 mb-2">Need Help?</h3>
-              <p className="text-sm text-blue-800 mb-4">
+              <h3 className="font-semibold text-blue-900 dark:text-blue-300 mb-2">Need Help?</h3>
+              <p className="text-sm text-blue-800 dark:text-blue-200 mb-4">
                 Our support team typically responds within 24 hours. For urgent issues, please mark your ticket as &quot;Urgent&quot;.
               </p>
               <Link href="/portal/tickets/new">

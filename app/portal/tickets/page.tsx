@@ -37,8 +37,8 @@ export default async function PortalTicketsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Tickets</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tickets</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Drag and drop tickets to update their status
           </p>
         </div>

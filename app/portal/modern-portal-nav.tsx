@@ -65,7 +65,7 @@ export default function ModernPortalNav({ user, companyName, children }: ModernP
             </div>
             <div>
               <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100">{companyName}</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Support Portal</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">PFT Support Portal</p>
             </div>
           </div>
         </div>

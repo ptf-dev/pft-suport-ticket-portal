@@ -18,8 +18,8 @@ export default async function NewTicketPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Create Support Ticket</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Create Support Ticket</h1>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
           Provide detailed information about your issue to help us assist you better
         </p>
       </div>
