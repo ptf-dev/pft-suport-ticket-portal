@@ -91,6 +91,15 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
 
         {/* User Section */}
         <div className="p-4 pb-6 md:pb-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            className="w-full hover:bg-red-50 dark:hover:bg-red-900 hover:text-red-600 dark:hover:text-red-300 hover:border-red-200 dark:hover:border-red-700 transition-colors"
+          >
+            <span className="mr-2">🚪</span>
+            Logout
+          </Button>
           <div className="flex items-center gap-3 mb-3 p-2">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
               <span className="text-white font-bold text-sm">
@@ -102,15 +111,7 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            className="w-full hover:bg-red-50 dark:hover:bg-red-900 hover:text-red-600 dark:hover:text-red-300 hover:border-red-200 dark:hover:border-red-700 transition-colors"
-          >
-            <span className="mr-2">🚪</span>
-            Logout
-          </Button>
+          
         </div>
       </aside>
 

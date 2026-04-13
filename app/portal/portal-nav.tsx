@@ -56,17 +56,18 @@ export default function PortalNav({ user, companyName }: PortalNavProps) {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <div className="text-sm font-medium text-gray-900">{user.name}</div>
-              <div className="text-xs text-gray-500">{companyName}</div>
-            </div>
-            <Button
+             <Button
               variant="outline"
               size="sm"
               onClick={handleLogout}
             >
               Logout
             </Button>
+            <div className="text-right">
+              <div className="text-sm font-medium text-gray-900">{user.name}</div>
+              <div className="text-xs text-gray-500">{companyName}</div>
+            </div>
+           
           </div>
         </div>
       </div>
