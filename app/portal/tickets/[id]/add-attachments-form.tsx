@@ -8,9 +8,13 @@ import { useRouter } from 'next/navigation'
 
 interface AddAttachmentsFormProps {
   ticketId: string
+  apiBasePath?: string // defaults to '/api/portal/tickets'
 }
 
-export function AddAttachmentsForm({ ticketId }: AddAttachmentsFormProps) {
+export function AddAttachmentsForm({
+  ticketId,
+  apiBasePath = '/api/portal/tickets',
+}: AddAttachmentsFormProps) {
   const router = useRouter()
   const [isAdding, setIsAdding] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -61,7 +65,7 @@ export function AddAttachmentsForm({ ticketId }: AddAttachmentsFormProps) {
         formData.append('images', file)
       })
 
-      const response = await fetch(`/api/portal/tickets/${ticketId}/images`, {
+      const response = await fetch(`${apiBasePath}/${ticketId}/images`, {
         method: 'POST',
         body: formData,
       })

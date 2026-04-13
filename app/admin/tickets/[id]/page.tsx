@@ -6,7 +6,8 @@ import { notFound } from 'next/navigation'
 import { TicketStatusForm } from './ticket-status-form'
 import { TicketPriorityForm } from './ticket-priority-form'
 import CommentForm from '@/components/comment-form'
-import Image from 'next/image'
+import { EditTicketForm } from '@/app/portal/tickets/[id]/edit-ticket-form'
+import { AddAttachmentsForm } from '@/app/portal/tickets/[id]/add-attachments-form'
 
 /**
  * Admin Ticket Detail Page
@@ -64,6 +65,18 @@ export default async function AdminTicketDetailPage({
           <span>{ticket.company.name}</span>
         </div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{ticket.title}</h1>
+      </div>
+
+      {/* Edit and Add Attachments Actions */}
+      <div className="flex gap-2">
+        <EditTicketForm
+          ticketId={ticket.id}
+          initialTitle={ticket.title}
+          initialDescription={ticket.description}
+          initialCategory={ticket.category || undefined}
+          apiBasePath="/api/admin/tickets"
+        />
+        <AddAttachmentsForm ticketId={ticket.id} apiBasePath="/api/admin/tickets" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

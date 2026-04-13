@@ -12,6 +12,7 @@ interface EditTicketFormProps {
   initialTitle: string
   initialDescription: string
   initialCategory?: string
+  apiBasePath?: string // defaults to '/api/portal/tickets'
 }
 
 export function EditTicketForm({
@@ -19,6 +20,7 @@ export function EditTicketForm({
   initialTitle,
   initialDescription,
   initialCategory,
+  apiBasePath = '/api/portal/tickets',
 }: EditTicketFormProps) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
@@ -34,7 +36,7 @@ export function EditTicketForm({
     setError('')
 
     try {
-      const response = await fetch(`/api/portal/tickets/${ticketId}`, {
+      const response = await fetch(`${apiBasePath}/${ticketId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, category }),
