@@ -43,8 +43,8 @@ export default async function CompanyDetailPage({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Edit Company</h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Edit Company</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Update company information and settings
           </p>
         </div>
@@ -54,8 +54,8 @@ export default async function CompanyDetailPage({
       </div>
 
       {/* Company Statistics */}
-      <div className="bg-gray-50 rounded-lg border border-gray-200 p-4">
-        <div className="flex items-center justify-between text-sm text-gray-600">
+      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
           <span>Users: {company._count.users}</span>
           <span>Tickets: {company._count.tickets}</span>
           <span>Created: {new Date(company.createdAt).toLocaleDateString()}</span>

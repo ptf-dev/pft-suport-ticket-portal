@@ -55,14 +55,14 @@ export function TicketPriorityForm({ ticketId, currentPriority }: TicketPriority
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <Label htmlFor="priority" className="text-sm font-medium text-gray-700">
+        <Label htmlFor="priority" className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Change Priority
         </Label>
         <select
           id="priority"
           value={priority}
           onChange={(e) => setPriority(e.target.value as TicketPriority)}
-          className="mt-1 block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         >
           {PRIORITIES.map((p) => (
             <option key={p} value={p}>
@@ -73,7 +73,7 @@ export function TicketPriorityForm({ ticketId, currentPriority }: TicketPriority
       </div>
 
       {error && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+        <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-2">
           {error}
         </div>
       )}

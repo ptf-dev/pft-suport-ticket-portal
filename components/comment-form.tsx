@@ -70,19 +70,19 @@ export default function CommentForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded">
           {error}
         </div>
       )}
 
       <div>
-        <Label htmlFor="message">Add Comment</Label>
+        <Label htmlFor="message" className="dark:text-gray-300">Add Comment</Label>
         <textarea
           id="message"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={4}
-          className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 shadow-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 focus:outline-none focus:ring-primary-500"
           placeholder="Write your comment here..."
           disabled={isSubmitting}
         />
@@ -95,10 +95,10 @@ export default function CommentForm({
             id="internal"
             checked={internal}
             onChange={(e) => setInternal(e.target.checked)}
-            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 rounded"
             disabled={isSubmitting}
           />
-          <Label htmlFor="internal" className="ml-2 text-sm">
+          <Label htmlFor="internal" className="ml-2 text-sm dark:text-gray-300">
             Internal note (only visible to admins)
           </Label>
         </div>

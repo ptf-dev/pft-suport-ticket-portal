@@ -110,14 +110,14 @@ export function CompanyFormFields({ initialData, companyId, mode }: CompanyFormF
         <CardContent className="pt-6 space-y-4">
           {/* General Error */}
           {errors.general && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded">
               {errors.general}
             </div>
           )}
 
           {/* Company Name */}
           <div className="space-y-2">
-            <Label htmlFor="name">
+            <Label htmlFor="name" className="dark:text-gray-300">
               Company Name <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -130,13 +130,13 @@ export function CompanyFormFields({ initialData, companyId, mode }: CompanyFormF
               disabled={isSubmitting}
             />
             {errors.name && (
-              <p className="text-sm text-red-600">{errors.name[0]}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.name[0]}</p>
             )}
           </div>
 
           {/* Contact Email */}
           <div className="space-y-2">
-            <Label htmlFor="contactEmail">
+            <Label htmlFor="contactEmail" className="dark:text-gray-300">
               Contact Email <span className="text-red-500">*</span>
             </Label>
             <Input
@@ -149,13 +149,13 @@ export function CompanyFormFields({ initialData, companyId, mode }: CompanyFormF
               disabled={isSubmitting}
             />
             {errors.contactEmail && (
-              <p className="text-sm text-red-600">{errors.contactEmail[0]}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.contactEmail[0]}</p>
             )}
           </div>
 
           {/* Subdomain */}
           <div className="space-y-2">
-            <Label htmlFor="subdomain">
+            <Label htmlFor="subdomain" className="dark:text-gray-300">
               Subdomain <span className="text-red-500">*</span>
             </Label>
             <div className="flex items-center gap-2">
@@ -170,21 +170,21 @@ export function CompanyFormFields({ initialData, companyId, mode }: CompanyFormF
                 disabled={isSubmitting}
                 className="flex-1"
               />
-              <span className="text-sm text-gray-500 whitespace-nowrap">
+              <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
                 .propfirmstech.com
               </span>
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Lowercase letters, numbers, and hyphens only
             </p>
             {errors.subdomain && (
-              <p className="text-sm text-red-600">{errors.subdomain[0]}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.subdomain[0]}</p>
             )}
           </div>
 
           {/* WhatsApp Link */}
           <div className="space-y-2">
-            <Label htmlFor="whatsappLink">WhatsApp Link</Label>
+            <Label htmlFor="whatsappLink" className="dark:text-gray-300">WhatsApp Link</Label>
             <Input
               id="whatsappLink"
               name="whatsappLink"
@@ -194,13 +194,13 @@ export function CompanyFormFields({ initialData, companyId, mode }: CompanyFormF
               disabled={isSubmitting}
             />
             {errors.whatsappLink && (
-              <p className="text-sm text-red-600">{errors.whatsappLink[0]}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.whatsappLink[0]}</p>
             )}
           </div>
 
           {/* Notes */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes" className="dark:text-gray-300">Notes</Label>
             <textarea
               id="notes"
               name="notes"
@@ -208,10 +208,10 @@ export function CompanyFormFields({ initialData, companyId, mode }: CompanyFormF
               placeholder="Additional notes about this company..."
               defaultValue={initialData?.notes}
               disabled={isSubmitting}
-              className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm ring-offset-white dark:ring-offset-gray-900 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
             {errors.notes && (
-              <p className="text-sm text-red-600">{errors.notes[0]}</p>
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.notes[0]}</p>
             )}
           </div>
         </CardContent>
