@@ -83,7 +83,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 px-4">
       <Card className="w-full max-w-md shadow-2xl border-t-4 border-t-primary-500">
         <CardHeader className="space-y-1 pb-6">
           <div className="flex justify-center mb-4">
@@ -103,7 +103,7 @@ function LoginForm() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded shadow-sm">
+              <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 text-red-700 dark:text-red-400 px-4 py-3 rounded shadow-sm">
                 <div className="flex items-center">
                   <span className="text-xl mr-2">⚠️</span>
                   <span className="font-medium">{error}</span>
@@ -192,8 +192,8 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900">
+        <div className="text-gray-600 dark:text-gray-400">Loading...</div>
       </div>
     }>
       <LoginForm />
