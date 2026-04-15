@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { NotificationService } from '@/lib/services/notification'
 
 const createTicketSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -50,6 +51,9 @@ export async function POST(request: NextRequest) {
         createdById,
       },
     })
+
+    // Notify admin (fire-and-forget)
+    NotificationService.notifyAdminTicketCreated(ticket.id).catch(() => {})
 
     return NextResponse.json(ticket, { status: 201 })
   } catch {

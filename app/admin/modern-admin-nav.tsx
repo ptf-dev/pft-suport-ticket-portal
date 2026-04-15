@@ -31,6 +31,7 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
     { href: '/admin/tickets', label: 'Tickets', icon: '🎫' },
     { href: '/admin/companies', label: 'Companies', icon: '🏢' },
     { href: '/admin/users', label: 'Users', icon: '👥' },
+    { href: '/admin/settings/smtp', label: 'SMTP Settings', icon: '⚙️' },
   ]
 
   const isActive = (href: string, exact?: boolean) => {
@@ -130,7 +131,7 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
               </svg>
             </button>
             <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-gray-100">
-              {navItems.find(item => isActive(item.href, item.exact))?.label || 'Admin'}
+            {navItems.find(item => isActive(item.href, item.exact))?.label || 'Admin'}
             </h2>
           </div>
           <div className="hidden sm:flex items-center gap-4">

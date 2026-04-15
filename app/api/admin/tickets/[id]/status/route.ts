@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TicketStatus } from '@prisma/client'
+import { NotificationService } from '@/lib/services/notification'
 
 /**
  * PATCH /api/admin/tickets/[id]/status
@@ -45,6 +46,9 @@ export async function PATCH(
       where: { id: params.id },
       data: { status },
     })
+
+    // Notify client about status change (fire-and-forget)
+    NotificationService.notifyClientStatusChanged(params.id, ticket.status, status).catch(() => {})
 
     return NextResponse.json(updatedTicket)
   } catch (error) {
