@@ -1,8 +1,8 @@
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
+import { UsersTable } from './users-table'
 
 /**
  * Admin Users List Page
@@ -113,66 +113,13 @@ export default async function UsersPage() {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                   Created
                 </th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
-              {users.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                        <span className="text-3xl">👥</span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No users found</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">Create your first user to get started</p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                users.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-lg flex items-center justify-center">
-                          <span className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                            {user.name.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                          {user.name}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {user.email}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge
-                        variant={user.role === 'ADMIN' ? 'default' : 'secondary'}
-                        className="font-medium"
-                      >
-                        {user.role}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-white font-medium">
-                        {user.company?.name || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-white font-medium">
-                        {new Date(user.createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
+                <UsersTable users={users} />
             </tbody>
           </table>
         </div>
