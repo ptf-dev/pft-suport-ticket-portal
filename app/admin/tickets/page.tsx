@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { TicketStatus, TicketPriority } from '@prisma/client'
 import Link from 'next/link'
 import { TicketFilters } from './ticket-filters'
@@ -73,7 +74,13 @@ export default async function AdminTicketsPage({
             View and manage tickets across all companies
           </p>
         </div>
-        <div className="shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          <Link href="/admin/tickets/new">
+            <Button className="shadow-md hover:shadow-lg transition-shadow">
+              <span className="mr-2">➕</span>
+              New Ticket
+            </Button>
+          </Link>
           <TicketFilters
             companies={companies}
             currentFilters={{
