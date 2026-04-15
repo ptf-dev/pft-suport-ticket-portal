@@ -119,89 +119,120 @@ export default async function AdminTicketsPage({
                 <tr>
                   <td colSpan={7} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
                         <span className="text-3xl">🎫</span>
                       </div>
-                      <p className="text-sm font-medium text-gray-500">No tickets found</p>
-                      <p className="text-xs text-gray-400">Try adjusting your filters</p>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No tickets found</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Try adjusting your filters</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 tickets.map((ticket) => (
                   <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    {/* Ticket */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-lg flex items-center justify-center">
-                          <span className="text-lg">🎫</span>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                          ticket.priority === 'URGENT' ? 'bg-red-500' :
+                          ticket.priority === 'HIGH'   ? 'bg-orange-500' :
+                          ticket.priority === 'MEDIUM' ? 'bg-yellow-500' :
+                                                         'bg-gray-400'
+                        }`}>
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
                         </div>
-                        <div>
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1">
+                        <div className="min-w-0">
+                          <Link
+                            href={`/admin/tickets/${ticket.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-1 block"
+                          >
                             {ticket.title}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                          </Link>
+                          <div className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
                             #{ticket.id.slice(0, 8)}
                           </div>
                         </div>
                       </div>
                     </td>
+
+                    {/* Company */}
                     <td className="px-6 py-4">
                       <div className="text-sm font-medium text-gray-900 dark:text-white">
                         {ticket.company.name}
                       </div>
                     </td>
+
+                    {/* Status */}
                     <td className="px-6 py-4">
                       <Badge
                         variant={
-                          ticket.status === 'OPEN'
-                            ? 'destructive'
-                            : ticket.status === 'IN_PROGRESS'
-                            ? 'default'
-                            : ticket.status === 'WAITING_CLIENT'
-                            ? 'warning'
-                            : ticket.status === 'RESOLVED'
-                            ? 'success'
-                            : 'secondary'
+                          ticket.status === 'OPEN'           ? 'destructive' :
+                          ticket.status === 'IN_PROGRESS'    ? 'default' :
+                          ticket.status === 'WAITING_CLIENT' ? 'warning' :
+                          ticket.status === 'RESOLVED'       ? 'success' :
+                                                               'secondary'
                         }
-                        className="font-medium"
+                        className="font-semibold text-xs whitespace-nowrap"
                       >
-                        {ticket.status.replace('_', ' ')}
+                        {ticket.status.replace(/_/g, ' ')}
                       </Badge>
                     </td>
+
+                    {/* Priority */}
                     <td className="px-6 py-4">
                       <Badge
                         variant={
-                          ticket.priority === 'URGENT'
-                            ? 'destructive'
-                            : ticket.priority === 'HIGH'
-                            ? 'warning'
-                            : 'secondary'
+                          ticket.priority === 'URGENT' ? 'destructive' :
+                          ticket.priority === 'HIGH'   ? 'warning' :
+                                                         'secondary'
                         }
-                        className="font-medium"
+                        className="font-semibold text-xs"
                       >
                         {ticket.priority}
                       </Badge>
                     </td>
+
+                    {/* Created By */}
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-white font-medium">
-                        {ticket.createdBy.name}
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
+                          <span className="text-xs font-bold text-white">
+                            {ticket.createdBy.name?.charAt(0).toUpperCase() ?? '?'}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-900 dark:text-white font-medium leading-tight">
+                          {ticket.createdBy.name}
+                        </div>
                       </div>
                     </td>
+
+                    {/* Created */}
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900 dark:text-white font-medium">
                         {new Date(ticket.createdAt).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
-                          year: 'numeric'
+                          year: 'numeric',
                         })}
                       </div>
                     </td>
+
+                    {/* Actions */}
                     <td className="px-6 py-4 text-right">
                       <Link
                         href={`/admin/tickets/${ticket.id}`}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm transition-colors"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm transition-colors"
                       >
-                        View →
+                        View
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
                       </Link>
                     </td>
                   </tr>
