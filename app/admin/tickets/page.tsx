@@ -65,24 +65,24 @@ export default async function AdminTicketsPage({
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">All Tickets</h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          View and manage tickets across all companies
-        </p>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md p-6">
-        <TicketFilters
-          companies={companies}
-          currentFilters={{
-            company: searchParams.company,
-            status: searchParams.status,
-            priority: searchParams.priority,
-          }}
-        />
+      {/* Header + Filters */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">All Tickets</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            View and manage tickets across all companies
+          </p>
+        </div>
+        <div className="shrink-0">
+          <TicketFilters
+            companies={companies}
+            currentFilters={{
+              company: searchParams.company,
+              status: searchParams.status,
+              priority: searchParams.priority,
+            }}
+          />
+        </div>
       </div>
 
       {/* Tickets Table */}
