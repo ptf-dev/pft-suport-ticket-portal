@@ -118,18 +118,35 @@ model Ticket {
 }
 
 model TicketComment {
-  id        String   @id @default(cuid())
-  ticketId  String
-  authorId  String
-  message   String
-  internal  Boolean  @default(false)
-  createdAt DateTime @default(now())
+  id             String                @id @default(cuid())
+  ticketId       String
+  authorId       String
+  message        String
+  internal       Boolean               @default(false)
+  mentionedUsers String[]              @default([]) // Array of user emails mentioned in comment
+  createdAt      DateTime              @default(now())
   
   // Relations
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author User   @relation(fields: [authorId], references: [id])
+  ticket Ticket               @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User                 @relation(fields: [authorId], references: [id])
+  images CommentImage[]
   
   @@map("ticket_comments")
+}
+
+model CommentImage {
+  id        String   @id @default(cuid())
+  commentId String
+  filename  String
+  url       String
+  size      Int
+  mimeType  String
+  uploadedAt DateTime @default(now())
+  
+  // Relations
+  comment TicketComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  @@map("comment_images")
 }
 
 model TicketImage {

@@ -45,6 +45,7 @@ export default async function ClientTicketDetailPage({
           author: {
             select: { name: true, role: true },
           },
+          images: true, // Include comment images
         },
       },
       images: {
@@ -57,6 +58,24 @@ export default async function ClientTicketDetailPage({
   if (!ticket || ticket.companyId !== companyId) {
     notFound()
   }
+
+  // Get available users for mentions (admins + users from same company)
+  const availableUsers = await prisma.user.findMany({
+    where: {
+      OR: [
+        { role: 'ADMIN' },
+        { companyId: companyId },
+      ],
+      isActive: true,
+    },
+    select: {
+      email: true,
+      name: true,
+    },
+    orderBy: {
+      name: 'asc',
+    },
+  })
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -194,13 +213,40 @@ export default async function ClientTicketDetailPage({
                     <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                       {comment.message}
                     </p>
+                    
+                    {/* Comment Images */}
+                    {comment.images && comment.images.length > 0 && (
+                      <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+                        {comment.images.map((image) => (
+                          <a
+                            key={image.id}
+                            href={image.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="relative group"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={image.url}
+                              alt={image.filename}
+                              className="w-full h-24 object-cover rounded border border-gray-300 dark:border-gray-600"
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity rounded flex items-center justify-center">
+                              <span className="text-white text-xs opacity-0 group-hover:opacity-100">
+                                View
+                              </span>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
 
               {/* Comment Form */}
               <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                <CommentForm ticketId={ticket.id} />
+                <CommentForm ticketId={ticket.id} availableUsers={availableUsers} />
               </div>
             </CardContent>
           </Card>

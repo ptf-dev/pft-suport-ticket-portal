@@ -129,6 +129,74 @@ export class NotificationService {
   }
 
   /**
+   * Notify users who were mentioned in a comment.
+   */
+  static async notifyMentionedUsers(
+    ticketId: string,
+    commentId: string,
+    mentionedEmails: string[]
+  ): Promise<void> {
+    try {
+      const smtpSettings = await prisma.sMTPSettings.findFirst({
+        where: { isActive: true },
+        orderBy: { updatedAt: 'desc' },
+      })
+      if (!smtpSettings) return
+
+      const comment = await prisma.ticketComment.findUnique({
+        where: { id: commentId },
+        include: {
+          author: { select: { name: true, email: true } },
+          ticket: {
+            include: {
+              company: { select: { name: true } },
+            },
+          },
+        },
+      })
+      if (!comment) return
+
+      // Send notification to each mentioned user
+      for (const email of mentionedEmails) {
+        // Skip if the mentioned user is the comment author
+        if (email === comment.author.email) continue
+
+        // Verify the user exists and has access to this ticket
+        const user = await prisma.user.findFirst({
+          where: {
+            email,
+            OR: [
+              { role: 'ADMIN' },
+              { companyId: comment.ticket.companyId },
+            ],
+          },
+        })
+
+        if (!user) continue
+
+        const subject = `[Mention] You were mentioned in ${comment.ticket.title}`
+        const html = baseHtml('You Were Mentioned in a Comment', `
+          <p>Hi ${user.name},</p>
+          <p>${comment.author.name} mentioned you in a comment on a support ticket.</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+            <tr><td style="padding:8px;color:#6b7280;width:120px;">Ticket</td><td style="padding:8px;font-weight:600;">${comment.ticket.title}</td></tr>
+            <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Company</td><td style="padding:8px;">${comment.ticket.company.name}</td></tr>
+            <tr><td style="padding:8px;color:#6b7280;">Mentioned by</td><td style="padding:8px;">${comment.author.name}</td></tr>
+          </table>
+          <div style="background:#f9fafb;padding:16px;border-radius:6px;margin:16px 0;">
+            <p style="color:#374151;margin:0;">${comment.message}</p>
+          </div>
+          <a href="${process.env.NEXTAUTH_URL}/${user.role === 'ADMIN' ? 'admin' : 'portal'}/tickets/${ticketId}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">View Ticket →</a>
+        `)
+
+        await SMTPService.sendEmail({ to: email, subject, html })
+      }
+    } catch (err) {
+      console.error('[NotificationService] notifyMentionedUsers failed:', err)
+    }
+  }
+
+  /**
    * Notify admin when a new ticket is created by a client.
    */
   static async notifyAdminTicketCreated(ticketId: string): Promise<void> {

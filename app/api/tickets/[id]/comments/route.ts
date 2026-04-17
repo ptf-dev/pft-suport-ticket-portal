@@ -37,7 +37,7 @@ export async function POST(
 
     // Parse request body
     const body = await request.json()
-    const { message, internal } = body
+    const { message, internal, mentionedUsers } = body
 
     // Validation
     if (!message || message.trim().length === 0) {
@@ -46,6 +46,9 @@ export async function POST(
         { status: 400 }
       )
     }
+
+    // Validate mentionedUsers if provided
+    const mentions = Array.isArray(mentionedUsers) ? mentionedUsers : []
 
     // Determine internal flag based on role
     let isInternal = false
@@ -61,6 +64,7 @@ export async function POST(
         authorId: session.user.id,
         message: message.trim(),
         internal: isInternal,
+        mentionedUsers: mentions,
       },
       include: {
         author: {
@@ -69,6 +73,7 @@ export async function POST(
             role: true,
           },
         },
+        images: true,
       },
     })
 
@@ -79,6 +84,11 @@ export async function POST(
     } else if (session.user.role === Role.CLIENT) {
       // Client commented - notify admins
       await NotificationService.notifyAdminNewComment(params.id, comment.id)
+    }
+
+    // Send email notifications to mentioned users
+    if (mentions.length > 0) {
+      await NotificationService.notifyMentionedUsers(params.id, comment.id, mentions)
     }
 
     return NextResponse.json(comment, { status: 201 })
