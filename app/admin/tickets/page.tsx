@@ -7,6 +7,7 @@ import { TablePagination } from '@/components/ui/table-pagination'
 import { TicketStatus, TicketPriority } from '@prisma/client'
 import Link from 'next/link'
 import { TicketFilters } from './ticket-filters'
+import { InteractiveTicketBoard } from '@/app/portal/tickets/interactive-ticket-board'
 
 const PAGE_SIZE = 20
 
@@ -34,10 +35,12 @@ export default async function AdminTicketsPage({
     page?: string
     sort?: string
     order?: string
+    view?: string
   }
 }) {
   await requireAdmin()
 
+  const view = searchParams.view ?? 'board'
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10))
   const sortKey = SORT_MAP[searchParams.sort ?? ''] ? (searchParams.sort ?? 'createdAt') : 'createdAt'
   const order = searchParams.order === 'asc' ? 'asc' : 'desc'
@@ -71,12 +74,13 @@ export default async function AdminTicketsPage({
     prisma.ticket.count({ where }),
     prisma.ticket.findMany({
       where,
-      orderBy,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      orderBy: view === 'board' ? { createdAt: 'desc' } : orderBy,
+      skip: view === 'board' ? 0 : (page - 1) * PAGE_SIZE,
+      take: view === 'board' ? undefined : PAGE_SIZE,
       include: {
         company: { select: { name: true } },
         createdBy: { select: { name: true } },
+        _count: { select: { comments: true, images: true } },
       },
     }),
   ])
@@ -99,26 +103,53 @@ export default async function AdminTicketsPage({
             View and manage tickets across all companies
           </p>
         </div>
-        <Link href="/admin/tickets/new">
-          <Button className="shadow-md hover:shadow-lg transition-shadow">
-            <span className="mr-2">➕</span>
-            New Ticket
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+            <Link href="/admin/tickets?view=board">
+              <Button variant={view === 'board' ? 'default' : 'ghost'} size="sm" className="gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                Board
+              </Button>
+            </Link>
+            <Link href="/admin/tickets?view=table">
+              <Button variant={view === 'table' ? 'default' : 'ghost'} size="sm" className="gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                Table
+              </Button>
+            </Link>
+          </div>
+          <Link href="/admin/tickets/new">
+            <Button className="shadow-md hover:shadow-lg transition-shadow">
+              <span className="mr-2">➕</span>
+              New Ticket
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
-      <TicketFilters
-        companies={companies}
-        currentFilters={{
-          company: searchParams.company,
-          status: searchParams.status,
-          priority: searchParams.priority,
-        }}
-      />
+      {view === 'table' && (
+        <TicketFilters
+          companies={companies}
+          currentFilters={{
+            company: searchParams.company,
+            status: searchParams.status,
+            priority: searchParams.priority,
+          }}
+        />
+      )}
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden">
+      {/* Board or Table View */}
+      {view === 'board' ? (
+        <InteractiveTicketBoard tickets={tickets} />
+      ) : (
+        <>
+          {/* Table */}
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
@@ -261,6 +292,8 @@ export default async function AdminTicketsPage({
         {/* Pagination */}
         <TablePagination total={total} page={page} pageSize={PAGE_SIZE} />
       </div>
+        </>
+      )}
 
       {/* Summary */}
       {total > 0 && (
