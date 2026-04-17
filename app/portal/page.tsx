@@ -2,7 +2,8 @@ import { requireClient } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { TicketStatus, TicketPriority } from '@prisma/client'
+import { SortableTh } from '@/components/ui/sortable-table-header'
+import { TicketStatus } from '@prisma/client'
 import Link from 'next/link'
 
 /**
@@ -13,10 +14,30 @@ import Link from 'next/link'
  * - Summary statistics scoped to client's company
  * - List of recent tickets for the company
  */
-export default async function PortalDashboard() {
-  // Protect route - client only
+export default async function PortalDashboard({
+  searchParams,
+}: {
+  searchParams: { sort?: string; order?: string }
+}) {
   const session = await requireClient()
   const companyId = session.user.companyId!
+
+  const SORT_MAP: Record<string, object> = {
+    title:     { title: 'asc' },
+    status:    { status: 'asc' },
+    priority:  { priority: 'asc' },
+    createdAt: { createdAt: 'asc' },
+  }
+  function applyDir(obj: any, dir: string): any {
+    const r: any = {}
+    for (const k of Object.keys(obj)) r[k] = typeof obj[k] === 'object' ? applyDir(obj[k], dir) : dir
+    return r
+  }
+  const sortKey = SORT_MAP[searchParams.sort ?? ''] ? (searchParams.sort ?? 'createdAt') : 'createdAt'
+  const order   = searchParams.order === 'asc' ? 'asc' : 'desc'
+  const orderBy = applyDir(SORT_MAP[sortKey], order)
+  const currentSort  = searchParams.sort ?? 'createdAt'
+  const currentOrder = (order) as 'asc' | 'desc'
 
   // Get ticket counts by status for this company
   const [totalTickets, openTickets, inProgressTickets, resolvedTickets] = await Promise.all([
@@ -30,12 +51,8 @@ export default async function PortalDashboard() {
   const recentTickets = await prisma.ticket.findMany({
     where: { companyId },
     take: 10,
-    orderBy: { createdAt: 'desc' },
-    include: {
-      createdBy: {
-        select: { name: true },
-      },
-    },
+    orderBy,
+    include: { createdBy: { select: { name: true } } },
   })
 
   return (
@@ -114,21 +131,11 @@ export default async function PortalDashboard() {
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Ticket
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Priority
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Created
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <SortableTh column="title"     label="Ticket"   currentSort={currentSort} currentOrder={currentOrder} />
+                  <SortableTh column="status"    label="Status"   currentSort={currentSort} currentOrder={currentOrder} />
+                  <SortableTh column="priority"  label="Priority" currentSort={currentSort} currentOrder={currentOrder} />
+                  <SortableTh column="createdAt" label="Created"  currentSort={currentSort} currentOrder={currentOrder} />
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">

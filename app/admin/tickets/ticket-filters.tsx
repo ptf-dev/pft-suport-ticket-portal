@@ -36,18 +36,22 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
 
   const handleFilterChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString())
-    
     if (value) {
       params.set(key, value)
     } else {
       params.delete(key)
     }
-    
+    params.set('page', '1') // reset to page 1 on filter change
     router.push(`/admin/tickets?${params.toString()}`)
   }
 
   const clearFilters = () => {
-    router.push('/admin/tickets')
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('company')
+    params.delete('status')
+    params.delete('priority')
+    params.set('page', '1')
+    router.push(`/admin/tickets?${params.toString()}`)
   }
 
   const hasActiveFilters = currentFilters.company || currentFilters.status || currentFilters.priority
