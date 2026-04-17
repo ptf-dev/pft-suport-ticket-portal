@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,44 +70,31 @@ export function TicketForm() {
     setSelectedFiles([...selectedFiles, ...imageFiles])
   }
 
-  const handlePaste = (e: ClipboardEvent) => {
-    const items = e.clipboardData?.items
-    if (!items) return
+  const handlePasteFromClipboard = async () => {
+    try {
+      const clipboardItems = await navigator.clipboard.read()
+      const files: File[] = []
 
-    const files: File[] = []
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i]
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile()
-        if (file) {
-          files.push(file)
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type)
+            const file = new File([blob], `pasted-image-${Date.now()}.png`, { type })
+            files.push(file)
+          }
         }
       }
-    }
 
-    if (files.length > 0) {
-      e.preventDefault()
-      addFiles(files)
+      if (files.length > 0) {
+        addFiles(files)
+      } else {
+        setErrors({ general: 'No image found in clipboard' })
+      }
+    } catch (error) {
+      console.error('Failed to read clipboard:', error)
+      setErrors({ general: 'Failed to read clipboard. Please make sure you have copied an image.' })
     }
   }
-
-  // Add paste event listener
-  useEffect(() => {
-    const handleGlobalPaste = (e: ClipboardEvent) => {
-      // Only handle paste if we're focused on the form or drop zone
-      const activeElement = document.activeElement
-      const isFormFocused = activeElement?.closest('form') === dropZoneRef.current?.closest('form')
-      
-      if (isFormFocused) {
-        handlePaste(e)
-      }
-    }
-
-    document.addEventListener('paste', handleGlobalPaste)
-    return () => {
-      document.removeEventListener('paste', handleGlobalPaste)
-    }
-  }, [selectedFiles, errors.general])
 
   const removeFile = (index: number) => {
     setSelectedFiles(selectedFiles.filter((_, i) => i !== index))
@@ -366,11 +353,21 @@ Please include:
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   PNG, JPG, GIF up to 10MB (max 5 files)
                 </span>
-                <span className="text-xs text-gray-400 dark:text-gray-500 mt-2 flex items-center gap-1">
-                  <span>⌨️</span>
-                  <span>Or press Ctrl+V (Cmd+V on Mac) to paste from clipboard</span>
-                </span>
               </label>
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePasteFromClipboard}
+                  disabled={isSubmitting}
+                  className="shadow-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <span>📋</span>
+                    <span>Paste from Clipboard</span>
+                  </span>
+                </Button>
+              </div>
             </div>
 
             {/* Selected Files */}
