@@ -33,11 +33,11 @@ export default async function AdminDashboard({
   const currentOrder = (order) as 'asc' | 'desc'
 
   const ticketsByStatus = await Promise.all([
-    prisma.ticket.count({ where: { status: TicketStatus.OPEN } }),
-    prisma.ticket.count({ where: { status: TicketStatus.IN_PROGRESS } }),
-    prisma.ticket.count({ where: { status: TicketStatus.WAITING_CLIENT } }),
-    prisma.ticket.count({ where: { status: TicketStatus.RESOLVED } }),
-    prisma.ticket.count({ where: { status: TicketStatus.CLOSED } }),
+    prisma.ticket.count({ where: { status: TicketStatus.OPEN, isDeleted: false } }),
+    prisma.ticket.count({ where: { status: TicketStatus.IN_PROGRESS, isDeleted: false } }),
+    prisma.ticket.count({ where: { status: TicketStatus.WAITING_CLIENT, isDeleted: false } }),
+    prisma.ticket.count({ where: { status: TicketStatus.RESOLVED, isDeleted: false } }),
+    prisma.ticket.count({ where: { status: TicketStatus.CLOSED, isDeleted: false } }),
   ])
 
   const statusCounts = {
@@ -51,6 +51,7 @@ export default async function AdminDashboard({
   const totalTickets = Object.values(statusCounts).reduce((a, b) => a + b, 0)
 
   const recentTickets = await prisma.ticket.findMany({
+    where: { isDeleted: false },
     take: 10,
     orderBy,
     include: {

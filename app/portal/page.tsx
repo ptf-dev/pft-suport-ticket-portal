@@ -41,15 +41,15 @@ export default async function PortalDashboard({
 
   // Get ticket counts by status for this company
   const [totalTickets, openTickets, inProgressTickets, resolvedTickets] = await Promise.all([
-    prisma.ticket.count({ where: { companyId } }),
-    prisma.ticket.count({ where: { companyId, status: TicketStatus.OPEN } }),
-    prisma.ticket.count({ where: { companyId, status: TicketStatus.IN_PROGRESS } }),
-    prisma.ticket.count({ where: { companyId, status: TicketStatus.RESOLVED } }),
+    prisma.ticket.count({ where: { companyId, isDeleted: false } }),
+    prisma.ticket.count({ where: { companyId, status: TicketStatus.OPEN, isDeleted: false } }),
+    prisma.ticket.count({ where: { companyId, status: TicketStatus.IN_PROGRESS, isDeleted: false } }),
+    prisma.ticket.count({ where: { companyId, status: TicketStatus.RESOLVED, isDeleted: false } }),
   ])
 
   // Get recent tickets for this company
   const recentTickets = await prisma.ticket.findMany({
-    where: { companyId },
+    where: { companyId, isDeleted: false },
     take: 10,
     orderBy,
     include: { createdBy: { select: { name: true } } },
