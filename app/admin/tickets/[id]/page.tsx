@@ -43,6 +43,7 @@ export default async function AdminTicketDetailPage({
           author: {
             select: { name: true, role: true },
           },
+          images: true, // Include comment images
         },
       },
       images: {
@@ -54,6 +55,24 @@ export default async function AdminTicketDetailPage({
   if (!ticket) {
     notFound()
   }
+
+  // Get available users for mentions (all admins + users from ticket's company)
+  const availableUsers = await prisma.user.findMany({
+    where: {
+      OR: [
+        { role: 'ADMIN' },
+        { companyId: ticket.companyId },
+      ],
+      isActive: true,
+    },
+    select: {
+      email: true,
+      name: true,
+    },
+    orderBy: {
+      name: 'asc',
+    },
+  })
 
   return (
     <div className="space-y-6">
@@ -170,6 +189,33 @@ export default async function AdminTicketDetailPage({
                       <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                         {comment.message}
                       </p>
+                      
+                      {/* Comment Images */}
+                      {comment.images && comment.images.length > 0 && (
+                        <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {comment.images.map((image: any) => (
+                            <a
+                              key={image.id}
+                              href={image.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="relative group"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={image.url}
+                                alt={image.filename}
+                                className="w-full h-24 object-cover rounded border border-gray-300 dark:border-gray-600"
+                              />
+                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity rounded flex items-center justify-center">
+                                <span className="text-white text-xs opacity-0 group-hover:opacity-100">
+                                  View
+                                </span>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -177,7 +223,7 @@ export default async function AdminTicketDetailPage({
               
               {/* Comment Form */}
               <div className="border-t dark:border-gray-700 pt-6">
-                <CommentForm ticketId={ticket.id} isAdmin={true} />
+                <CommentForm ticketId={ticket.id} isAdmin={true} availableUsers={availableUsers} />
               </div>
             </CardContent>
           </Card>
