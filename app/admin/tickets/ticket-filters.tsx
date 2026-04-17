@@ -28,6 +28,7 @@ const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
 const VIRTUAL_STATUSES = [
   { value: 'NOT_RESOLVED', label: 'Not Resolved' },
   { value: 'ACTIVE_ONLY', label: 'Active (excl. Waiting & Resolved)' },
+  { value: 'DELETED', label: '🗑️ Deleted Tickets' },
 ]
 
 export function TicketFilters({ companies, currentFilters }: TicketFiltersProps) {

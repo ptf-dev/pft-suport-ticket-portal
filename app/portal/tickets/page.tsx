@@ -38,9 +38,9 @@ export default async function PortalTicketsPage({
   const orderBy = applyDir(SORT_MAP[sortKey], order)
 
   const [total, tickets] = await Promise.all([
-    prisma.ticket.count({ where: { companyId } }),
+    prisma.ticket.count({ where: { companyId, isDeleted: false } }),
     prisma.ticket.findMany({
-      where: { companyId },
+      where: { companyId, isDeleted: false },
       orderBy: view === 'board' ? { createdAt: 'desc' } : orderBy,
       skip: view === 'board' ? 0 : (page - 1) * PAGE_SIZE,
       take: view === 'board' ? undefined : PAGE_SIZE,

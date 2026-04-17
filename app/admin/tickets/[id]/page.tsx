@@ -8,6 +8,7 @@ import { TicketPriorityForm } from './ticket-priority-form'
 import CommentForm from '@/components/comment-form'
 import { EditTicketForm } from '@/app/portal/tickets/[id]/edit-ticket-form'
 import { AddAttachmentsForm } from '@/app/portal/tickets/[id]/add-attachments-form'
+import { DeleteTicketButton } from './delete-ticket-button'
 
 /**
  * Admin Ticket Detail Page
@@ -87,15 +88,18 @@ export default async function AdminTicketDetailPage({
       </div>
 
       {/* Edit and Add Attachments Actions */}
-      <div className="flex gap-2">
-        <EditTicketForm
-          ticketId={ticket.id}
-          initialTitle={ticket.title}
-          initialDescription={ticket.description}
-          initialCategory={ticket.category || undefined}
-          apiBasePath="/api/admin/tickets"
-        />
-        <AddAttachmentsForm ticketId={ticket.id} apiBasePath="/api/admin/tickets" />
+      <div className="flex gap-2 items-center justify-between">
+        <div className="flex gap-2">
+          <EditTicketForm
+            ticketId={ticket.id}
+            initialTitle={ticket.title}
+            initialDescription={ticket.description}
+            initialCategory={ticket.category || undefined}
+            apiBasePath="/api/admin/tickets"
+          />
+          <AddAttachmentsForm ticketId={ticket.id} apiBasePath="/api/admin/tickets" />
+        </div>
+        <DeleteTicketButton ticketId={ticket.id} ticketTitle={ticket.title} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

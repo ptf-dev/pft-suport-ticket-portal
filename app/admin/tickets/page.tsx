@@ -8,6 +8,7 @@ import { TicketStatus, TicketPriority } from '@prisma/client'
 import Link from 'next/link'
 import { TicketFilters } from './ticket-filters'
 import { InteractiveTicketBoard } from '@/app/portal/tickets/interactive-ticket-board'
+import { RestoreTicketButton } from './restore-ticket-button'
 
 const PAGE_SIZE = 20
 
@@ -44,11 +45,14 @@ export default async function AdminTicketsPage({
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10))
   const sortKey = SORT_MAP[searchParams.sort ?? ''] ? (searchParams.sort ?? 'createdAt') : 'createdAt'
   const order = searchParams.order === 'asc' ? 'asc' : 'desc'
+  const showDeleted = searchParams.status === 'DELETED'
 
   // Build filter conditions
-  const where: any = {}
+  const where: any = {
+    isDeleted: showDeleted ? true : false, // Filter by deleted status
+  }
   if (searchParams.company) where.companyId = searchParams.company
-  if (searchParams.status) {
+  if (searchParams.status && searchParams.status !== 'DELETED') {
     if (searchParams.status === 'NOT_RESOLVED') {
       where.status = { in: ['OPEN', 'IN_PROGRESS', 'WAITING_CLIENT'] as TicketStatus[] }
     } else if (searchParams.status === 'ACTIVE_ONLY') {
@@ -270,17 +274,21 @@ export default async function AdminTicketsPage({
 
                     {/* Actions */}
                     <td className="px-6 py-4 text-right">
-                      <Link
-                        href={`/admin/tickets/${ticket.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm transition-colors"
-                      >
-                        View
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </Link>
+                      {showDeleted ? (
+                        <RestoreTicketButton ticketId={ticket.id} />
+                      ) : (
+                        <Link
+                          href={`/admin/tickets/${ticket.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm transition-colors"
+                        >
+                          View
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))
