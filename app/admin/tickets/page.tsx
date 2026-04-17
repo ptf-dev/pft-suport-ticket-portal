@@ -149,7 +149,7 @@ export default async function AdminTicketsPage({
 
       {/* Board or Table View */}
       {view === 'board' ? (
-        <InteractiveTicketBoard tickets={tickets} />
+        <InteractiveTicketBoard tickets={tickets} basePath="/admin/tickets" />
       ) : (
         <>
           {/* Table */}

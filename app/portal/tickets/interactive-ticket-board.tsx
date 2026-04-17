@@ -25,6 +25,7 @@ interface Ticket {
 
 interface TicketBoardProps {
   tickets: Ticket[]
+  basePath?: string // Add basePath prop to make it dynamic
 }
 
 const STATUS_COLUMNS = [
@@ -35,7 +36,7 @@ const STATUS_COLUMNS = [
   { status: 'CLOSED' as TicketStatus, label: 'Closed', variant: 'secondary' as const, color: 'bg-gray-50 border-gray-200' },
 ]
 
-export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
+export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }: TicketBoardProps) {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null)
   const [dragOverColumn, setDragOverColumn] = useState<TicketStatus | null>(null)
   const [localTickets, setLocalTickets] = useState(tickets)
@@ -81,7 +82,8 @@ export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
 
     try {
       // Update ticket status via API
-      const response = await fetch(`/api/portal/tickets/${draggedTicket}/status`, {
+      const apiPath = basePath.startsWith('/admin') ? '/api/admin/tickets' : '/api/portal/tickets'
+      const response = await fetch(`${apiPath}/${draggedTicket}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -190,7 +192,7 @@ export function InteractiveTicketBoard({ tickets }: TicketBoardProps) {
                       </div>
 
                       {/* Title - Clickable */}
-                      <Link href={`/portal/tickets/${ticket.id}`} className="block">
+                      <Link href={`${basePath}/${ticket.id}`} className="block">
                         <h4 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 leading-tight hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                           {ticket.title}
                         </h4>
