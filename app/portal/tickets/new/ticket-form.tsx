@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,18 +43,71 @@ export function TicketForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const dropZoneRef = useRef<HTMLDivElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files)
-      // Limit to 5 files
-      if (files.length + selectedFiles.length > 5) {
-        setErrors({ general: 'Maximum 5 images allowed' })
-        return
-      }
-      setSelectedFiles([...selectedFiles, ...files])
+      addFiles(files)
     }
   }
+
+  const addFiles = (files: File[]) => {
+    // Filter for image files only
+    const imageFiles = files.filter(file => file.type.startsWith('image/'))
+    
+    // Limit to 5 files total
+    if (imageFiles.length + selectedFiles.length > 5) {
+      setErrors({ general: 'Maximum 5 images allowed' })
+      return
+    }
+    
+    // Clear any previous errors
+    if (errors.general) {
+      setErrors({})
+    }
+    
+    setSelectedFiles([...selectedFiles, ...imageFiles])
+  }
+
+  const handlePaste = (e: ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    const files: File[] = []
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i]
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile()
+        if (file) {
+          files.push(file)
+        }
+      }
+    }
+
+    if (files.length > 0) {
+      e.preventDefault()
+      addFiles(files)
+    }
+  }
+
+  // Add paste event listener
+  useEffect(() => {
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      // Only handle paste if we're focused on the form or drop zone
+      const activeElement = document.activeElement
+      const isFormFocused = activeElement?.closest('form') === dropZoneRef.current?.closest('form')
+      
+      if (isFormFocused) {
+        handlePaste(e)
+      }
+    }
+
+    document.addEventListener('paste', handleGlobalPaste)
+    return () => {
+      document.removeEventListener('paste', handleGlobalPaste)
+    }
+  }, [selectedFiles, errors.general])
 
   const removeFile = (index: number) => {
     setSelectedFiles(selectedFiles.filter((_, i) => i !== index))
@@ -277,7 +330,10 @@ Please include:
           {/* Image Upload */}
           <div className="space-y-2">
             <Label htmlFor="images" className="text-sm font-semibold text-gray-700 dark:text-gray-300">Attachments</Label>
-            <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <div 
+              ref={dropZoneRef}
+              className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
               <input
                 type="file"
                 id="images"
@@ -309,6 +365,10 @@ Please include:
                 </span>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                   PNG, JPG, GIF up to 10MB (max 5 files)
+                </span>
+                <span className="text-xs text-gray-400 dark:text-gray-500 mt-2 flex items-center gap-1">
+                  <span>⌨️</span>
+                  <span>Or press Ctrl+V (Cmd+V on Mac) to paste from clipboard</span>
                 </span>
               </label>
             </div>
