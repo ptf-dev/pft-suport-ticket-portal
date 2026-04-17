@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, requireCompanyAccess } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { Role } from '@prisma/client'
+import { NotificationService } from '@/lib/services/notification'
 
 /**
  * Comment Creation API
@@ -70,6 +71,15 @@ export async function POST(
         },
       },
     })
+
+    // Send email notifications
+    if (session.user.role === Role.ADMIN && !isInternal) {
+      // Admin commented publicly - notify the client
+      await NotificationService.notifyClientNewComment(params.id, comment.id)
+    } else if (session.user.role === Role.CLIENT) {
+      // Client commented - notify admins
+      await NotificationService.notifyAdminNewComment(params.id, comment.id)
+    }
 
     return NextResponse.json(comment, { status: 201 })
   } catch (error) {

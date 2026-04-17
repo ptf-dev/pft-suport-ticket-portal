@@ -33,6 +33,102 @@ function baseHtml(title: string, body: string): string {
 
 export class NotificationService {
   /**
+   * Notify admins when a client adds a comment to a ticket.
+   */
+  static async notifyAdminNewComment(ticketId: string, commentId: string): Promise<void> {
+    try {
+      const smtpSettings = await prisma.sMTPSettings.findFirst({
+        where: { isActive: true },
+        orderBy: { updatedAt: 'desc' },
+      })
+      if (!smtpSettings) return
+
+      const comment = await prisma.ticketComment.findUnique({
+        where: { id: commentId },
+        include: {
+          author: { select: { name: true, email: true, role: true } },
+          ticket: {
+            include: {
+              company: { select: { name: true } },
+            },
+          },
+        },
+      })
+      if (!comment) return
+
+      // Only notify admins if comment is from a client
+      if (comment.author.role === 'ADMIN') return
+
+      const subject = `[New Comment] ${comment.ticket.title}`
+      const html = baseHtml('New Comment on Ticket', `
+        <p>A new comment has been added to a ticket.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;color:#6b7280;width:120px;">Ticket</td><td style="padding:8px;font-weight:600;">${comment.ticket.title}</td></tr>
+          <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Company</td><td style="padding:8px;">${comment.ticket.company.name}</td></tr>
+          <tr><td style="padding:8px;color:#6b7280;">Comment by</td><td style="padding:8px;">${comment.author.name} (${comment.author.email})</td></tr>
+        </table>
+        <div style="background:#f9fafb;padding:16px;border-radius:6px;margin:16px 0;">
+          <p style="color:#374151;margin:0;">${comment.message}</p>
+        </div>
+        <a href="${process.env.NEXTAUTH_URL}/admin/tickets/${ticketId}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">View Ticket →</a>
+      `)
+
+      await SMTPService.sendEmail({ to: smtpSettings.senderEmail, subject, html })
+    } catch (err) {
+      console.error('[NotificationService] notifyAdminNewComment failed:', err)
+    }
+  }
+
+  /**
+   * Notify the ticket creator (client) when an admin adds a comment.
+   * Only sends if the company has notification preferences enabled.
+   */
+  static async notifyClientNewComment(ticketId: string, commentId: string): Promise<void> {
+    try {
+      const comment = await prisma.ticketComment.findUnique({
+        where: { id: commentId },
+        include: {
+          author: { select: { name: true, role: true } },
+          ticket: {
+            include: {
+              createdBy: { select: { name: true, email: true } },
+              company: { select: { name: true } },
+            },
+          },
+        },
+      })
+      if (!comment) return
+
+      // Only notify clients if comment is from an admin and not internal
+      if (comment.author.role !== 'ADMIN' || comment.internal) return
+
+      // Check company notification preferences
+      const notifSettings = await prisma.notificationSettings.findUnique({
+        where: { companyId: comment.ticket.companyId },
+      })
+      if (!notifSettings?.emailNotificationsEnabled) return
+
+      const subject = `[Ticket Update] New response on ${comment.ticket.title}`
+      const html = baseHtml('New Response on Your Ticket', `
+        <p>Hi ${comment.ticket.createdBy.name},</p>
+        <p>An admin has responded to your support ticket.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;color:#6b7280;width:120px;">Ticket</td><td style="padding:8px;font-weight:600;">${comment.ticket.title}</td></tr>
+          <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Response by</td><td style="padding:8px;">${comment.author.name}</td></tr>
+        </table>
+        <div style="background:#f9fafb;padding:16px;border-radius:6px;margin:16px 0;">
+          <p style="color:#374151;margin:0;">${comment.message}</p>
+        </div>
+        <a href="${process.env.NEXTAUTH_URL}/portal/tickets/${ticketId}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">View Ticket →</a>
+      `)
+
+      await SMTPService.sendEmail({ to: comment.ticket.createdBy.email, subject, html })
+    } catch (err) {
+      console.error('[NotificationService] notifyClientNewComment failed:', err)
+    }
+  }
+
+  /**
    * Notify admin when a new ticket is created by a client.
    */
   static async notifyAdminTicketCreated(ticketId: string): Promise<void> {

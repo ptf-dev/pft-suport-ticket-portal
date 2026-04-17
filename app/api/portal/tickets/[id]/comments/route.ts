@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireClient } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { NotificationService } from '@/lib/services/notification'
 
 /**
  * Comment Creation API Endpoint (Client Portal)
@@ -77,6 +78,9 @@ export async function POST(
         },
       },
     })
+
+    // Send email notification to admins
+    await NotificationService.notifyAdminNewComment(params.id, comment.id)
 
     return NextResponse.json(comment, { status: 201 })
   } catch (error) {
