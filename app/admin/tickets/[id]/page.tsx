@@ -9,6 +9,7 @@ import CommentForm from '@/components/comment-form'
 import { EditTicketForm } from '@/app/portal/tickets/[id]/edit-ticket-form'
 import { AddAttachmentsForm } from '@/app/portal/tickets/[id]/add-attachments-form'
 import { DeleteTicketButton } from './delete-ticket-button'
+import { ShareClientLinkButton } from './share-client-link-button'
 
 /**
  * Admin Ticket Detail Page
@@ -98,6 +99,7 @@ export default async function AdminTicketDetailPage({
             apiBasePath="/api/admin/tickets"
           />
           <AddAttachmentsForm ticketId={ticket.id} apiBasePath="/api/admin/tickets" />
+          <ShareClientLinkButton ticketId={ticket.id} />
         </div>
         <DeleteTicketButton ticketId={ticket.id} ticketTitle={ticket.title} />
       </div>
