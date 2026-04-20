@@ -39,6 +39,7 @@ export default async function AdminTicketsPage({
     sort?: string
     order?: string
     view?: string
+    search?: string
   }
 }) {
   await requireAdmin()
@@ -70,6 +71,14 @@ export default async function AdminTicketsPage({
     where.assignedToId = null
   } else if (searchParams.assignedTo) {
     where.assignedToId = searchParams.assignedTo
+  }
+
+  // Search filter - search in title and description
+  if (searchParams.search) {
+    where.OR = [
+      { title: { contains: searchParams.search, mode: 'insensitive' } },
+      { description: { contains: searchParams.search, mode: 'insensitive' } },
+    ]
   }
 
   // Build orderBy — replace direction in the sort map entry
@@ -154,6 +163,7 @@ export default async function AdminTicketsPage({
             status: searchParams.status,
             priority: searchParams.priority,
             assignedTo: searchParams.assignedTo,
+            search: searchParams.search,
           }}
         />
       )}

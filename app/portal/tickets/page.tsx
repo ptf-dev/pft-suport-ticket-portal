@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TablePagination } from '@/components/ui/table-pagination'
 import { InteractiveTicketBoard } from './interactive-ticket-board'
+import { TicketSearch } from './ticket-search'
 import Link from 'next/link'
 
 const PAGE_SIZE = 20
@@ -26,7 +27,7 @@ function applyDir(obj: any, dir: string): any {
 export default async function PortalTicketsPage({
   searchParams,
 }: {
-  searchParams: { page?: string; sort?: string; order?: string; view?: string }
+  searchParams: { page?: string; sort?: string; order?: string; view?: string; search?: string }
 }) {
   const session = await requireClient()
   const companyId = session.user.companyId!
@@ -37,10 +38,19 @@ export default async function PortalTicketsPage({
   const order = searchParams.order === 'asc' ? 'asc' : 'desc'
   const orderBy = applyDir(SORT_MAP[sortKey], order)
 
+  // Build where clause with search
+  const where: any = { companyId, isDeleted: false }
+  if (searchParams.search) {
+    where.OR = [
+      { title: { contains: searchParams.search, mode: 'insensitive' } },
+      { description: { contains: searchParams.search, mode: 'insensitive' } },
+    ]
+  }
+
   const [total, tickets] = await Promise.all([
-    prisma.ticket.count({ where: { companyId, isDeleted: false } }),
+    prisma.ticket.count({ where }),
     prisma.ticket.findMany({
-      where: { companyId, isDeleted: false },
+      where,
       orderBy: view === 'board' ? { createdAt: 'desc' } : orderBy,
       skip: view === 'board' ? 0 : (page - 1) * PAGE_SIZE,
       take: view === 'board' ? undefined : PAGE_SIZE,
@@ -88,6 +98,9 @@ export default async function PortalTicketsPage({
           </Link>
         </div>
       </div>
+
+      {/* Search Bar */}
+      {view === 'table' && <TicketSearch />}
 
       {view === 'board' ? (
         <InteractiveTicketBoard tickets={tickets} />

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TicketStatus } from '@prisma/client'
+import { DashboardSearch } from './dashboard-search'
 import Link from 'next/link'
 
 /**
@@ -17,7 +18,7 @@ import Link from 'next/link'
 export default async function PortalDashboard({
   searchParams,
 }: {
-  searchParams: { sort?: string; order?: string }
+  searchParams: { sort?: string; order?: string; search?: string }
 }) {
   const session = await requireClient()
   const companyId = session.user.companyId!
@@ -39,6 +40,15 @@ export default async function PortalDashboard({
   const currentSort  = searchParams.sort ?? 'createdAt'
   const currentOrder = (order) as 'asc' | 'desc'
 
+  // Build where clause with search
+  const ticketWhere: any = { companyId, isDeleted: false }
+  if (searchParams.search) {
+    ticketWhere.OR = [
+      { title: { contains: searchParams.search, mode: 'insensitive' } },
+      { description: { contains: searchParams.search, mode: 'insensitive' } },
+    ]
+  }
+
   // Get ticket counts by status for this company
   const [totalTickets, openTickets, inProgressTickets, resolvedTickets] = await Promise.all([
     prisma.ticket.count({ where: { companyId, isDeleted: false } }),
@@ -49,7 +59,7 @@ export default async function PortalDashboard({
 
   // Get recent tickets for this company
   const recentTickets = await prisma.ticket.findMany({
-    where: { companyId, isDeleted: false },
+    where: ticketWhere,
     take: 10,
     orderBy,
     include: {
@@ -135,7 +145,10 @@ export default async function PortalDashboard({
             View All Tickets →
           </Link>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {/* Search Bar */}
+          <DashboardSearch />
+
           <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
