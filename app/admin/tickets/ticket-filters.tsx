@@ -2,15 +2,17 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { useEffect, useState } from 'react'
 
 /**
  * Ticket Filters Component
- * Requirements: 7.3
+ * Requirements: 7.3, 5.1, 5.2
  * 
  * Provides filtering controls for:
  * - Company
  * - TicketStatus
  * - TicketPriority
+ * - Assignment (Assigned To)
  */
 interface TicketFiltersProps {
   companies: { id: string; name: string }[]
@@ -18,6 +20,7 @@ interface TicketFiltersProps {
     company?: string
     status?: string
     priority?: string
+    assignedTo?: string
   }
 }
 
@@ -31,9 +34,41 @@ const VIRTUAL_STATUSES = [
   { value: 'DELETED', label: '🗑️ Deleted Tickets' },
 ]
 
+interface AdminUser {
+  id: string
+  name: string
+  email: string
+  role: string
+  isActive: boolean
+}
+
 export function TicketFilters({ companies, currentFilters }: TicketFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [loadingUsers, setLoadingUsers] = useState(true)
+
+  // Fetch active admin users for assignment filter
+  useEffect(() => {
+    async function fetchAdminUsers() {
+      try {
+        const response = await fetch('/api/admin/users')
+        if (response.ok) {
+          const users = await response.json()
+          // Filter for active admin users only
+          const activeAdmins = users.filter(
+            (user: AdminUser) => user.role === 'ADMIN' && user.isActive
+          )
+          setAdminUsers(activeAdmins)
+        }
+      } catch (error) {
+        console.error('Failed to fetch admin users:', error)
+      } finally {
+        setLoadingUsers(false)
+      }
+    }
+    fetchAdminUsers()
+  }, [])
 
   const handleFilterChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -51,11 +86,12 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     params.delete('company')
     params.delete('status')
     params.delete('priority')
+    params.delete('assignedTo')
     params.set('page', '1')
     router.push(`/admin/tickets?${params.toString()}`)
   }
 
-  const hasActiveFilters = currentFilters.company || currentFilters.status || currentFilters.priority
+  const hasActiveFilters = currentFilters.company || currentFilters.status || currentFilters.priority || currentFilters.assignedTo
 
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -123,6 +159,28 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
           {PRIORITIES.map((priority) => (
             <option key={priority} value={priority}>
               {priority}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Assigned To Filter */}
+      <div>
+        <label htmlFor="assignedTo-filter" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+          Assigned To
+        </label>
+        <select
+          id="assignedTo-filter"
+          value={currentFilters.assignedTo || ''}
+          onChange={(e) => handleFilterChange('assignedTo', e.target.value)}
+          disabled={loadingUsers}
+          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <option value="">All Agents</option>
+          <option value="unassigned">Unassigned</option>
+          {adminUsers.map((user) => (
+            <option key={user.id} value={user.id}>
+              {user.name}
             </option>
           ))}
         </select>

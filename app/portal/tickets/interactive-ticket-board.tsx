@@ -17,6 +17,9 @@ interface Ticket {
   createdBy: {
     name: string | null
   }
+  assignedTo?: {
+    name: string | null
+  } | null
   _count: {
     comments: number
     images: number
@@ -208,6 +211,20 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
                         <div className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full mb-3">
                           <span>📁</span>
                           <span className="font-medium">{ticket.category}</span>
+                        </div>
+                      )}
+
+                      {/* Assigned To */}
+                      {ticket.assignedTo && (
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-bold text-white">
+                              {ticket.assignedTo.name?.charAt(0).toUpperCase() ?? '?'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                            {ticket.assignedTo.name}
+                          </span>
                         </div>
                       )}
 

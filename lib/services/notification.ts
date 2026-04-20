@@ -279,4 +279,48 @@ export class NotificationService {
       console.error('[NotificationService] notifyClientStatusChanged failed:', err)
     }
   }
+
+  /**
+   * Notify the assigned agent when a ticket is assigned to them.
+   * Only sends if the company has notifyOnTicketAssignment enabled.
+   */
+  static async notifyAgentTicketAssigned(ticketId: string): Promise<void> {
+    try {
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+          company: { select: { name: true } },
+          createdBy: { select: { name: true, email: true } },
+          assignedTo: { select: { name: true, email: true } },
+        },
+      })
+      if (!ticket || !ticket.assignedTo) return
+
+      // Check company notification preferences
+      const notifSettings = await prisma.notificationSettings.findUnique({
+        where: { companyId: ticket.companyId },
+      })
+      if (!notifSettings?.emailNotificationsEnabled) return
+      if (!notifSettings.notifyOnTicketAssignment) return
+
+      const subject = `[Ticket Assigned] ${ticket.title}`
+      const html = baseHtml('Ticket Assigned to You', `
+        <p>Hi ${ticket.assignedTo.name},</p>
+        <p>A support ticket has been assigned to you.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;color:#6b7280;width:120px;">Title</td><td style="padding:8px;font-weight:600;">${ticket.title}</td></tr>
+          <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Company</td><td style="padding:8px;">${ticket.company.name}</td></tr>
+          <tr><td style="padding:8px;color:#6b7280;">Created by</td><td style="padding:8px;">${ticket.createdBy.name} (${ticket.createdBy.email})</td></tr>
+          <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Priority</td><td style="padding:8px;">${priorityLabel(ticket.priority)}</td></tr>
+          <tr><td style="padding:8px;color:#6b7280;">Status</td><td style="padding:8px;">${statusLabel(ticket.status)}</td></tr>
+        </table>
+        <p style="color:#374151;">${ticket.description.slice(0, 300)}${ticket.description.length > 300 ? '…' : ''}</p>
+        <a href="${process.env.NEXTAUTH_URL}/admin/tickets/${ticket.id}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">View Ticket →</a>
+      `)
+
+      await SMTPService.sendEmail({ to: ticket.assignedTo.email, subject, html })
+    } catch (err) {
+      console.error('[NotificationService] notifyAgentTicketAssigned failed:', err)
+    }
+  }
 }

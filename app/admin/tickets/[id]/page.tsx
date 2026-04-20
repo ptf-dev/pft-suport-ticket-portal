@@ -10,6 +10,7 @@ import { EditTicketForm } from '@/app/portal/tickets/[id]/edit-ticket-form'
 import { AddAttachmentsForm } from '@/app/portal/tickets/[id]/add-attachments-form'
 import { DeleteTicketButton } from './delete-ticket-button'
 import { ShareClientLinkButton } from './share-client-link-button'
+import { AssignmentDropdown } from './assignment-dropdown'
 
 /**
  * Admin Ticket Detail Page
@@ -38,6 +39,9 @@ export default async function AdminTicketDetailPage({
       },
       createdBy: {
         select: { name: true, email: true },
+      },
+      assignedTo: {
+        select: { id: true, name: true, email: true },
       },
       comments: {
         orderBy: { createdAt: 'asc' },
@@ -313,6 +317,31 @@ export default async function AdminTicketDetailPage({
               <div>
                 <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</div>
                 <div className="text-sm text-gray-900 dark:text-white">{ticket.category || 'N/A'}</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Assigned To</div>
+                {ticket.assignedToId && !ticket.assignedTo ? (
+                  <div className="text-sm text-gray-500 dark:text-gray-400">User Deleted</div>
+                ) : ticket.assignedTo ? (
+                  <>
+                    <div className="text-sm text-gray-900 dark:text-white">{ticket.assignedTo.name}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{ticket.assignedTo.email}</div>
+                    {ticket.assignedAt && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Assigned {new Date(ticket.assignedAt).toLocaleString()}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-sm text-gray-500 dark:text-gray-400">Unassigned</div>
+                )}
+              </div>
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                <AssignmentDropdown
+                  ticketId={ticket.id}
+                  currentAssignedToId={ticket.assignedToId}
+                  currentAssignedTo={ticket.assignedTo}
+                />
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Created</div>

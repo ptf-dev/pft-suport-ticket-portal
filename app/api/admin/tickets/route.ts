@@ -11,6 +11,7 @@ const createTicketSchema = z.object({
   category: z.string().optional(),
   companyId: z.string().min(1, 'Company is required'),
   createdById: z.string().min(1, 'User is required'),
+  assignedToId: z.string().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { title, description, priority, category, companyId, createdById } = result.data
+    const { title, description, priority, category, companyId, createdById, assignedToId } = result.data
 
     // Verify the user belongs to the company
     const user = await prisma.user.findFirst({
@@ -40,6 +41,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate assignedToId if provided
+    if (assignedToId) {
+      const assignedUser = await prisma.user.findUnique({
+        where: { id: assignedToId },
+      })
+      if (!assignedUser) {
+        return NextResponse.json(
+          { error: 'Invalid user ID: user not found' },
+          { status: 400 }
+        )
+      }
+      if (assignedUser.role !== 'ADMIN') {
+        return NextResponse.json(
+          { error: 'Cannot assign ticket to non-admin user' },
+          { status: 400 }
+        )
+      }
+      if (!assignedUser.isActive) {
+        return NextResponse.json(
+          { error: 'Cannot assign ticket to inactive user' },
+          { status: 400 }
+        )
+      }
+    }
+
     const ticket = await prisma.ticket.create({
       data: {
         title,
@@ -49,11 +75,18 @@ export async function POST(request: NextRequest) {
         status: 'OPEN',
         companyId,
         createdById,
+        assignedToId: assignedToId || null,
+        assignedAt: assignedToId ? new Date() : null,
       },
     })
 
     // Notify admin (fire-and-forget)
     NotificationService.notifyAdminTicketCreated(ticket.id).catch(() => {})
+
+    // Notify assigned agent if ticket was assigned during creation
+    if (assignedToId) {
+      NotificationService.notifyAgentTicketAssigned(ticket.id).catch(() => {})
+    }
 
     return NextResponse.json(ticket, { status: 201 })
   } catch {

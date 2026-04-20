@@ -46,6 +46,7 @@ export default async function PortalTicketsPage({
       take: view === 'board' ? undefined : PAGE_SIZE,
       include: {
         createdBy: { select: { name: true } },
+        assignedTo: { select: { name: true } },
         _count: { select: { comments: true, images: true } },
       },
     }),

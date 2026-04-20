@@ -52,7 +52,10 @@ export default async function PortalDashboard({
     where: { companyId, isDeleted: false },
     take: 10,
     orderBy,
-    include: { createdBy: { select: { name: true } } },
+    include: {
+      createdBy: { select: { name: true } },
+      assignedTo: { select: { name: true } },
+    },
   })
 
   return (
@@ -140,6 +143,7 @@ export default async function PortalDashboard({
                   <SortableTh column="title"     label="Ticket"   currentSort={currentSort} currentOrder={currentOrder} />
                   <SortableTh column="status"    label="Status"   currentSort={currentSort} currentOrder={currentOrder} />
                   <SortableTh column="priority"  label="Priority" currentSort={currentSort} currentOrder={currentOrder} />
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assigned To</th>
                   <SortableTh column="createdAt" label="Created"  currentSort={currentSort} currentOrder={currentOrder} />
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -147,7 +151,7 @@ export default async function PortalDashboard({
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {recentTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
                       No tickets found. <Link href="/portal/tickets/new" className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300">Create your first ticket</Link>
                     </td>
                   </tr>
@@ -191,6 +195,11 @@ export default async function PortalDashboard({
                         >
                           {ticket.priority}
                         </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {ticket.assignedTo?.name ?? 'Not yet assigned'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 dark:text-white">

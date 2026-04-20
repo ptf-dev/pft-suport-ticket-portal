@@ -5,10 +5,14 @@ import { z } from 'zod'
 import bcrypt from 'bcrypt'
 
 /**
- * User Creation API Endpoint
- * Requirements: 4.2, 4.3, 4.4, 4.5, 4.6
+ * User Management API Endpoints
+ * 
+ * GET /api/admin/users
+ * - Admin-only access
+ * - Returns list of all users
  * 
  * POST /api/admin/users
+ * Requirements: 4.2, 4.3, 4.4, 4.5, 4.6
  * - Admin-only access
  * - Validates required fields (name, email, password, role)
  * - Validates email uniqueness
@@ -27,6 +31,46 @@ const createUserSchema = z.object({
   }),
   companyId: z.string().nullable(),
 })
+
+export async function GET(request: NextRequest) {
+  try {
+    // Require admin authentication
+    await requireAdmin()
+
+    // Fetch all users with basic information
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        companyId: true,
+        createdAt: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    })
+
+    return NextResponse.json(users, { status: 200 })
+  } catch (error) {
+    console.error('Error fetching users:', error)
+    
+    // Handle authentication errors
+    if (error instanceof Error && error.message.includes('Unauthorized')) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 403 }
+      )
+    }
+
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {

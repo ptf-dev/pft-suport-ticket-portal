@@ -14,12 +14,13 @@ const PAGE_SIZE = 20
 
 // Map URL sort keys → Prisma orderBy
 const SORT_MAP: Record<string, object> = {
-  title:     { title: 'asc' },
-  company:   { company: { name: 'asc' } },
-  status:    { status: 'asc' },
-  priority:  { priority: 'asc' },
-  createdBy: { createdBy: { name: 'asc' } },
-  createdAt: { createdAt: 'asc' },
+  title:      { title: 'asc' },
+  company:    { company: { name: 'asc' } },
+  status:     { status: 'asc' },
+  priority:   { priority: 'asc' },
+  createdBy:  { createdBy: { name: 'asc' } },
+  assignedTo: { assignedTo: { name: 'asc' } },
+  createdAt:  { createdAt: 'asc' },
 }
 
 // Priority sort order for display purposes
@@ -33,6 +34,7 @@ export default async function AdminTicketsPage({
     company?: string
     status?: string
     priority?: string
+    assignedTo?: string
     page?: string
     sort?: string
     order?: string
@@ -62,6 +64,13 @@ export default async function AdminTicketsPage({
     }
   }
   if (searchParams.priority) where.priority = searchParams.priority as TicketPriority
+  
+  // Assignment filter (Requirements 5.3, 5.4, 5.5)
+  if (searchParams.assignedTo === 'unassigned') {
+    where.assignedToId = null
+  } else if (searchParams.assignedTo) {
+    where.assignedToId = searchParams.assignedTo
+  }
 
   // Build orderBy — replace direction in the sort map entry
   const baseOrder = SORT_MAP[sortKey]
@@ -84,6 +93,7 @@ export default async function AdminTicketsPage({
       include: {
         company: { select: { name: true } },
         createdBy: { select: { name: true } },
+        assignedTo: { select: { id: true, name: true, email: true } },
         _count: { select: { comments: true, images: true } },
       },
     }),
@@ -143,6 +153,7 @@ export default async function AdminTicketsPage({
             company: searchParams.company,
             status: searchParams.status,
             priority: searchParams.priority,
+            assignedTo: searchParams.assignedTo,
           }}
         />
       )}
@@ -158,12 +169,13 @@ export default async function AdminTicketsPage({
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
               <tr>
-                <SortableTh column="title"     label="Ticket"     currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="company"   label="Company"    currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="status"    label="Status"     currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="priority"  label="Priority"   currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="createdBy" label="Created By" currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="createdAt" label="Created"    currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="title"      label="Ticket"      currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="company"    label="Company"     currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="assignedTo" label="Assigned To" currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="createdBy"  label="Created By"  currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} />
                 <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
@@ -172,7 +184,7 @@ export default async function AdminTicketsPage({
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
               {tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center">
+                  <td colSpan={8} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
                         <span className="text-3xl">🎫</span>
@@ -247,6 +259,26 @@ export default async function AdminTicketsPage({
                       >
                         {ticket.priority}
                       </Badge>
+                    </td>
+
+                    {/* Assigned To */}
+                    <td className="px-6 py-4">
+                      {ticket.assignedToId && !ticket.assignedTo ? (
+                        <span className="text-sm text-gray-400 dark:text-gray-500 italic">User Deleted</span>
+                      ) : ticket.assignedTo ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shrink-0">
+                            <span className="text-xs font-bold text-white">
+                              {ticket.assignedTo.name?.charAt(0).toUpperCase() ?? '?'}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-900 dark:text-white font-medium leading-tight">
+                            {ticket.assignedTo.name}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400 dark:text-gray-500 italic">Unassigned</span>
+                      )}
                     </td>
 
                     {/* Created By */}

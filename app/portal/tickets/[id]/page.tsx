@@ -11,10 +11,11 @@ import { AddAttachmentsForm } from './add-attachments-form'
 
 /**
  * Client Ticket Detail Page
- * Requirements: 6.3, 6.4, 6.5
+ * Requirements: 6.1, 6.2, 6.3, 6.4, 6.5
  * 
  * Displays:
  * - Full ticket details
+ * - Assigned agent name (read-only)
  * - Public comments only (internal=false)
  * - Attached images
  * - Comment form
@@ -37,6 +38,9 @@ export default async function ClientTicketDetailPage({
       },
       createdBy: {
         select: { name: true, email: true },
+      },
+      assignedTo: {
+        select: { name: true },
       },
       comments: {
         where: { internal: false }, // Only public comments
@@ -266,6 +270,12 @@ export default async function ClientTicketDetailPage({
                   <div className="text-sm text-gray-900 dark:text-white">{ticket.category}</div>
                 </div>
               )}
+              <div>
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Assigned To</div>
+                <div className="text-sm text-gray-900 dark:text-white">
+                  {ticket.assignedTo ? ticket.assignedTo.name : 'Not yet assigned'}
+                </div>
+              </div>
               <div>
                 <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Created By</div>
                 <div className="text-sm text-gray-900 dark:text-white">{ticket.createdBy.name}</div>

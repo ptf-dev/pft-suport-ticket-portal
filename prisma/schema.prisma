@@ -54,101 +54,106 @@ enum NotificationStatus {
 // ============================================================================
 
 model Company {
-  id            String   @id @default(cuid())
-  name          String
-  subdomain     String   @unique // For tenant resolution
-  contactEmail  String
-  whatsappLink  String?
-  notes         String?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  
+  id           String   @id @default(cuid())
+  name         String
+  subdomain    String   @unique // For tenant resolution
+  contactEmail String
+  whatsappLink String?
+  notes        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
   // Relations
   users                User[]
   tickets              Ticket[]
   notificationSettings NotificationSettings?
   emailTemplates       EmailTemplate[]
   notificationLogs     NotificationLog[]
-  
+
   @@map("companies")
 }
 
 model User {
   id        String   @id @default(cuid())
   name      String
-  email     String   
+  email     String
   password  String
   role      Role
   companyId String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Relations
-  company        Company?        @relation(fields: [companyId], references: [id])
-  createdTickets Ticket[]        @relation("TicketCreator")
-  comments       TicketComment[]
-  
+  company         Company?        @relation(fields: [companyId], references: [id])
+  createdTickets  Ticket[]        @relation("TicketCreator")
+  assignedTickets Ticket[]        @relation("TicketAssignment")
+  comments        TicketComment[]
+
   // Composite unique constraint for tenant isolation
   @@unique([email, companyId])
   @@map("users")
 }
 
 model Ticket {
-  id          String         @id @default(cuid())
-  title       String
-  description String
-  status      TicketStatus   @default(OPEN)
-  priority    TicketPriority @default(MEDIUM)
-  category    String?
-  companyId   String         // Always required for tenant scoping
-  createdById String
-  isDeleted   Boolean        @default(false) // Soft delete flag
-  deletedAt   DateTime?      // When ticket was deleted
-  deletedBy   String?        // Admin who deleted the ticket
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  
+  id           String         @id @default(cuid())
+  title        String
+  description  String
+  status       TicketStatus   @default(OPEN)
+  priority     TicketPriority @default(MEDIUM)
+  category     String?
+  companyId    String // Always required for tenant scoping
+  createdById  String
+  assignedToId String? // References User.id, nullable
+  assignedAt   DateTime? // Timestamp of assignment
+  isDeleted    Boolean        @default(false) // Soft delete flag
+  deletedAt    DateTime? // When ticket was deleted
+  deletedBy    String? // Admin who deleted the ticket
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
   // Relations
   company          Company           @relation(fields: [companyId], references: [id])
   createdBy        User              @relation("TicketCreator", fields: [createdById], references: [id])
+  assignedTo       User?             @relation("TicketAssignment", fields: [assignedToId], references: [id])
   comments         TicketComment[]
   images           TicketImage[]
   notificationLogs NotificationLog[]
-  
+
+  @@index([assignedToId])
   @@map("tickets")
 }
 
 model TicketComment {
-  id             String                @id @default(cuid())
+  id             String   @id @default(cuid())
   ticketId       String
   authorId       String
   message        String
-  internal       Boolean               @default(false)
-  mentionedUsers String[]              @default([]) // Array of user emails mentioned in comment
-  createdAt      DateTime              @default(now())
-  
+  internal       Boolean  @default(false)
+  mentionedUsers String[] @default([]) // Array of user emails mentioned in comment
+  createdAt      DateTime @default(now())
+
   // Relations
-  ticket Ticket               @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  author User                 @relation(fields: [authorId], references: [id])
+  ticket Ticket         @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User           @relation(fields: [authorId], references: [id])
   images CommentImage[]
-  
+
   @@map("ticket_comments")
 }
 
 model CommentImage {
-  id        String   @id @default(cuid())
-  commentId String
-  filename  String
-  url       String
-  size      Int
-  mimeType  String
+  id         String   @id @default(cuid())
+  commentId  String
+  filename   String
+  url        String
+  size       Int
+  mimeType   String
   uploadedAt DateTime @default(now())
-  
+
   // Relations
   comment TicketComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  
+
   @@map("comment_images")
 }
 
@@ -160,10 +165,10 @@ model TicketImage {
   size       Int
   mimeType   String
   uploadedAt DateTime @default(now())
-  
+
   // Relations
   ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-  
+
   @@map("ticket_images")
 }
 
@@ -179,10 +184,10 @@ model NotificationSettings {
   recipientEmails           String[] @default([])
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @updatedAt
-  
+
   // Relations
   company Company @relation(fields: [companyId], references: [id])
-  
+
   @@map("notification_settings")
 }
 
@@ -196,10 +201,10 @@ model EmailTemplate {
   isActive     Boolean                  @default(true)
   createdAt    DateTime                 @default(now())
   updatedAt    DateTime                 @updatedAt
-  
+
   // Relations
   company Company @relation(fields: [companyId], references: [id])
-  
+
   @@unique([companyId, templateType])
   @@map("email_templates")
 }
@@ -215,11 +220,11 @@ model NotificationLog {
   sentAt         DateTime?
   errorMessage   String?
   createdAt      DateTime                 @default(now())
-  
+
   // Relations
   company Company @relation(fields: [companyId], references: [id])
   ticket  Ticket? @relation(fields: [ticketId], references: [id])
-  
+
   @@map("notification_logs")
 }
 
@@ -229,7 +234,7 @@ model SMTPSettings {
   port            Int
   secure          Boolean   @default(true)
   username        String
-  password        String    // Encrypted with AES-256-GCM
+  password        String // Encrypted with AES-256-GCM
   senderEmail     String
   senderName      String
   isActive        Boolean   @default(false)
@@ -239,6 +244,6 @@ model SMTPSettings {
   updatedAt       DateTime  @updatedAt
   createdBy       String
   updatedBy       String
-  
+
   @@map("smtp_settings")
 }

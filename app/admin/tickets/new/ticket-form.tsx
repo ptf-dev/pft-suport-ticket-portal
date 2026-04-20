@@ -19,6 +19,12 @@ interface User {
   email: string
 }
 
+interface AdminUser {
+  id: string
+  name: string
+  email: string
+}
+
 interface Props {
   companies: Company[]
 }
@@ -42,6 +48,8 @@ export function AdminTicketForm({ companies }: Props) {
   const [companyId, setCompanyId] = useState('')
   const [users, setUsers] = useState<User[]>([])
   const [loadingUsers, setLoadingUsers] = useState(false)
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [loadingAdminUsers, setLoadingAdminUsers] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -59,6 +67,21 @@ export function AdminTicketForm({ companies }: Props) {
       .finally(() => setLoadingUsers(false))
   }, [companyId])
 
+  // Load admin users on mount
+  useEffect(() => {
+    setLoadingAdminUsers(true)
+    fetch('/api/admin/users')
+      .then(r => r.json())
+      .then(data => {
+        const activeAdmins = Array.isArray(data)
+          ? data.filter((u: any) => u.role === 'ADMIN' && u.isActive)
+          : []
+        setAdminUsers(activeAdmins)
+      })
+      .catch(() => setAdminUsers([]))
+      .finally(() => setLoadingAdminUsers(false))
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -72,6 +95,7 @@ export function AdminTicketForm({ companies }: Props) {
       category: fd.get('category') as string,
       companyId: fd.get('companyId') as string,
       createdById: fd.get('createdById') as string,
+      assignedToId: fd.get('assignedToId') as string || undefined,
     }
 
     try {
@@ -164,6 +188,19 @@ export function AdminTicketForm({ companies }: Props) {
           <option value="">Select a category (optional)</option>
           {CATEGORIES.map(cat => (
             <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </Select>
+      </div>
+
+      {/* Assign To */}
+      <div className="space-y-1.5">
+        <Label htmlFor="assignedToId">Assign To</Label>
+        <Select id="assignedToId" name="assignedToId" disabled={isSubmitting || loadingAdminUsers}>
+          <option value="">
+            {loadingAdminUsers ? 'Loading agents…' : 'Leave unassigned (optional)'}
+          </option>
+          {adminUsers.map(u => (
+            <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
           ))}
         </Select>
       </div>
