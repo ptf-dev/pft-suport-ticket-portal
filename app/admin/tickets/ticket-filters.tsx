@@ -101,7 +101,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
       <div className="relative">
         <input
           type="text"
-          placeholder="Search tickets by title or description..."
+          placeholder="Search tickets by ID, title, or description..."
           value={currentFilters.search || ''}
           onChange={(e) => handleFilterChange('search', e.target.value)}
           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2.5 pl-10 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"

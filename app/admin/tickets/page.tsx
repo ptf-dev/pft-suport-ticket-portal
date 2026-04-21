@@ -73,11 +73,12 @@ export default async function AdminTicketsPage({
     where.assignedToId = searchParams.assignedTo
   }
 
-  // Search filter - search in title and description
+  // Search filter - search in title, description, and ticket ID
   if (searchParams.search) {
     where.OR = [
       { title: { contains: searchParams.search, mode: 'insensitive' } },
       { description: { contains: searchParams.search, mode: 'insensitive' } },
+      { id: { contains: searchParams.search, mode: 'insensitive' } },
     ]
   }
 
