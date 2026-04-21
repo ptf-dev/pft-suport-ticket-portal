@@ -313,6 +313,26 @@ export default async function AdminTicketsPage({
                           month: 'short', day: 'numeric', year: 'numeric',
                         })}
                       </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(ticket.createdAt).toLocaleTimeString('en-US', {
+                          hour: 'numeric', minute: '2-digit', hour12: true,
+                        })}
+                        {' • '}
+                        {(() => {
+                          const now = new Date()
+                          const created = new Date(ticket.createdAt)
+                          const diffMs = now.getTime() - created.getTime()
+                          const diffMins = Math.floor(diffMs / 60000)
+                          const diffHours = Math.floor(diffMs / 3600000)
+                          const diffDays = Math.floor(diffMs / 86400000)
+                          
+                          if (diffMins < 1) return 'just now'
+                          if (diffMins < 60) return `${diffMins}m ago`
+                          if (diffHours < 24) return `${diffHours}h ago`
+                          if (diffDays < 30) return `${diffDays}d ago`
+                          return `${Math.floor(diffDays / 30)}mo ago`
+                        })()}
+                      </div>
                     </td>
 
                     {/* Actions */}
