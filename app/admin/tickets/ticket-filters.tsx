@@ -22,6 +22,9 @@ interface TicketFiltersProps {
     priority?: string
     assignedTo?: string
     search?: string
+    dateFilter?: string
+    startDate?: string
+    endDate?: string
   }
 }
 
@@ -50,6 +53,9 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
   const [loadingUsers, setLoadingUsers] = useState(true)
   const [searchInput, setSearchInput] = useState(currentFilters.search || '')
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const [showCustomRange, setShowCustomRange] = useState(false)
+  const [startDate, setStartDate] = useState(currentFilters.startDate || '')
+  const [endDate, setEndDate] = useState(currentFilters.endDate || '')
 
   // Fetch active admin users for assignment filter
   useEffect(() => {
@@ -127,12 +133,54 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     params.delete('priority')
     params.delete('assignedTo')
     params.delete('search')
+    params.delete('dateFilter')
+    params.delete('startDate')
+    params.delete('endDate')
     params.set('page', '1')
     setSearchInput('') // Clear local search input state
+    setStartDate('')
+    setEndDate('')
+    setShowCustomRange(false)
     router.push(`/admin/tickets?${params.toString()}`)
   }
 
-  const hasActiveFilters = currentFilters.company || currentFilters.status || currentFilters.priority || currentFilters.assignedTo || currentFilters.search
+  const handleQuickFilter = (filter: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    
+    // Remove custom date range when using quick filters
+    params.delete('startDate')
+    params.delete('endDate')
+    
+    if (filter === currentFilters.dateFilter) {
+      // Toggle off if clicking the same filter
+      params.delete('dateFilter')
+    } else {
+      params.set('dateFilter', filter)
+    }
+    
+    params.set('page', '1')
+    setShowCustomRange(false)
+    setStartDate('')
+    setEndDate('')
+    router.push(`/admin/tickets?${params.toString()}`)
+  }
+
+  const handleCustomRange = () => {
+    if (!startDate && !endDate) return
+
+    const params = new URLSearchParams(searchParams.toString())
+    
+    // Remove quick filter when using custom range
+    params.delete('dateFilter')
+    
+    if (startDate) params.set('startDate', startDate)
+    if (endDate) params.set('endDate', endDate)
+    
+    params.set('page', '1')
+    router.push(`/admin/tickets?${params.toString()}`)
+  }
+
+  const hasActiveFilters = currentFilters.company || currentFilters.status || currentFilters.priority || currentFilters.assignedTo || currentFilters.search || currentFilters.dateFilter || currentFilters.startDate || currentFilters.endDate
 
   return (
     <div className="space-y-3">
@@ -167,10 +215,10 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
         )}
       </div>
 
-      {/* Filter Dropdowns */}
-      <div className="flex flex-wrap items-end gap-3">
+      {/* Filter Dropdowns and Date Filters - All in one row */}
+      <div className="flex flex-wrap items-end gap-2">
       {/* Company Filter */}
-      <div>
+      <div className="min-w-[140px]">
         <label htmlFor="company-filter" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
           Company
         </label>
@@ -178,7 +226,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
           id="company-filter"
           value={currentFilters.company || ''}
           onChange={(e) => handleFilterChange('company', e.target.value)}
-          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         >
           <option value="">All Companies</option>
           {companies.map((company) => (
@@ -190,7 +238,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
       </div>
 
       {/* Status Filter */}
-      <div>
+      <div className="min-w-[130px]">
         <label htmlFor="status-filter" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
           Status
         </label>
@@ -198,7 +246,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
           id="status-filter"
           value={currentFilters.status || ''}
           onChange={(e) => handleFilterChange('status', e.target.value)}
-          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         >
           <option value="">All Statuses</option>
           <optgroup label="Quick Filters">
@@ -219,7 +267,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
       </div>
 
       {/* Priority Filter */}
-      <div>
+      <div className="min-w-[110px]">
         <label htmlFor="priority-filter" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
           Priority
         </label>
@@ -227,7 +275,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
           id="priority-filter"
           value={currentFilters.priority || ''}
           onChange={(e) => handleFilterChange('priority', e.target.value)}
-          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
         >
           <option value="">All Priorities</option>
           {PRIORITIES.map((priority) => (
@@ -239,7 +287,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
       </div>
 
       {/* Assigned To Filter */}
-      <div>
+      <div className="min-w-[130px]">
         <label htmlFor="assignedTo-filter" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
           Assigned To
         </label>
@@ -248,7 +296,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
           value={currentFilters.assignedTo || ''}
           onChange={(e) => handleFilterChange('assignedTo', e.target.value)}
           disabled={loadingUsers}
-          className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-2 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <option value="">All Agents</option>
           <option value="unassigned">Unassigned</option>
@@ -260,12 +308,92 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
         </select>
       </div>
 
+      {/* Divider */}
+      <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 self-end mb-2" />
+
+      {/* Date Quick Filters */}
+      <div className="flex items-end gap-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            Activity Period
+          </label>
+          <div className="flex gap-1">
+            <Button
+              variant={currentFilters.dateFilter === 'lastWeek' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleQuickFilter('lastWeek')}
+              className="text-xs h-[38px] px-2"
+            >
+              📅 Last Week
+            </Button>
+            
+            <Button
+              variant={currentFilters.dateFilter === 'activeWeek' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleQuickFilter('activeWeek')}
+              className="text-xs h-[38px] px-2"
+            >
+              ⚡ Active Week
+            </Button>
+            
+            <Button
+              variant={showCustomRange ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowCustomRange(!showCustomRange)}
+              className="text-xs h-[38px] px-2"
+            >
+              📆 Custom
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {hasActiveFilters && (
-        <Button variant="outline" size="sm" onClick={clearFilters} className="self-end">
-          ✕ Clear
+        <Button variant="outline" size="sm" onClick={clearFilters} className="self-end h-[38px]">
+          ✕ Clear All
         </Button>
       )}
     </div>
+
+    {/* Custom Date Range Picker - Collapsible */}
+    {showCustomRange && (
+      <div className="flex items-end gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="flex-1">
+          <label htmlFor="start-date" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            Start Date
+          </label>
+          <input
+            id="start-date"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
+        </div>
+        
+        <div className="flex-1">
+          <label htmlFor="end-date" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            End Date
+          </label>
+          <input
+            id="end-date"
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+          />
+        </div>
+        
+        <Button
+          onClick={handleCustomRange}
+          disabled={!startDate && !endDate}
+          size="sm"
+          className="whitespace-nowrap"
+        >
+          Apply Range
+        </Button>
+      </div>
+    )}
     </div>
   )
 }

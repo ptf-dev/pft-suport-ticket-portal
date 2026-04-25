@@ -7,7 +7,6 @@ import { TablePagination } from '@/components/ui/table-pagination'
 import { TicketStatus, TicketPriority } from '@prisma/client'
 import Link from 'next/link'
 import { TicketFilters } from './ticket-filters'
-import { DateFilter } from './date-filter'
 import { InteractiveTicketBoard } from '@/app/portal/tickets/interactive-ticket-board'
 import { RestoreTicketButton } from './restore-ticket-button'
 
@@ -190,19 +189,19 @@ export default async function AdminTicketsPage({
 
       {/* Filters */}
       {view === 'table' && (
-        <div className="space-y-4">
-          <TicketFilters
-            companies={companies}
-            currentFilters={{
-              company: searchParams.company,
-              status: searchParams.status,
-              priority: searchParams.priority,
-              assignedTo: searchParams.assignedTo,
-              search: searchParams.search,
-            }}
-          />
-          <DateFilter />
-        </div>
+        <TicketFilters
+          companies={companies}
+          currentFilters={{
+            company: searchParams.company,
+            status: searchParams.status,
+            priority: searchParams.priority,
+            assignedTo: searchParams.assignedTo,
+            search: searchParams.search,
+            dateFilter: searchParams.dateFilter,
+            startDate: searchParams.startDate,
+            endDate: searchParams.endDate,
+          }}
+        />
       )}
 
       {/* Board or Table View */}
@@ -220,11 +219,11 @@ export default async function AdminTicketsPage({
                 <SortableTh column="company"    label="Company"     currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="assignedTo" label="Assigned To" currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="assignedTo" label="Assigned"    currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="createdBy"  label="Created By"  currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="updatedAt"  label="Last Active" currentSort={currentSort} currentOrder={currentOrder} />
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -246,15 +245,15 @@ export default async function AdminTicketsPage({
                 tickets.map((ticket) => (
                   <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     {/* Ticket */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                           ticket.priority === 'URGENT' ? 'bg-red-500' :
                           ticket.priority === 'HIGH'   ? 'bg-orange-500' :
                           ticket.priority === 'MEDIUM' ? 'bg-yellow-500' :
                                                          'bg-gray-400'
                         }`}>
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                           </svg>
                         </div>
@@ -275,12 +274,12 @@ export default async function AdminTicketsPage({
                     </td>
 
                     {/* Company */}
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">{ticket.company.name}</div>
+                    <td className="px-4 py-3">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{ticket.company.name}</div>
                     </td>
 
                     {/* Status */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <Badge
                         variant={
                           ticket.status === 'OPEN'           ? 'destructive' :
@@ -291,12 +290,14 @@ export default async function AdminTicketsPage({
                         }
                         className="font-semibold text-xs whitespace-nowrap"
                       >
-                        {ticket.status.replace(/_/g, ' ')}
+                        {ticket.status === 'IN_PROGRESS' ? 'IN PROG' : 
+                         ticket.status === 'WAITING_CLIENT' ? 'WAITING' :
+                         ticket.status.replace(/_/g, ' ')}
                       </Badge>
                     </td>
 
                     {/* Priority */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <Badge
                         variant={
                           ticket.priority === 'URGENT' ? 'destructive' :
@@ -310,51 +311,47 @@ export default async function AdminTicketsPage({
                     </td>
 
                     {/* Assigned To */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       {ticket.assignedToId && !ticket.assignedTo ? (
-                        <span className="text-sm text-gray-400 dark:text-gray-500 italic">User Deleted</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 italic">Deleted</span>
                       ) : ticket.assignedTo ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shrink-0">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shrink-0">
                             <span className="text-xs font-bold text-white">
                               {ticket.assignedTo.name?.charAt(0).toUpperCase() ?? '?'}
                             </span>
                           </div>
-                          <div className="text-sm text-gray-900 dark:text-white font-medium leading-tight">
+                          <div className="text-sm text-gray-900 dark:text-white font-medium leading-tight truncate">
                             {ticket.assignedTo.name}
                           </div>
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400 dark:text-gray-500 italic">Unassigned</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 italic">Unassigned</span>
                       )}
                     </td>
 
                     {/* Created By */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
                           <span className="text-xs font-bold text-white">
                             {ticket.createdBy.name?.charAt(0).toUpperCase() ?? '?'}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-900 dark:text-white font-medium leading-tight">
+                        <div className="text-sm text-gray-900 dark:text-white font-medium leading-tight truncate">
                           {ticket.createdBy.name}
                         </div>
                       </div>
                     </td>
 
                     {/* Created */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="text-sm text-gray-900 dark:text-white font-medium">
                         {new Date(ticket.createdAt).toLocaleDateString('en-US', {
                           month: 'short', day: 'numeric', year: 'numeric',
                         })}
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(ticket.createdAt).toLocaleTimeString('en-US', {
-                          hour: 'numeric', minute: '2-digit', hour12: true,
-                        })}
-                        {' • '}
                         {(() => {
                           const now = new Date()
                           const created = new Date(ticket.createdAt)
@@ -373,8 +370,8 @@ export default async function AdminTicketsPage({
                     </td>
 
                     {/* Last Active */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
                         {(() => {
                           const now = new Date()
                           const updated = new Date(ticket.updatedAt)
@@ -406,19 +403,15 @@ export default async function AdminTicketsPage({
                           return (
                             <>
                               {isRecent && (
-                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Recently active" />
+                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0" title="Recently active" />
                               )}
-                              <div>
+                              <div className="min-w-0">
                                 <div className={`text-sm font-medium ${isRecent ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>
                                   {timeAgo}
                                 </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
                                   {updated.toLocaleDateString('en-US', {
                                     month: 'short', day: 'numeric',
-                                  })}
-                                  {' '}
-                                  {updated.toLocaleTimeString('en-US', {
-                                    hour: 'numeric', minute: '2-digit', hour12: true,
                                   })}
                                 </div>
                               </div>
@@ -429,7 +422,7 @@ export default async function AdminTicketsPage({
                     </td>
 
                     {/* Actions */}
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-3 text-right">
                       {showDeleted ? (
                         <RestoreTicketButton ticketId={ticket.id} />
                       ) : (
