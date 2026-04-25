@@ -220,11 +220,10 @@ export default async function AdminTicketsPage({
                 <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="assignedTo" label="Assigned"    currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="createdBy"  label="Created By"  currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="createdBy"  label="By"          currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="updatedAt"  label="Last Active" currentSort={currentSort} currentOrder={currentOrder} />
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                  Actions
                 </th>
               </tr>
             </thead>
@@ -245,7 +244,7 @@ export default async function AdminTicketsPage({
                 tickets.map((ticket) => (
                   <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     {/* Ticket */}
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-3">
                       <div className="flex items-center gap-2">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                           ticket.priority === 'URGENT' ? 'bg-red-500' :
@@ -257,11 +256,9 @@ export default async function AdminTicketsPage({
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                           </svg>
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <Link
                             href={`/admin/tickets/${ticket.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
                             className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-1 block"
                           >
                             {ticket.title}
@@ -331,14 +328,14 @@ export default async function AdminTicketsPage({
                     </td>
 
                     {/* Created By */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-bold text-white">
+                    <td className="px-2 py-3">
+                      <div className="flex items-center gap-1">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-bold text-white">
                             {ticket.createdBy.name?.charAt(0).toUpperCase() ?? '?'}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-900 dark:text-white font-medium leading-tight truncate">
+                        <div className="text-xs text-gray-900 dark:text-white font-medium leading-tight truncate">
                           {ticket.createdBy.name}
                         </div>
                       </div>
@@ -422,7 +419,7 @@ export default async function AdminTicketsPage({
                     </td>
 
                     {/* Actions */}
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-3 py-3 text-right">
                       {showDeleted ? (
                         <RestoreTicketButton ticketId={ticket.id} />
                       ) : (
@@ -430,9 +427,9 @@ export default async function AdminTicketsPage({
                           href={`/admin/tickets/${ticket.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm transition-colors"
+                          className="inline-flex items-center justify-center text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          aria-label="Open in new tab"
                         >
-                          View
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                           </svg>
