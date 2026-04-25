@@ -49,7 +49,7 @@ export class NotificationService {
           author: { select: { name: true, email: true, role: true } },
           ticket: {
             include: {
-              company: { select: { name: true } },
+              company: { select: { name: true, contactEmail: true } },
             },
           },
         },
@@ -73,7 +73,7 @@ export class NotificationService {
         <a href="${process.env.NEXTAUTH_URL}/admin/tickets/${ticketId}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">View Ticket →</a>
       `)
 
-      await SMTPService.sendEmail({ to: smtpSettings.senderEmail, subject, html })
+      await SMTPService.sendEmail({ to: comment.ticket.company.contactEmail, subject, html })
     } catch (err) {
       console.error('[NotificationService] notifyAdminNewComment failed:', err)
     }
@@ -210,7 +210,7 @@ export class NotificationService {
       const ticket = await prisma.ticket.findUnique({
         where: { id: ticketId },
         include: {
-          company: { select: { name: true } },
+          company: { select: { name: true, contactEmail: true } },
           createdBy: { select: { name: true, email: true } },
         },
       })
@@ -230,7 +230,7 @@ export class NotificationService {
         <a href="${process.env.NEXTAUTH_URL}/admin/tickets/${ticket.id}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">View Ticket →</a>
       `)
 
-      await SMTPService.sendEmail({ to: smtpSettings.senderEmail, subject, html })
+      await SMTPService.sendEmail({ to: ticket.company.contactEmail, subject, html })
     } catch (err) {
       console.error('[NotificationService] notifyAdminTicketCreated failed:', err)
     }
