@@ -7,6 +7,7 @@ import { TablePagination } from '@/components/ui/table-pagination'
 import { TicketStatus, TicketPriority } from '@prisma/client'
 import Link from 'next/link'
 import { TicketFilters } from './ticket-filters'
+import { DateFilter } from './date-filter'
 import { InteractiveTicketBoard } from '@/app/portal/tickets/interactive-ticket-board'
 import { RestoreTicketButton } from './restore-ticket-button'
 
@@ -21,6 +22,7 @@ const SORT_MAP: Record<string, object> = {
   createdBy:  { createdBy: { name: 'asc' } },
   assignedTo: { assignedTo: { name: 'asc' } },
   createdAt:  { createdAt: 'asc' },
+  updatedAt:  { updatedAt: 'asc' },
 }
 
 // Priority sort order for display purposes
@@ -40,6 +42,9 @@ export default async function AdminTicketsPage({
     order?: string
     view?: string
     search?: string
+    dateFilter?: string
+    startDate?: string
+    endDate?: string
   }
 }) {
   await requireAdmin()
@@ -80,6 +85,34 @@ export default async function AdminTicketsPage({
       { description: { contains: searchParams.search, mode: 'insensitive' } },
       { id: { contains: searchParams.search, mode: 'insensitive' } },
     ]
+  }
+
+  // Date filter - filter by last activity (updatedAt)
+  if (searchParams.dateFilter === 'lastWeek') {
+    const lastWeek = new Date()
+    lastWeek.setDate(lastWeek.getDate() - 7)
+    where.updatedAt = { gte: lastWeek }
+  } else if (searchParams.dateFilter === 'activeWeek') {
+    // Get current week (Monday to Sunday)
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+    monday.setHours(0, 0, 0, 0)
+    where.updatedAt = { gte: monday }
+  } else if (searchParams.startDate || searchParams.endDate) {
+    // Custom date range
+    where.updatedAt = {}
+    if (searchParams.startDate) {
+      const start = new Date(searchParams.startDate)
+      start.setHours(0, 0, 0, 0)
+      where.updatedAt.gte = start
+    }
+    if (searchParams.endDate) {
+      const end = new Date(searchParams.endDate)
+      end.setHours(23, 59, 59, 999)
+      where.updatedAt.lte = end
+    }
   }
 
   // Build orderBy — replace direction in the sort map entry
@@ -157,16 +190,19 @@ export default async function AdminTicketsPage({
 
       {/* Filters */}
       {view === 'table' && (
-        <TicketFilters
-          companies={companies}
-          currentFilters={{
-            company: searchParams.company,
-            status: searchParams.status,
-            priority: searchParams.priority,
-            assignedTo: searchParams.assignedTo,
-            search: searchParams.search,
-          }}
-        />
+        <div className="space-y-4">
+          <TicketFilters
+            companies={companies}
+            currentFilters={{
+              company: searchParams.company,
+              status: searchParams.status,
+              priority: searchParams.priority,
+              assignedTo: searchParams.assignedTo,
+              search: searchParams.search,
+            }}
+          />
+          <DateFilter />
+        </div>
       )}
 
       {/* Board or Table View */}
@@ -187,6 +223,7 @@ export default async function AdminTicketsPage({
                 <SortableTh column="assignedTo" label="Assigned To" currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="createdBy"  label="Created By"  currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="updatedAt"  label="Last Active" currentSort={currentSort} currentOrder={currentOrder} />
                 <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
@@ -195,7 +232,7 @@ export default async function AdminTicketsPage({
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
               {tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center">
+                  <td colSpan={9} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
                         <span className="text-3xl">🎫</span>
@@ -331,6 +368,62 @@ export default async function AdminTicketsPage({
                           if (diffHours < 24) return `${diffHours}h ago`
                           if (diffDays < 30) return `${diffDays}d ago`
                           return `${Math.floor(diffDays / 30)}mo ago`
+                        })()}
+                      </div>
+                    </td>
+
+                    {/* Last Active */}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {(() => {
+                          const now = new Date()
+                          const updated = new Date(ticket.updatedAt)
+                          const diffMs = now.getTime() - updated.getTime()
+                          const diffMins = Math.floor(diffMs / 60000)
+                          const diffHours = Math.floor(diffMs / 3600000)
+                          const diffDays = Math.floor(diffMs / 86400000)
+                          
+                          let timeAgo = ''
+                          let isRecent = false
+                          
+                          if (diffMins < 1) {
+                            timeAgo = 'just now'
+                            isRecent = true
+                          } else if (diffMins < 60) {
+                            timeAgo = `${diffMins}m ago`
+                            isRecent = true
+                          } else if (diffHours < 24) {
+                            timeAgo = `${diffHours}h ago`
+                            isRecent = diffHours < 6
+                          } else if (diffDays < 30) {
+                            timeAgo = `${diffDays}d ago`
+                            isRecent = false
+                          } else {
+                            timeAgo = `${Math.floor(diffDays / 30)}mo ago`
+                            isRecent = false
+                          }
+                          
+                          return (
+                            <>
+                              {isRecent && (
+                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Recently active" />
+                              )}
+                              <div>
+                                <div className={`text-sm font-medium ${isRecent ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>
+                                  {timeAgo}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  {updated.toLocaleDateString('en-US', {
+                                    month: 'short', day: 'numeric',
+                                  })}
+                                  {' '}
+                                  {updated.toLocaleTimeString('en-US', {
+                                    hour: 'numeric', minute: '2-digit', hour12: true,
+                                  })}
+                                </div>
+                              </div>
+                            </>
+                          )
                         })()}
                       </div>
                     </td>

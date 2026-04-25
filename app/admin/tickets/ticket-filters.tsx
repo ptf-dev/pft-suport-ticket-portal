@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 
 /**
  * Ticket Filters Component
@@ -48,6 +48,8 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
   const searchParams = useSearchParams()
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [loadingUsers, setLoadingUsers] = useState(true)
+  const [searchInput, setSearchInput] = useState(currentFilters.search || '')
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Fetch active admin users for assignment filter
   useEffect(() => {
@@ -71,6 +73,42 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     fetchAdminUsers()
   }, [])
 
+  // Sync search input with URL params when they change externally
+  useEffect(() => {
+    setSearchInput(currentFilters.search || '')
+  }, [currentFilters.search])
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [])
+
+  // Debounced search handler
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInput(value)
+    
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+    
+    // Set new timer - wait 500ms after user stops typing
+    debounceTimerRef.current = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (value) {
+        params.set('search', value)
+      } else {
+        params.delete('search')
+      }
+      params.set('page', '1')
+      router.push(`/admin/tickets?${params.toString()}`)
+    }, 500)
+  }, [router, searchParams])
+
   const handleFilterChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString())
     if (value) {
@@ -90,6 +128,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     params.delete('assignedTo')
     params.delete('search')
     params.set('page', '1')
+    setSearchInput('') // Clear local search input state
     router.push(`/admin/tickets?${params.toString()}`)
   }
 
@@ -102,8 +141,8 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
         <input
           type="text"
           placeholder="Search tickets by ID, title, or description..."
-          value={currentFilters.search || ''}
-          onChange={(e) => handleFilterChange('search', e.target.value)}
+          value={searchInput}
+          onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-4 py-2.5 pl-10 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
         />
         <svg
@@ -115,6 +154,17 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
+        {searchInput && (
+          <button
+            onClick={() => handleSearchChange('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            aria-label="Clear search"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Filter Dropdowns */}
