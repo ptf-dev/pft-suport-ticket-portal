@@ -20,6 +20,11 @@ async function updateUserEmail(oldEmail: string, newEmail: string) {
       process.exit(1)
     }
 
+    if (!existingUser.companyId) {
+      console.error(`❌ User "${oldEmail}" has no company assigned`)
+      process.exit(1)
+    }
+
     // Check if new email already exists
     const conflictUser = await prisma.user.findFirst({
       where: { 
