@@ -220,7 +220,6 @@ export default async function AdminTicketsPage({
                 <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="assignedTo" label="Assigned"    currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="createdBy"  label="By"          currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="updatedAt"  label="Last Active" currentSort={currentSort} currentOrder={currentOrder} />
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
@@ -230,7 +229,7 @@ export default async function AdminTicketsPage({
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
               {tickets.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-16 text-center">
+                  <td colSpan={8} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
                         <span className="text-3xl">🎫</span>
@@ -259,7 +258,7 @@ export default async function AdminTicketsPage({
                         <div className="min-w-0 flex-1">
                           <Link
                             href={`/admin/tickets/${ticket.id}`}
-                            className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-1 block"
+                            className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-2 block"
                           >
                             {ticket.title}
                           </Link>
@@ -270,9 +269,23 @@ export default async function AdminTicketsPage({
                       </div>
                     </td>
 
-                    {/* Company */}
+                    {/* Company & Created By */}
                     <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{ticket.company.name}</div>
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {ticket.company.name}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
+                            <span className="text-[9px] font-bold text-white">
+                              {ticket.createdBy.name?.charAt(0).toUpperCase() ?? '?'}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                            {ticket.createdBy.name}
+                          </div>
+                        </div>
+                      </div>
                     </td>
 
                     {/* Status */}
@@ -325,20 +338,6 @@ export default async function AdminTicketsPage({
                       ) : (
                         <span className="text-xs text-gray-400 dark:text-gray-500 italic">Unassigned</span>
                       )}
-                    </td>
-
-                    {/* Created By */}
-                    <td className="px-2 py-3">
-                      <div className="flex items-center gap-1">
-                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
-                          <span className="text-[10px] font-bold text-white">
-                            {ticket.createdBy.name?.charAt(0).toUpperCase() ?? '?'}
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-900 dark:text-white font-medium leading-tight truncate">
-                          {ticket.createdBy.name}
-                        </div>
-                      </div>
                     </td>
 
                     {/* Created */}
