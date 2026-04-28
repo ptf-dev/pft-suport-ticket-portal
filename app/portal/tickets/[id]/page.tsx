@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { CommentForm } from './comment-form'
 import { EditTicketForm } from './edit-ticket-form'
 import { AddAttachmentsForm } from './add-attachments-form'
-import { TicketStatusForm } from './ticket-status-form'
+import { TicketStatusForm } from '@/components/ticket-status-form'
+import { TicketPriorityForm } from '@/components/ticket-priority-form'
 
 /**
  * Client Ticket Detail Page
@@ -266,6 +267,16 @@ export default async function ClientTicketDetailPage({
             </CardHeader>
             <CardContent>
               <TicketStatusForm ticketId={ticket.id} currentStatus={ticket.status} />
+            </CardContent>
+          </Card>
+
+          {/* Priority Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Manage Priority</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketPriorityForm ticketId={ticket.id} currentPriority={ticket.priority} />
             </CardContent>
           </Card>
 

@@ -3,8 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { notFound } from 'next/navigation'
-import { TicketStatusForm } from './ticket-status-form'
-import { TicketPriorityForm } from './ticket-priority-form'
+import { TicketStatusForm } from '@/components/ticket-status-form'
+import { TicketPriorityForm } from '@/components/ticket-priority-form'
 import CommentForm from '@/components/comment-form'
 import { EditTicketForm } from '@/app/portal/tickets/[id]/edit-ticket-form'
 import { AddAttachmentsForm } from '@/app/portal/tickets/[id]/add-attachments-form'
@@ -270,7 +270,7 @@ export default async function AdminTicketDetailPage({
               </div>
 
               {/* Change Status */}
-              <TicketStatusForm ticketId={ticket.id} currentStatus={ticket.status} />
+              <TicketStatusForm ticketId={ticket.id} currentStatus={ticket.status} isAdmin={true} />
 
               {/* Current Priority */}
               <div>
@@ -291,7 +291,7 @@ export default async function AdminTicketDetailPage({
               </div>
 
               {/* Change Priority */}
-              <TicketPriorityForm ticketId={ticket.id} currentPriority={ticket.priority} />
+              <TicketPriorityForm ticketId={ticket.id} currentPriority={ticket.priority} isAdmin={true} />
             </CardContent>
           </Card>
 
