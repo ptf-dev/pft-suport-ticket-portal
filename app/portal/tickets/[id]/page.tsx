@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { CommentForm } from './comment-form'
 import { EditTicketForm } from './edit-ticket-form'
 import { AddAttachmentsForm } from './add-attachments-form'
+import { TicketStatusForm } from './ticket-status-form'
 
 /**
  * Client Ticket Detail Page
@@ -258,6 +259,16 @@ export default async function ClientTicketDetailPage({
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Status Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Manage Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TicketStatusForm ticketId={ticket.id} currentStatus={ticket.status} />
+            </CardContent>
+          </Card>
+
           {/* Ticket Info */}
           <Card>
             <CardHeader>
