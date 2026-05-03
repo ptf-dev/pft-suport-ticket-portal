@@ -10,9 +10,8 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-# Use clean install with package-lock.json for reproducible builds
 # Skip prepare script since source files aren't copied yet
-RUN npm ci --ignore-scripts
+RUN npm install --ignore-scripts 2>&1 || { echo "=== NPM INSTALL FAILED ==="; cat /root/.npm/_logs/*.log 2>/dev/null; exit 1; }
 
 # Copy source code
 COPY src ./src
