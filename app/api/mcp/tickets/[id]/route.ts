@@ -121,6 +121,7 @@ export async function GET(
         comments: ticket.comments.map(comment => ({
           id: comment.id,
           content: comment.message,
+          internal: comment.internal,
           author: {
             id: comment.author.id,
             name: comment.author.name,

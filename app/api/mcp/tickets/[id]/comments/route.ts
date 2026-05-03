@@ -55,6 +55,7 @@ export async function GET(
       comments: comments.map(comment => ({
         id: comment.id,
         content: comment.message,
+        internal: comment.internal,
         author: {
           id: comment.author.id,
           name: comment.author.name,

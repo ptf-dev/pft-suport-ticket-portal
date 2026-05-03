@@ -13,6 +13,7 @@ import { ShareClientLinkButton } from './share-client-link-button'
 import { AssignmentDropdown } from './assignment-dropdown'
 import { EditCommentButton } from './edit-comment-button'
 import { DeleteImageButton } from '@/components/delete-image-button'
+import { DeleteCommentImageButton } from '@/components/delete-comment-image-button'
 
 /**
  * Admin Ticket Detail Page
@@ -218,13 +219,15 @@ export default async function AdminTicketDetailPage({
                       {comment.images && comment.images.length > 0 && (
                         <div className="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2">
                           {comment.images.map((image: any) => (
-                            <a
+                            <div
                               key={image.id}
-                              href={image.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
                               className="relative group"
                             >
+                              <DeleteCommentImageButton
+                                ticketId={ticket.id}
+                                commentId={comment.id}
+                                imageId={image.id}
+                              />
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={image.url}
@@ -232,11 +235,16 @@ export default async function AdminTicketDetailPage({
                                 className="w-full h-24 object-cover rounded border border-gray-300 dark:border-gray-600"
                               />
                               <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity rounded flex items-center justify-center">
-                                <span className="text-white text-xs opacity-0 group-hover:opacity-100">
+                                <a
+                                  href={image.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-white text-xs opacity-0 group-hover:opacity-100"
+                                >
                                   View
-                                </span>
+                                </a>
                               </div>
-                            </a>
+                            </div>
                           ))}
                         </div>
                       )}

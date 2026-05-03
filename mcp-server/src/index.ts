@@ -114,7 +114,7 @@ async function fetchImageContent(images: ImageInfo[]): Promise<any[]> {
 const TOOLS: Tool[] = [
   {
     name: "get_ticket",
-    description: "Get complete ticket details including title, description, status, priority, company, creator, assignee, all comments with images, and full history. Use this to understand the full context of a support ticket.",
+    description: "Get complete ticket details including title, description, status, priority, company, creator, assignee, all comments (public and internal notes), images, and full history. Use this to understand the full context of a support ticket. Internal notes contain admin-only context useful for resolving the ticket.",
     inputSchema: {
       type: "object",
       properties: {
@@ -179,7 +179,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: "get_ticket_comments",
-    description: "Get all comments for a specific ticket, including comment text, author, timestamp, and attached images.",
+    description: "Get all comments for a specific ticket, including public comments and internal notes (admin-only). Each comment includes text, author, timestamp, internal flag, and attached images.",
     inputSchema: {
       type: "object",
       properties: {
