@@ -25,7 +25,7 @@ export async function GET(
         ticketId: params.id,
       },
       include: {
-        user: {
+        author: {
           select: {
             id: true,
             name: true,
@@ -38,7 +38,6 @@ export async function GET(
             id: true,
             url: true,
             filename: true,
-            createdAt: true,
           },
         },
       },
@@ -51,12 +50,12 @@ export async function GET(
       ticketId: params.id,
       comments: comments.map(comment => ({
         id: comment.id,
-        content: comment.content,
+        content: comment.message,
         author: {
-          id: comment.user.id,
-          name: comment.user.name,
-          email: comment.user.email,
-          role: comment.user.role,
+          id: comment.author.id,
+          name: comment.author.name,
+          email: comment.author.email,
+          role: comment.author.role,
         },
         createdAt: comment.createdAt,
         images: comment.images,
@@ -123,6 +122,7 @@ export async function POST(
         data: {
           email: 'mcp-bot@propfirmstech.com',
           name: 'AI Assistant (MCP)',
+          password: 'mcp-bot-no-login',
           role: 'ADMIN',
           isActive: true,
         },
@@ -133,11 +133,11 @@ export async function POST(
     const comment = await prisma.ticketComment.create({
       data: {
         ticketId: params.id,
-        userId: mcpUser.id,
-        content,
+        authorId: mcpUser.id,
+        message: content,
       },
       include: {
-        user: {
+        author: {
           select: {
             id: true,
             name: true,
@@ -152,8 +152,8 @@ export async function POST(
       success: true,
       comment: {
         id: comment.id,
-        content: comment.content,
-        author: comment.user,
+        content: comment.message,
+        author: comment.author,
         createdAt: comment.createdAt,
       },
     })
