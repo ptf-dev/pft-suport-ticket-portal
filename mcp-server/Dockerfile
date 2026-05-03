@@ -9,14 +9,17 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm install --production
+# Install ALL dependencies (including devDependencies for build)
+RUN npm install
 
 # Copy source code
 COPY src ./src
 
 # Build the project
 RUN npm run build
+
+# Remove dev dependencies after build
+RUN npm prune --production
 
 # Expose port
 EXPOSE 3001
