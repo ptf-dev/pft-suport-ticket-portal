@@ -377,7 +377,11 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+// Skip body parsing for /message — SSEServerTransport reads the raw stream
+app.use((req, res, next) => {
+  if (req.path === "/message") return next();
+  express.json()(req, res, next);
+});
 
 // ============================================
 // OAuth 2.1 Endpoints (no auth required)
