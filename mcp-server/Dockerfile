@@ -11,7 +11,8 @@ COPY tsconfig.json ./
 
 # Install ALL dependencies (including devDependencies for build)
 # Use clean install with package-lock.json for reproducible builds
-RUN npm ci
+# Skip prepare script since source files aren't copied yet
+RUN npm ci --ignore-scripts
 
 # Copy source code
 COPY src ./src
