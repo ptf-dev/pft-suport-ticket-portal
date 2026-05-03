@@ -23,6 +23,11 @@ export async function GET(
 
     const ticketId = params.id
 
+    // Build absolute base URL for image references
+    const proto = request.headers.get('x-forwarded-proto') || 'https'
+    const host = request.headers.get('host') || 'localhost:3000'
+    const baseUrl = `${proto}://${host}`
+
     // Fetch ticket with all related data
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
@@ -125,13 +130,13 @@ export async function GET(
           createdAt: comment.createdAt,
           images: comment.images.map(img => ({
             id: img.id,
-            url: img.url,
+            url: `${baseUrl}${img.url}`,
             filename: img.filename,
           })),
         })),
         images: ticket.images.map(img => ({
           id: img.id,
-          url: img.url,
+          url: `${baseUrl}${img.url}`,
           filename: img.filename,
         })),
         commentCount: ticket.comments.length,

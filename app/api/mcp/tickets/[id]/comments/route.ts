@@ -20,6 +20,10 @@ export async function GET(
       )
     }
 
+    const proto = request.headers.get('x-forwarded-proto') || 'https'
+    const host = request.headers.get('host') || 'localhost:3000'
+    const baseUrl = `${proto}://${host}`
+
     const comments = await prisma.ticketComment.findMany({
       where: {
         ticketId: params.id,
@@ -58,7 +62,11 @@ export async function GET(
           role: comment.author.role,
         },
         createdAt: comment.createdAt,
-        images: comment.images,
+        images: comment.images.map((img: any) => ({
+          id: img.id,
+          url: `${baseUrl}${img.url}`,
+          filename: img.filename,
+        })),
       })),
       count: comments.length,
     })

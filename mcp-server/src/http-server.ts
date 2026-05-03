@@ -46,6 +46,75 @@ function debug(...args: any[]) {
   }
 }
 
+interface ImageInfo {
+  url: string;
+  filename: string;
+  context: string;
+}
+
+function collectImages(data: any): ImageInfo[] {
+  const images: ImageInfo[] = [];
+  const ticket = data.ticket || data;
+
+  if (ticket.images) {
+    for (const img of ticket.images) {
+      images.push({
+        url: img.url,
+        filename: img.filename,
+        context: `Ticket attachment: ${img.filename}`,
+      });
+    }
+  }
+
+  const comments = ticket.comments || data.comments || [];
+  for (const comment of comments) {
+    if (comment.images && comment.images.length > 0) {
+      for (const img of comment.images) {
+        const authorName = comment.author?.name || "Unknown";
+        images.push({
+          url: img.url,
+          filename: img.filename,
+          context: `Comment image by ${authorName}: ${img.filename}`,
+        });
+      }
+    }
+  }
+
+  return images;
+}
+
+async function fetchImageContent(images: ImageInfo[]): Promise<any[]> {
+  const contentBlocks: any[] = [];
+
+  for (const img of images) {
+    try {
+      const url = img.url.startsWith("http")
+        ? img.url
+        : `${TICKETING_BASE_URL}${img.url}`;
+      const response = await api.get(url, { responseType: "arraybuffer", timeout: 15000 });
+      const contentType = response.headers["content-type"] || "image/png";
+      const base64 = Buffer.from(response.data).toString("base64");
+      contentBlocks.push({
+        type: "text",
+        text: `[Image: ${img.context}]`,
+      });
+      contentBlocks.push({
+        type: "image",
+        data: base64,
+        mimeType: contentType,
+      });
+    } catch (err: any) {
+      debug(`Failed to fetch image ${img.filename}:`, err.message);
+      contentBlocks.push({
+        type: "text",
+        text: `[Image: ${img.context} — could not be loaded, URL: ${img.url}]`,
+      });
+    }
+  }
+
+  return contentBlocks;
+}
+
 // ============================================
 // OAuth 2.1 Support
 // ============================================
@@ -252,12 +321,15 @@ function createMCPServer() {
         case "get_ticket": {
           const { ticket_id } = args as { ticket_id: string };
           const response = await api.get(`/api/mcp/tickets/${ticket_id}`);
+          const images = collectImages(response.data);
+          const imageBlocks = await fetchImageContent(images);
           return {
             content: [
               {
                 type: "text",
                 text: JSON.stringify(response.data, null, 2),
               },
+              ...imageBlocks,
             ],
           };
         }
@@ -297,12 +369,15 @@ function createMCPServer() {
         case "get_ticket_comments": {
           const { ticket_id } = args as { ticket_id: string };
           const response = await api.get(`/api/mcp/tickets/${ticket_id}/comments`);
+          const images = collectImages(response.data);
+          const imageBlocks = await fetchImageContent(images);
           return {
             content: [
               {
                 type: "text",
                 text: JSON.stringify(response.data, null, 2),
               },
+              ...imageBlocks,
             ],
           };
         }
