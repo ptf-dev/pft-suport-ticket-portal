@@ -10,7 +10,8 @@ COPY package*.json ./
 COPY tsconfig.json ./
 
 # Install ALL dependencies (including devDependencies for build)
-RUN npm install
+# Use clean install with package-lock.json for reproducible builds
+RUN npm ci
 
 # Copy source code
 COPY src ./src
