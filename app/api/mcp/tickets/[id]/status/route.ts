@@ -63,8 +63,8 @@ export async function PATCH(
       await prisma.ticketComment.create({
         data: {
           ticketId: params.id,
-          userId: mcpUser.id,
-          content: `Status changed to ${status} by AI Assistant`,
+          authorId: mcpUser.id,
+          message: `Status changed to ${status} by AI Assistant`,
         },
       })
     }
