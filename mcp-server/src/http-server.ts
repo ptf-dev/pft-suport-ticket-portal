@@ -330,14 +330,22 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Authentication middleware
-function authenticateRequest(req: Request, res: Response, next: Function) {
+// Authentication middleware - extracts token from header or query param
+function getApiKey(req: Request): string | undefined {
   const authHeader = req.headers.authorization;
-  const token = authHeader?.replace("Bearer ", "");
+  if (authHeader) {
+    return authHeader.replace("Bearer ", "");
+  }
+  // Fallback to query parameter (useful for SSE connections)
+  return req.query.key as string | undefined;
+}
+
+function authenticateRequest(req: Request, res: Response, next: Function) {
+  const token = getApiKey(req);
 
   if (!token || token !== MCP_SERVER_API_KEY) {
     debug("Authentication failed:", token ? "Invalid token" : "No token provided");
-    return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    return res.status(403).json({ error: "Forbidden - Invalid API key" });
   }
 
   next();
@@ -353,6 +361,9 @@ app.get("/health", (req, res) => {
   });
 });
 
+// Store active transports by session ID for message routing
+const transports = new Map<string, SSEServerTransport>();
+
 // MCP SSE endpoint
 app.get("/sse", authenticateRequest, async (req, res) => {
   debug("New SSE connection established");
@@ -360,19 +371,30 @@ app.get("/sse", authenticateRequest, async (req, res) => {
   const server = createMCPServer();
   const transport = new SSEServerTransport("/message", res);
 
+  // Store transport for message routing
+  transports.set(transport.sessionId, transport);
+
   await server.connect(transport);
 
   // Handle client disconnect
   req.on("close", () => {
     debug("SSE connection closed");
+    transports.delete(transport.sessionId);
   });
 });
 
 // MCP message endpoint
 app.post("/message", authenticateRequest, async (req, res) => {
-  debug("Received message:", req.body);
-  // This is handled by the SSE transport
-  res.status(200).end();
+  const sessionId = req.query.sessionId as string;
+  debug("Received message for session:", sessionId);
+
+  const transport = transports.get(sessionId);
+  if (!transport) {
+    debug("No active transport for session:", sessionId);
+    return res.status(400).json({ error: "No active SSE connection for this session" });
+  }
+
+  await transport.handlePostMessage(req, res);
 });
 
 // Start server
