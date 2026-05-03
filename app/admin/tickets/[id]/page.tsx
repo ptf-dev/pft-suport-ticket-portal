@@ -11,6 +11,7 @@ import { AddAttachmentsForm } from '@/app/portal/tickets/[id]/add-attachments-fo
 import { DeleteTicketButton } from './delete-ticket-button'
 import { ShareClientLinkButton } from './share-client-link-button'
 import { AssignmentDropdown } from './assignment-dropdown'
+import { EditCommentButton } from './edit-comment-button'
 
 /**
  * Admin Ticket Detail Page
@@ -192,9 +193,16 @@ export default async function AdminTicketDetailPage({
                             </Badge>
                           )}
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {new Date(comment.createdAt).toLocaleString()}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(comment.createdAt).toLocaleString()}
+                          </span>
+                          <EditCommentButton
+                            ticketId={ticket.id}
+                            commentId={comment.id}
+                            currentMessage={comment.message}
+                          />
+                        </div>
                       </div>
                       <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                         {comment.message}

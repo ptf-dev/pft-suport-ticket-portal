@@ -64,7 +64,7 @@ export async function PATCH(
         data: {
           ticketId: params.id,
           authorId: mcpUser.id,
-          message: `Status changed to ${status} by AI Assistant`,
+          message: `Status changed to ${status} by PFT AI Agent`,
         },
       })
     }
