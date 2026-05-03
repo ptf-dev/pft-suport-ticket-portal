@@ -6,7 +6,7 @@ This guide shows how to connect Claude Code (CLI) to the PropFirms Ticketing MCP
 
 - Claude Code CLI installed
 - MCP server deployed and running at `https://mcp.propfirmstech.com/sse`
-- API key: `mcp_client_cb919618295d724e263644b9f05791fe79f00c18706c1604f678626c72c0701a`
+- API key: `mcp_client_abcd1234`
 
 ## Installation Methods
 
@@ -17,7 +17,7 @@ Project-scoped servers are stored in `.mcp.json` at your project root and can be
 ```bash
 # Run from your project directory
 claude mcp add --transport sse propfirms-ticketing https://mcp.propfirmstech.com/sse \
-  --header "Authorization: Bearer mcp_client_cb919618295d724e263644b9f05791fe79f00c18706c1604f678626c72c0701a"
+  --header "Authorization: Bearer mcp_client_abcd1234"
 ```
 
 This creates/updates `.mcp.json` in your project root:
@@ -29,7 +29,7 @@ This creates/updates `.mcp.json` in your project root:
       "type": "sse",
       "url": "https://mcp.propfirmstech.com/sse",
       "headers": {
-        "Authorization": "Bearer mcp_client_cb919618295d724e263644b9f05791fe79f00c18706c1604f678626c72c0701a"
+        "Authorization": "Bearer mcp_client_abcd1234"
       }
     }
   }
@@ -50,7 +50,7 @@ User-scoped servers are stored in `~/.claude.json` and apply to all your project
 ```bash
 # Run from anywhere
 claude mcp add --scope user --transport sse propfirms-ticketing https://mcp.propfirmstech.com/sse \
-  --header "Authorization: Bearer mcp_client_cb919618295d724e263644b9f05791fe79f00c18706c1604f678626c72c0701a"
+  --header "Authorization: Bearer mcp_client_abcd1234"
 ```
 
 This updates `~/.claude.json`:
@@ -62,7 +62,7 @@ This updates `~/.claude.json`:
       "type": "sse",
       "url": "https://mcp.propfirmstech.com/sse",
       "headers": {
-        "Authorization": "Bearer mcp_client_cb919618295d724e263644b9f05791fe79f00c18706c1604f678626c72c0701a"
+        "Authorization": "Bearer mcp_client_abcd1234"
       }
     }
   }
@@ -128,7 +128,7 @@ If Claude Code can't connect:
 
 2. **Test SSE endpoint:**
    ```bash
-   curl -H "Authorization: Bearer mcp_client_cb919618295d724e263644b9f05791fe79f00c18706c1604f678626c72c0701a" \
+   curl -H "Authorization: Bearer mcp_client_abcd1234" \
      https://mcp.propfirmstech.com/sse
    ```
 
