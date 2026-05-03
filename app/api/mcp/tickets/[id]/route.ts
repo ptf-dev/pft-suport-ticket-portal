@@ -49,7 +49,7 @@ export async function GET(
         },
         comments: {
           include: {
-            user: {
+            author: {
               select: {
                 id: true,
                 name: true,
@@ -62,7 +62,6 @@ export async function GET(
                 id: true,
                 url: true,
                 filename: true,
-                createdAt: true,
               },
             },
           },
@@ -75,7 +74,6 @@ export async function GET(
             id: true,
             url: true,
             filename: true,
-            createdAt: true,
           },
         },
       },
@@ -117,26 +115,24 @@ export async function GET(
         isDeleted: ticket.isDeleted,
         comments: ticket.comments.map(comment => ({
           id: comment.id,
-          content: comment.content,
+          content: comment.message,
           author: {
-            id: comment.user.id,
-            name: comment.user.name,
-            email: comment.user.email,
-            role: comment.user.role,
+            id: comment.author.id,
+            name: comment.author.name,
+            email: comment.author.email,
+            role: comment.author.role,
           },
           createdAt: comment.createdAt,
           images: comment.images.map(img => ({
             id: img.id,
             url: img.url,
             filename: img.filename,
-            createdAt: img.createdAt,
           })),
         })),
         images: ticket.images.map(img => ({
           id: img.id,
           url: img.url,
           filename: img.filename,
-          createdAt: img.createdAt,
         })),
         commentCount: ticket.comments.length,
         imageCount: ticket.images.length,
