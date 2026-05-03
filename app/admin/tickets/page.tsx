@@ -39,6 +39,7 @@ export default async function AdminTicketsPage({
     page?: string
     sort?: string
     order?: string
+    multiSort?: string
     view?: string
     search?: string
     dateFilter?: string
@@ -53,6 +54,7 @@ export default async function AdminTicketsPage({
   const sortKey = SORT_MAP[searchParams.sort ?? ''] ? (searchParams.sort ?? 'createdAt') : 'createdAt'
   const order = searchParams.order === 'asc' ? 'asc' : 'desc'
   const showDeleted = searchParams.status === 'DELETED'
+  const multiSort = searchParams.multiSort
 
   // Build filter conditions
   const where: any = {
@@ -114,8 +116,7 @@ export default async function AdminTicketsPage({
     }
   }
 
-  // Build orderBy — replace direction in the sort map entry
-  const baseOrder = SORT_MAP[sortKey]
+  // Helper function to apply sort direction to nested objects
   const applyOrder = (obj: any, dir: string): any => {
     const result: any = {}
     for (const k of Object.keys(obj)) {
@@ -123,7 +124,29 @@ export default async function AdminTicketsPage({
     }
     return result
   }
-  const orderBy = applyOrder(baseOrder, order)
+
+  // Build orderBy — replace direction in the sort map entry
+  let orderBy: any
+  
+  if (multiSort) {
+    // Multi-column sorting
+    const sortColumns = multiSort.split(',').map(s => {
+      const [col, ord] = s.split(':')
+      return { column: col, order: ord as 'asc' | 'desc' }
+    })
+    
+    // Build array of orderBy objects
+    orderBy = sortColumns
+      .filter(s => SORT_MAP[s.column]) // Only include valid columns
+      .map(s => {
+        const baseOrder = SORT_MAP[s.column]
+        return applyOrder(baseOrder, s.order)
+      })
+  } else {
+    // Single column sorting (legacy)
+    const baseOrder = SORT_MAP[sortKey]
+    orderBy = applyOrder(baseOrder, order)
+  }
 
   const [total, tickets] = await Promise.all([
     prisma.ticket.count({ where }),
@@ -215,13 +238,13 @@ export default async function AdminTicketsPage({
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
               <tr>
-                <SortableTh column="title"      label="Ticket"      currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="company"    label="Company"     currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="assignedTo" label="Assigned"    currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="updatedAt"  label="Last Active" currentSort={currentSort} currentOrder={currentOrder} />
+                <SortableTh column="title"      label="Ticket"      currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                <SortableTh column="company"    label="Company"     currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                <SortableTh column="assignedTo" label="Assigned"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                <SortableTh column="updatedAt"  label="Last Active" currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
                 </th>
               </tr>
