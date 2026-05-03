@@ -12,6 +12,7 @@ import { DeleteTicketButton } from './delete-ticket-button'
 import { ShareClientLinkButton } from './share-client-link-button'
 import { AssignmentDropdown } from './assignment-dropdown'
 import { EditCommentButton } from './edit-comment-button'
+import { DeleteImageButton } from '@/components/delete-image-button'
 
 /**
  * Admin Ticket Detail Page
@@ -132,6 +133,11 @@ export default async function AdminTicketDetailPage({
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {ticket.images.map((image) => (
                     <div key={image.id} className="relative group">
+                      <DeleteImageButton
+                        ticketId={ticket.id}
+                        imageId={image.id}
+                        apiBasePath="/api/admin/tickets"
+                      />
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={image.url}

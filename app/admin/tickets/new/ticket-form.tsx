@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,6 +52,29 @@ export function AdminTicketForm({ companies }: Props) {
   const [loadingAdminUsers, setLoadingAdminUsers] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files)
+      addFiles(files)
+    }
+  }
+
+  const addFiles = (files: File[]) => {
+    const imageFiles = files.filter(f => f.type.startsWith('image/'))
+    if (imageFiles.length + selectedFiles.length > 5) {
+      setError('Maximum 5 images allowed')
+      return
+    }
+    setSelectedFiles(prev => [...prev, ...imageFiles])
+    if (error === 'Maximum 5 images allowed') setError('')
+  }
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+  }
 
   // Load users when company changes
   useEffect(() => {
@@ -110,6 +133,17 @@ export function AdminTicketForm({ companies }: Props) {
         setError(data.error ?? 'Failed to create ticket')
         setIsSubmitting(false)
         return
+      }
+
+      if (selectedFiles.length > 0) {
+        const uploadFormData = new FormData()
+        selectedFiles.forEach(file => {
+          uploadFormData.append('images', file)
+        })
+        await fetch(`/api/admin/tickets/${data.id}/images`, {
+          method: 'POST',
+          body: uploadFormData,
+        })
       }
 
       router.push(`/admin/tickets/${data.id}`)
@@ -217,6 +251,64 @@ export function AdminTicketForm({ companies }: Props) {
           placeholder="Detailed description of the issue…"
           className="flex w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 disabled:opacity-50"
         />
+      </div>
+
+      {/* Image Upload */}
+      <div className="space-y-1.5">
+        <Label>Attachments</Label>
+        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center bg-gray-50 dark:bg-gray-800">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileChange}
+            disabled={isSubmitting}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isSubmitting}
+            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+          >
+            <svg className="w-10 h-10 mx-auto text-gray-400 dark:text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            Click to upload images
+            <span className="block text-xs text-gray-400 dark:text-gray-500 mt-1">
+              PNG, JPG, GIF, WebP up to 10MB (max 5 files)
+            </span>
+          </button>
+        </div>
+
+        {selectedFiles.length > 0 && (
+          <div className="space-y-2 mt-2">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Selected files ({selectedFiles.length}/5):
+            </p>
+            {selectedFiles.map((file, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-2 rounded-lg text-sm"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
+                  <span className="text-xs text-gray-400 whitespace-nowrap">
+                    ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeFile(index)}
+                  className="text-red-600 hover:text-red-800 dark:text-red-400 text-xs font-medium ml-2 px-2 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Actions */}

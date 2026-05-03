@@ -10,6 +10,7 @@ import { EditTicketForm } from './edit-ticket-form'
 import { AddAttachmentsForm } from './add-attachments-form'
 import { TicketStatusForm } from '@/components/ticket-status-form'
 import { TicketPriorityForm } from '@/components/ticket-priority-form'
+import { DeleteImageButton } from '@/components/delete-image-button'
 
 /**
  * Client Ticket Detail Page
@@ -161,6 +162,10 @@ export default async function ClientTicketDetailPage({
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {ticket.images.map((image) => (
                     <div key={image.id} className="relative group">
+                      <DeleteImageButton
+                        ticketId={ticket.id}
+                        imageId={image.id}
+                      />
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={image.url}
