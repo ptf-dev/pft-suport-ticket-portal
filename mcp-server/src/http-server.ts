@@ -15,8 +15,9 @@ import {
   Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import axios, { AxiosInstance } from "axios";
+import crypto from "crypto";
 import dotenv from "dotenv";
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 
 // Load environment variables
@@ -43,6 +44,54 @@ function debug(...args: any[]) {
   if (DEBUG) {
     console.log("[DEBUG]", new Date().toISOString(), ...args);
   }
+}
+
+// ============================================
+// OAuth 2.1 Support
+// ============================================
+
+const SERVICE_URL = process.env.SERVICE_URL_MCP_SERVER || "";
+
+interface OAuthClient {
+  client_id: string;
+  client_name: string;
+  redirect_uris: string[];
+}
+
+interface AuthCode {
+  client_id: string;
+  redirect_uri: string;
+  code_challenge: string;
+  code_challenge_method: string;
+  expires_at: number;
+}
+
+// In-memory stores (reset on server restart — clients just re-auth)
+const oauthClients = new Map<string, OAuthClient>();
+const authCodes = new Map<string, AuthCode>();
+const accessTokens = new Set<string>();
+
+function generateId(bytes = 32): string {
+  return crypto.randomBytes(bytes).toString("hex");
+}
+
+function verifyPKCE(codeVerifier: string, codeChallenge: string): boolean {
+  const hash = crypto.createHash("sha256").update(codeVerifier).digest();
+  return hash.toString("base64url") === codeChallenge;
+}
+
+function escapeHtml(str: string): string {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function getBaseUrl(req: Request): string {
+  if (SERVICE_URL) return SERVICE_URL.replace(/\/$/, "");
+  const proto = req.get("x-forwarded-proto") || req.protocol;
+  return `${proto}://${req.get("host")}`;
 }
 
 // Define available tools
@@ -330,7 +379,162 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Authentication middleware - extracts token from header or query param
+// ============================================
+// OAuth 2.1 Endpoints (no auth required)
+// ============================================
+
+// Metadata discovery
+app.get("/.well-known/oauth-authorization-server", (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  res.json({
+    issuer: baseUrl,
+    authorization_endpoint: `${baseUrl}/authorize`,
+    token_endpoint: `${baseUrl}/token`,
+    registration_endpoint: `${baseUrl}/register`,
+    response_types_supported: ["code"],
+    grant_types_supported: ["authorization_code"],
+    code_challenge_methods_supported: ["S256"],
+    token_endpoint_auth_methods_supported: ["none"],
+  });
+});
+
+// Dynamic client registration (RFC 7591)
+app.post("/register", (req, res) => {
+  const { client_name, redirect_uris } = req.body;
+  const client_id = generateId(16);
+  const client: OAuthClient = {
+    client_id,
+    client_name: client_name || "MCP Client",
+    redirect_uris: redirect_uris || [],
+  };
+  oauthClients.set(client_id, client);
+  debug("Registered OAuth client:", client_id, client_name);
+  res.status(201).json({
+    client_id,
+    client_name: client.client_name,
+    redirect_uris: client.redirect_uris,
+  });
+});
+
+// Authorization page — shows a form asking for the MCP API key
+app.get("/authorize", (req, res) => {
+  const { client_id, redirect_uri, code_challenge, code_challenge_method, state } = req.query;
+  res.setHeader("Content-Type", "text/html");
+  res.send(`<!DOCTYPE html>
+<html><head>
+<title>PropFirms MCP Authorization</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #0a0a0a; color: #e5e5e5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+  .card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 32px; width: 100%; max-width: 400px; }
+  h1 { font-size: 1.2em; margin-bottom: 8px; color: #fff; }
+  p { font-size: 0.9em; color: #888; margin-bottom: 20px; }
+  input[type=password] { width: 100%; padding: 12px; background: #0a0a0a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 14px; margin-bottom: 16px; }
+  input:focus { outline: none; border-color: #22c55e; }
+  button { background: #22c55e; color: #000; border: none; padding: 12px; font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; border-radius: 8px; }
+  button:hover { background: #16a34a; }
+  .error { color: #ef4444; font-size: 0.85em; margin-bottom: 12px; }
+</style>
+</head><body>
+<div class="card">
+  <h1>PropFirms Ticketing</h1>
+  <p>Enter your MCP API key to authorize this client.</p>
+  ${req.query.error ? '<p class="error">Invalid API key. Please try again.</p>' : ''}
+  <form method="POST" action="/authorize">
+    <input type="hidden" name="client_id" value="${escapeHtml(client_id as string)}">
+    <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri as string)}">
+    <input type="hidden" name="code_challenge" value="${escapeHtml(code_challenge as string)}">
+    <input type="hidden" name="code_challenge_method" value="${escapeHtml(code_challenge_method as string)}">
+    <input type="hidden" name="state" value="${escapeHtml(state as string)}">
+    <input type="password" name="api_key" placeholder="mcp_client_..." required autofocus>
+    <button type="submit">Authorize</button>
+  </form>
+</div>
+</body></html>`);
+});
+
+// Handle authorization form submission
+app.post("/authorize", express.urlencoded({ extended: false }), (req, res) => {
+  const { client_id, redirect_uri, code_challenge, code_challenge_method, state, api_key } = req.body;
+
+  // Validate API key against the configured MCP_SERVER_API_KEY
+  if (api_key !== MCP_SERVER_API_KEY) {
+    const params = new URLSearchParams({
+      client_id: client_id || "",
+      redirect_uri: redirect_uri || "",
+      code_challenge: code_challenge || "",
+      code_challenge_method: code_challenge_method || "",
+      state: state || "",
+      error: "invalid_key",
+    });
+    return res.redirect(`/authorize?${params.toString()}`);
+  }
+
+  // Generate authorization code
+  const code = generateId(32);
+  authCodes.set(code, {
+    client_id,
+    redirect_uri,
+    code_challenge: code_challenge || "",
+    code_challenge_method: code_challenge_method || "S256",
+    expires_at: Date.now() + 5 * 60 * 1000, // 5 minutes
+  });
+
+  debug("Issued auth code for client:", client_id);
+
+  // Redirect back to client callback
+  const redirectUrl = new URL(redirect_uri);
+  redirectUrl.searchParams.set("code", code);
+  if (state) redirectUrl.searchParams.set("state", state);
+  res.redirect(302, redirectUrl.toString());
+});
+
+// Token endpoint — exchange auth code for access token
+app.post("/token", express.urlencoded({ extended: false }), (req, res) => {
+  const { grant_type, code, code_verifier, client_id } = req.body;
+
+  if (grant_type !== "authorization_code") {
+    return res.status(400).json({ error: "unsupported_grant_type" });
+  }
+
+  const authCode = authCodes.get(code);
+  if (!authCode) {
+    return res.status(400).json({ error: "invalid_grant", error_description: "Invalid or expired authorization code" });
+  }
+
+  if (Date.now() > authCode.expires_at) {
+    authCodes.delete(code);
+    return res.status(400).json({ error: "invalid_grant", error_description: "Authorization code expired" });
+  }
+
+  // Verify PKCE
+  if (authCode.code_challenge && code_verifier) {
+    if (!verifyPKCE(code_verifier, authCode.code_challenge)) {
+      return res.status(400).json({ error: "invalid_grant", error_description: "PKCE verification failed" });
+    }
+  }
+
+  // Consume the auth code (single use)
+  authCodes.delete(code);
+
+  // Issue access token
+  const access_token = `mcp_at_${generateId(32)}`;
+  accessTokens.add(access_token);
+  debug("Issued access token for client:", client_id);
+
+  res.json({
+    access_token,
+    token_type: "bearer",
+    expires_in: 86400,
+  });
+});
+
+// ============================================
+// Authentication Middleware
+// ============================================
+
+// Extracts token from header or query param
 function getApiKey(req: Request): string | undefined {
   const authHeader = req.headers.authorization;
   if (authHeader) {
@@ -340,15 +544,17 @@ function getApiKey(req: Request): string | undefined {
   return req.query.key as string | undefined;
 }
 
-function authenticateRequest(req: Request, res: Response, next: Function) {
+function authenticateRequest(req: Request, res: Response, next: NextFunction) {
   const token = getApiKey(req);
 
-  if (!token || token !== MCP_SERVER_API_KEY) {
-    debug("Authentication failed:", token ? "Invalid token" : "No token provided");
-    return res.status(403).json({ error: "Forbidden - Invalid API key" });
+  // Accept: direct API key OR OAuth-issued access token
+  if (token && (token === MCP_SERVER_API_KEY || accessTokens.has(token))) {
+    return next();
   }
 
-  next();
+  debug("Authentication failed:", token ? "Invalid token" : "No token provided");
+  // 401 triggers OAuth flow in MCP clients
+  return res.status(401).json({ error: "Unauthorized" });
 }
 
 // Health check endpoint
