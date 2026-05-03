@@ -24,7 +24,7 @@ dotenv.config();
 
 const TICKETING_BASE_URL = process.env.TICKETING_BASE_URL || "http://localhost:3000";
 const TICKETING_API_KEY = process.env.TICKETING_API_KEY || "";
-const MCP_SERVER_PORT = parseInt(process.env.MCP_SERVER_PORT || "3001");
+const MCP_SERVER_PORT = parseInt(process.env.MCP_SERVER_PORT || "3042");
 const MCP_SERVER_API_KEY = process.env.MCP_SERVER_API_KEY || "";
 const DEBUG = process.env.DEBUG === "true";
 
