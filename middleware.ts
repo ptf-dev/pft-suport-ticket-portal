@@ -67,9 +67,13 @@ export async function middleware(request: NextRequest) {
   const subdomain = extractSubdomain(hostname)
   const userAgent = request.headers.get('user-agent') || ''
 
-  // Allow social media crawlers through for ticket pages so OG tags are visible
-  if (SOCIAL_CRAWLERS.test(userAgent) && /^\/(portal|admin)\/tickets\/[^/]+$/.test(pathname)) {
-    return NextResponse.next()
+  // Rewrite social media crawler requests to the OG-only page (outside auth layouts)
+  if (SOCIAL_CRAWLERS.test(userAgent)) {
+    const ticketMatch = pathname.match(/^\/(portal|admin)\/tickets\/([^/]+)$/)
+    if (ticketMatch) {
+      const ogUrl = new URL(`/og/tickets/${ticketMatch[2]}`, request.url)
+      return NextResponse.rewrite(ogUrl)
+    }
   }
 
   // Get the user's session token
