@@ -50,18 +50,18 @@ describe('Middleware - Route Protection', () => {
       expect(response.headers.get('location')).toContain('/login')
     })
 
-    it('should return 403 for authenticated CLIENT users', async () => {
+    it('should redirect authenticated CLIENT users to portal equivalent', async () => {
       mockGetToken.mockResolvedValue({
         id: 'user-1',
         role: 'CLIENT',
         companyId: 'company-1',
       } as any)
 
-      const request = new NextRequest(new URL('http://localhost:3000/admin'))
+      const request = new NextRequest(new URL('http://localhost:3000/admin/tickets/abc123'))
       const response = await middleware(request)
 
-      expect(response.status).toBe(403)
-      expect(await response.text()).toContain('Admin access required')
+      expect(response.status).toBe(307)
+      expect(response.headers.get('location')).toContain('/portal/tickets/abc123')
     })
 
     it('should allow authenticated ADMIN users', async () => {
@@ -112,17 +112,18 @@ describe('Middleware - Route Protection', () => {
       expect(response.status).toBe(200)
     })
 
-    it('should allow authenticated ADMIN users', async () => {
+    it('should redirect authenticated ADMIN users to admin equivalent', async () => {
       mockGetToken.mockResolvedValue({
         id: 'admin-1',
         role: 'ADMIN',
         companyId: null,
       } as any)
 
-      const request = new NextRequest(new URL('http://localhost:3000/portal'))
+      const request = new NextRequest(new URL('http://localhost:3000/portal/tickets/abc123'))
       const response = await middleware(request)
 
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(307)
+      expect(response.headers.get('location')).toContain('/admin/tickets/abc123')
     })
 
     it('should protect nested portal routes', async () => {
@@ -292,7 +293,7 @@ describe('Middleware - Integration Scenarios', () => {
     expect(response.status).toBe(200)
   })
 
-  it('should handle client attempting to access admin routes', async () => {
+  it('should redirect client accessing admin routes to portal equivalent', async () => {
     mockGetToken.mockResolvedValue({
       id: 'user-1',
       role: 'CLIENT',
@@ -302,7 +303,8 @@ describe('Middleware - Integration Scenarios', () => {
     const request = new NextRequest(new URL('http://localhost:3000/admin'))
     const response = await middleware(request)
 
-    expect(response.status).toBe(403)
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toContain('/portal')
   })
 
   it('should handle unauthenticated user accessing protected routes', async () => {

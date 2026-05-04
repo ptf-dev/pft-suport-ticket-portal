@@ -81,10 +81,10 @@ export async function middleware(request: NextRequest) {
     }
     
     if (token.role !== 'ADMIN') {
-      // Authenticated but not admin - return 403
-      return new NextResponse('Forbidden: Admin access required', { status: 403 })
+      const portalPath = pathname.replace(/^\/admin/, '/portal')
+      return NextResponse.redirect(new URL(portalPath, request.url))
     }
-    
+
     // Admin authenticated - allow access
     return NextResponse.next()
   }
@@ -97,8 +97,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl)
     }
     
-    // Authenticated - allow access
-    // Note: Tenant-specific data filtering is handled at the API/data layer
+    // Authenticated - check if admin is visiting portal routes
+    if (token.role === 'ADMIN') {
+      const adminPath = pathname.replace(/^\/portal/, '/admin')
+      return NextResponse.redirect(new URL(adminPath, request.url))
+    }
+
+    // Client authenticated - allow access
     return NextResponse.next()
   }
 
