@@ -59,10 +59,18 @@ async function validateTenant(subdomain: string): Promise<{ id: string; subdomai
  * 
  * Requirements: 1.6, 1.7, 1.8, 2.1, 2.2, 2.3, 2.4, 2.5
  */
+const SOCIAL_CRAWLERS = /WhatsApp|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|Slackbot|TelegramBot|Discordbot/i
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hostname = request.nextUrl.hostname
   const subdomain = extractSubdomain(hostname)
+  const userAgent = request.headers.get('user-agent') || ''
+
+  // Allow social media crawlers through for ticket pages so OG tags are visible
+  if (SOCIAL_CRAWLERS.test(userAgent) && /^\/(portal|admin)\/tickets\/[^/]+$/.test(pathname)) {
+    return NextResponse.next()
+  }
 
   // Get the user's session token
   const token = await getToken({

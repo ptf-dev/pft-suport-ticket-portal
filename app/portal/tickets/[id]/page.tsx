@@ -12,6 +12,28 @@ import { TicketStatusForm } from '@/components/ticket-status-form'
 import { TicketPriorityForm } from '@/components/ticket-priority-form'
 import { DeleteImageButton } from '@/components/delete-image-button'
 import { DeleteCommentImageButton } from '@/components/delete-comment-image-button'
+import type { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: params.id },
+    select: { title: true, status: true },
+  })
+
+  if (!ticket) {
+    return { title: 'Ticket Not Found' }
+  }
+
+  return {
+    title: `${ticket.title} — PropFirmsTech Support`,
+    description: `Support ticket — Status: ${ticket.status.replace('_', ' ')}`,
+    openGraph: {
+      title: ticket.title,
+      description: `Support ticket — Status: ${ticket.status.replace('_', ' ')}`,
+      type: 'website',
+    },
+  }
+}
 
 /**
  * Client Ticket Detail Page
