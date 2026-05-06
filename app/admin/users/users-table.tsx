@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ResetPasswordModal } from './reset-password-modal'
+import { EditEmailModal } from './edit-email-modal'
 
 interface User {
   id: string
@@ -16,6 +17,7 @@ interface User {
 
 export function UsersTable({ users }: { users: User[] }) {
   const [resetting, setResetting] = useState<{ id: string; name: string } | null>(null)
+  const [editingEmail, setEditingEmail] = useState<{ id: string; name: string; email: string } | null>(null)
 
   if (users.length === 0) {
     return (
@@ -40,6 +42,14 @@ export function UsersTable({ users }: { users: User[] }) {
           userId={resetting.id}
           userName={resetting.name}
           onClose={() => setResetting(null)}
+        />
+      )}
+      {editingEmail && (
+        <EditEmailModal
+          userId={editingEmail.id}
+          userName={editingEmail.name}
+          currentEmail={editingEmail.email}
+          onClose={() => setEditingEmail(null)}
         />
       )}
       {users.map((user) => (
@@ -79,13 +89,22 @@ export function UsersTable({ users }: { users: User[] }) {
             </div>
           </td>
           <td className="px-6 py-4 text-right">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setResetting({ id: user.id, name: user.name })}
-            >
-              🔑 Reset Password
-            </Button>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingEmail({ id: user.id, name: user.name, email: user.email })}
+              >
+                ✉️ Change Email
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setResetting({ id: user.id, name: user.name })}
+              >
+                🔑 Reset Password
+              </Button>
+            </div>
           </td>
         </tr>
       ))}
