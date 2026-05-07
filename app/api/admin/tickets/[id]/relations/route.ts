@@ -4,6 +4,32 @@ import { prisma } from '@/lib/prisma'
 import { TicketRelationType } from '@prisma/client'
 
 /**
+ * Inverse relation mapping:
+ * When Ticket A "BLOCKS" Ticket B, Ticket B is "BLOCKED_BY" Ticket A
+ */
+const INVERSE_RELATIONS: Record<string, string> = {
+  BLOCKS: 'BLOCKED_BY',
+  BLOCKED_BY: 'BLOCKS',
+  RELATES_TO: 'RELATES_TO',         // symmetric
+  IS_IDEA_FOR: 'IS_IDEA_FOR',       // no inverse needed, shown via direction
+  WILL_IMPLEMENT_AFTER: 'WILL_IMPLEMENT_AFTER',
+  ADDED_TO_ROADMAP: 'ADDED_TO_ROADMAP',
+}
+
+/**
+ * How to display a relation when viewing it from the *target* ticket's perspective.
+ * e.g. If A -> BLOCKS -> B, then on ticket B we show "Blocked by A"
+ */
+const INCOMING_LABELS: Record<string, string> = {
+  BLOCKS: 'BLOCKED_BY',
+  BLOCKED_BY: 'BLOCKS',
+  RELATES_TO: 'RELATES_TO',
+  IS_IDEA_FOR: 'IS_IDEA_FOR',
+  WILL_IMPLEMENT_AFTER: 'WILL_IMPLEMENT_AFTER',
+  ADDED_TO_ROADMAP: 'ADDED_TO_ROADMAP',
+}
+
+/**
  * Admin API: Get Ticket Relations
  */
 export async function GET(
@@ -49,9 +75,10 @@ export async function GET(
           createdBy: r.createdBy?.name || 'System',
           createdAt: r.createdAt,
         })),
+        // For incoming relations, show the inverse label
         ...relationsAsTarget.map(r => ({
           id: r.id,
-          type: r.relationType,
+          type: INCOMING_LABELS[r.relationType] || r.relationType,
           direction: 'incoming',
           relatedTicket: r.sourceTicket,
           createdBy: r.createdBy?.name || 'System',
@@ -66,6 +93,8 @@ export async function GET(
 
 /**
  * Admin API: Add Ticket Relation
+ * Also creates the inverse relation automatically.
+ * e.g. A BLOCKS B => also creates B BLOCKED_BY A
  */
 export async function POST(
   request: NextRequest,
@@ -95,6 +124,13 @@ export async function POST(
       )
     }
 
+    if (params.id === targetTicketId) {
+      return NextResponse.json(
+        { error: 'Cannot create a relation to the same ticket' },
+        { status: 400 }
+      )
+    }
+
     // Verify both tickets exist
     const [sourceTicket, targetTicket] = await Promise.all([
       prisma.ticket.findUnique({ where: { id: params.id } }),
@@ -108,19 +144,38 @@ export async function POST(
       )
     }
 
-    const relation = await prisma.ticketRelation.create({
-      data: {
-        sourceTicketId: params.id,
-        targetTicketId,
-        relationType,
-        createdById: (session as any).user?.id || null,
-      },
-      include: {
-        targetTicket: {
-          select: { id: true, title: true, status: true, priority: true },
+    const createdById = (session as any).user?.id || null
+    const inverseType = INVERSE_RELATIONS[relationType] as TicketRelationType
+
+    // Create both the relation and its inverse in a transaction
+    const [relation] = await prisma.$transaction([
+      prisma.ticketRelation.create({
+        data: {
+          sourceTicketId: params.id,
+          targetTicketId,
+          relationType,
+          createdById,
         },
-      },
-    })
+        include: {
+          targetTicket: {
+            select: { id: true, title: true, status: true, priority: true },
+          },
+        },
+      }),
+      // Create inverse relation (skip if it's the same, e.g. RELATES_TO)
+      ...(inverseType !== relationType
+        ? [
+            prisma.ticketRelation.create({
+              data: {
+                sourceTicketId: targetTicketId,
+                targetTicketId: params.id,
+                relationType: inverseType,
+                createdById,
+              },
+            }),
+          ]
+        : []),
+    ])
 
     return NextResponse.json({
       success: true,
@@ -144,6 +199,7 @@ export async function POST(
 
 /**
  * Admin API: Delete Ticket Relation
+ * Also deletes the inverse relation automatically.
  */
 export async function DELETE(
   request: NextRequest,
@@ -162,9 +218,35 @@ export async function DELETE(
       )
     }
 
-    await prisma.ticketRelation.delete({
+    // Find the relation first so we can delete its inverse
+    const relation = await prisma.ticketRelation.findUnique({
       where: { id: relationId },
     })
+
+    if (!relation) {
+      return NextResponse.json({ error: 'Relation not found' }, { status: 404 })
+    }
+
+    const inverseType = INVERSE_RELATIONS[relation.relationType] as TicketRelationType
+
+    // Delete both the relation and its inverse in a transaction
+    await prisma.$transaction([
+      prisma.ticketRelation.delete({
+        where: { id: relationId },
+      }),
+      // Delete inverse relation if it exists and is different
+      ...(inverseType !== relation.relationType
+        ? [
+            prisma.ticketRelation.deleteMany({
+              where: {
+                sourceTicketId: relation.targetTicketId,
+                targetTicketId: relation.sourceTicketId,
+                relationType: inverseType,
+              },
+            }),
+          ]
+        : []),
+    ])
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
