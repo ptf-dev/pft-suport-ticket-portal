@@ -14,6 +14,7 @@ import { AssignmentDropdown } from './assignment-dropdown'
 import { EditCommentButton } from './edit-comment-button'
 import { DeleteImageButton } from '@/components/delete-image-button'
 import { DeleteCommentImageButton } from '@/components/delete-comment-image-button'
+import { ScheduleTicketButton } from './schedule-ticket-button'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -128,6 +129,11 @@ export default async function AdminTicketDetailPage({
             apiBasePath="/api/admin/tickets"
           />
           <AddAttachmentsForm ticketId={ticket.id} apiBasePath="/api/admin/tickets" />
+          <ScheduleTicketButton
+            ticketId={ticket.id}
+            ticketTitle={ticket.title}
+            currentScheduledDate={ticket.scheduledDate}
+          />
           <ShareClientLinkButton ticketId={ticket.id} />
         </div>
         <DeleteTicketButton ticketId={ticket.id} ticketTitle={ticket.title} />

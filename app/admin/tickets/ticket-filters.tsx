@@ -25,6 +25,8 @@ interface TicketFiltersProps {
     dateFilter?: string
     startDate?: string
     endDate?: string
+    scheduleFilter?: string
+    scheduleDate?: string
   }
 }
 
@@ -56,6 +58,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
   const [showCustomRange, setShowCustomRange] = useState(false)
   const [startDate, setStartDate] = useState(currentFilters.startDate || '')
   const [endDate, setEndDate] = useState(currentFilters.endDate || '')
+  const [scheduleDate, setScheduleDate] = useState(currentFilters.scheduleDate || '')
 
   // Fetch active admin users for assignment filter
   useEffect(() => {
@@ -136,10 +139,13 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     params.delete('dateFilter')
     params.delete('startDate')
     params.delete('endDate')
+    params.delete('scheduleFilter')
+    params.delete('scheduleDate')
     params.set('page', '1')
     setSearchInput('') // Clear local search input state
     setStartDate('')
     setEndDate('')
+    setScheduleDate('')
     setShowCustomRange(false)
     router.push(`/admin/tickets?${params.toString()}`)
   }
@@ -165,6 +171,37 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     router.push(`/admin/tickets?${params.toString()}`)
   }
 
+  const handleScheduleFilter = (filter: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    
+    // Remove custom schedule date when using quick filters
+    params.delete('scheduleDate')
+    
+    if (filter === currentFilters.scheduleFilter) {
+      // Toggle off if clicking the same filter
+      params.delete('scheduleFilter')
+    } else {
+      params.set('scheduleFilter', filter)
+    }
+    
+    params.set('page', '1')
+    setScheduleDate('')
+    router.push(`/admin/tickets?${params.toString()}`)
+  }
+
+  const handleCustomScheduleDate = () => {
+    if (!scheduleDate) return
+
+    const params = new URLSearchParams(searchParams.toString())
+    
+    // Remove quick schedule filter when using custom date
+    params.delete('scheduleFilter')
+    params.set('scheduleDate', scheduleDate)
+    
+    params.set('page', '1')
+    router.push(`/admin/tickets?${params.toString()}`)
+  }
+
   const handleCustomRange = () => {
     if (!startDate && !endDate) return
 
@@ -180,7 +217,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     router.push(`/admin/tickets?${params.toString()}`)
   }
 
-  const hasActiveFilters = currentFilters.company || currentFilters.status || currentFilters.priority || currentFilters.assignedTo || currentFilters.search || currentFilters.dateFilter || currentFilters.startDate || currentFilters.endDate
+  const hasActiveFilters = currentFilters.company || currentFilters.status || currentFilters.priority || currentFilters.assignedTo || currentFilters.search || currentFilters.dateFilter || currentFilters.startDate || currentFilters.endDate || currentFilters.scheduleFilter || currentFilters.scheduleDate
 
   return (
     <div className="space-y-3">
@@ -306,6 +343,79 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Divider */}
+      <div className="h-8 w-px bg-gray-300 dark:bg-gray-600 self-end mb-2" />
+
+      {/* Schedule Filters */}
+      <div className="flex items-end gap-2">
+        <div>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+            Scheduled For
+          </label>
+          <div className="flex gap-1">
+            <Button
+              variant={currentFilters.scheduleFilter === 'today' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleScheduleFilter('today')}
+              className="text-xs h-[38px] px-2"
+            >
+              📌 Today
+            </Button>
+            
+            <Button
+              variant={currentFilters.scheduleFilter === 'tomorrow' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleScheduleFilter('tomorrow')}
+              className="text-xs h-[38px] px-2"
+            >
+              ⏭️ Tomorrow
+            </Button>
+            
+            <Button
+              variant={currentFilters.scheduleFilter === 'thisWeek' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleScheduleFilter('thisWeek')}
+              className="text-xs h-[38px] px-2"
+            >
+              📅 This Week
+            </Button>
+
+            <Button
+              variant={currentFilters.scheduleFilter === 'unscheduled' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => handleScheduleFilter('unscheduled')}
+              className="text-xs h-[38px] px-2"
+            >
+              ❓ Unscheduled
+            </Button>
+          </div>
+        </div>
+
+        {/* Custom Schedule Date */}
+        <div className="flex items-end gap-2">
+          <div>
+            <label htmlFor="schedule-date" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+              Specific Date
+            </label>
+            <input
+              id="schedule-date"
+              type="date"
+              value={scheduleDate}
+              onChange={(e) => setScheduleDate(e.target.value)}
+              className="h-[38px] rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            />
+          </div>
+          <Button
+            onClick={handleCustomScheduleDate}
+            disabled={!scheduleDate}
+            size="sm"
+            className="h-[38px] whitespace-nowrap"
+          >
+            Apply
+          </Button>
+        </div>
       </div>
 
       {/* Divider */}

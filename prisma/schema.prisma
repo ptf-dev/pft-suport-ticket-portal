@@ -107,6 +107,7 @@ model Ticket {
   createdById  String
   assignedToId String? // References User.id, nullable
   assignedAt   DateTime? // Timestamp of assignment
+  scheduledDate DateTime? // Date when ticket is scheduled to be worked on
   isDeleted    Boolean        @default(false) // Soft delete flag
   deletedAt    DateTime? // When ticket was deleted
   deletedBy    String? // Admin who deleted the ticket
@@ -122,6 +123,7 @@ model Ticket {
   notificationLogs NotificationLog[]
 
   @@index([assignedToId])
+  @@index([scheduledDate])
   @@map("tickets")
 }
 

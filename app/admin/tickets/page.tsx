@@ -45,6 +45,8 @@ export default async function AdminTicketsPage({
     dateFilter?: string
     startDate?: string
     endDate?: string
+    scheduleFilter?: string
+    scheduleDate?: string
   }
 }) {
   await requireAdmin()
@@ -114,6 +116,40 @@ export default async function AdminTicketsPage({
       end.setHours(23, 59, 59, 999)
       where.updatedAt.lte = end
     }
+  }
+
+  // Schedule filter - filter by scheduled date
+  if (searchParams.scheduleFilter === 'today') {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    where.scheduledDate = { gte: today, lt: tomorrow }
+  } else if (searchParams.scheduleFilter === 'tomorrow') {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    tomorrow.setHours(0, 0, 0, 0)
+    const dayAfter = new Date(tomorrow)
+    dayAfter.setDate(dayAfter.getDate() + 1)
+    where.scheduledDate = { gte: tomorrow, lt: dayAfter }
+  } else if (searchParams.scheduleFilter === 'thisWeek') {
+    const now = new Date()
+    const dayOfWeek = now.getDay()
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
+    monday.setHours(0, 0, 0, 0)
+    const sunday = new Date(monday)
+    sunday.setDate(sunday.getDate() + 7)
+    where.scheduledDate = { gte: monday, lt: sunday }
+  } else if (searchParams.scheduleFilter === 'unscheduled') {
+    where.scheduledDate = null
+  } else if (searchParams.scheduleDate) {
+    // Specific schedule date
+    const date = new Date(searchParams.scheduleDate)
+    date.setHours(0, 0, 0, 0)
+    const nextDay = new Date(date)
+    nextDay.setDate(nextDay.getDate() + 1)
+    where.scheduledDate = { gte: date, lt: nextDay }
   }
 
   // Helper function to apply sort direction to nested objects
@@ -223,6 +259,8 @@ export default async function AdminTicketsPage({
             dateFilter: searchParams.dateFilter,
             startDate: searchParams.startDate,
             endDate: searchParams.endDate,
+            scheduleFilter: searchParams.scheduleFilter,
+            scheduleDate: searchParams.scheduleDate,
           }}
         />
       )}
