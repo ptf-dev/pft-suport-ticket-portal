@@ -15,6 +15,7 @@ import { EditCommentButton } from './edit-comment-button'
 import { DeleteImageButton } from '@/components/delete-image-button'
 import { DeleteCommentImageButton } from '@/components/delete-comment-image-button'
 import { ScheduleTicketButton } from './schedule-ticket-button'
+import { MarkdownRenderer } from '@/components/markdown-renderer'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -148,7 +149,7 @@ export default async function AdminTicketDetailPage({
               <CardTitle>Description</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{ticket.description}</p>
+              <MarkdownRenderer content={ticket.description} />
             </CardContent>
           </Card>
 
@@ -239,9 +240,9 @@ export default async function AdminTicketDetailPage({
                           />
                         </div>
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                        {comment.message}
-                      </p>
+                      <div className="text-sm">
+                        <MarkdownRenderer content={comment.message} />
+                      </div>
                       
                       {/* Comment Images */}
                       {comment.images && comment.images.length > 0 && (
