@@ -25,6 +25,12 @@ const STATUS_CONFIG = {
     description: 'Currently being worked on by support team',
     adminOnly: true 
   },
+  BLOCKED: {
+    label: 'Blocked',
+    variant: 'destructive' as const,
+    description: 'Ticket is blocked by another ticket or issue',
+    adminOnly: true
+  },
   WAITING_CLIENT: { 
     label: 'Waiting on Client', 
     variant: 'warning' as const, 

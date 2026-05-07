@@ -184,6 +184,8 @@ export default async function PortalDashboard({
                           variant={
                             ticket.status === 'OPEN'
                               ? 'destructive'
+                              : ticket.status === 'BLOCKED'
+                              ? 'destructive'
                               : ticket.status === 'IN_PROGRESS'
                               ? 'default'
                               : ticket.status === 'WAITING_CLIENT'

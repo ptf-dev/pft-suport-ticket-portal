@@ -159,7 +159,7 @@ export default async function PortalTicketsPage({
                     </td>
                     <td className="px-6 py-4">
                       <Badge variant={
-                        ticket.status === 'OPEN' ? 'destructive' : ticket.status === 'IN_PROGRESS' ? 'default' :
+                        ticket.status === 'OPEN' ? 'destructive' : ticket.status === 'BLOCKED' ? 'destructive' : ticket.status === 'IN_PROGRESS' ? 'default' :
                         ticket.status === 'WAITING_CLIENT' ? 'warning' : ticket.status === 'RESOLVED' ? 'success' : 'secondary'
                       } className="font-semibold text-xs whitespace-nowrap">
                         {ticket.status.replace(/_/g, ' ')}

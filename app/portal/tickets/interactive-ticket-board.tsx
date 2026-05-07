@@ -34,6 +34,7 @@ interface TicketBoardProps {
 const STATUS_COLUMNS = [
   { status: 'OPEN' as TicketStatus, label: 'Open', variant: 'destructive' as const, color: 'bg-red-50 border-red-200' },
   { status: 'IN_PROGRESS' as TicketStatus, label: 'In Progress', variant: 'default' as const, color: 'bg-blue-50 border-blue-200' },
+  { status: 'BLOCKED' as TicketStatus, label: 'Blocked', variant: 'destructive' as const, color: 'bg-red-50 border-red-200' },
   { status: 'WAITING_CLIENT' as TicketStatus, label: 'Waiting for You', variant: 'warning' as const, color: 'bg-yellow-50 border-yellow-200' },
   { status: 'RESOLVED' as TicketStatus, label: 'Resolved', variant: 'success' as const, color: 'bg-green-50 border-green-200' },
   { status: 'CLOSED' as TicketStatus, label: 'Closed', variant: 'secondary' as const, color: 'bg-gray-50 border-gray-200' },
@@ -109,7 +110,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
   }, [draggedTicket, localTickets])
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
       {ticketsByStatus.map(column => (
         <div 
           key={column.status} 
@@ -129,6 +130,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
                 <div className={`w-3 h-3 rounded-full ${
                   column.status === 'OPEN' ? 'bg-red-500' :
                   column.status === 'IN_PROGRESS' ? 'bg-blue-500' :
+                  column.status === 'BLOCKED' ? 'bg-red-500' :
                   column.status === 'WAITING_CLIENT' ? 'bg-yellow-500' :
                   column.status === 'RESOLVED' ? 'bg-green-500' :
                   'bg-gray-500'

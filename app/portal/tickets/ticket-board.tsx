@@ -29,6 +29,7 @@ interface TicketBoardProps {
 const STATUS_COLUMNS = [
   { status: 'OPEN' as TicketStatus, label: 'Open', variant: 'destructive' as const },
   { status: 'IN_PROGRESS' as TicketStatus, label: 'In Progress', variant: 'default' as const },
+  { status: 'BLOCKED' as TicketStatus, label: 'Blocked', variant: 'destructive' as const },
   { status: 'WAITING_CLIENT' as TicketStatus, label: 'Waiting for You', variant: 'warning' as const },
   { status: 'RESOLVED' as TicketStatus, label: 'Resolved', variant: 'success' as const },
   { status: 'CLOSED' as TicketStatus, label: 'Closed', variant: 'secondary' as const },
@@ -42,7 +43,7 @@ export function TicketBoard({ tickets }: TicketBoardProps) {
   }))
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
       {ticketsByStatus.map(column => (
         <div key={column.status} className="flex flex-col">
           {/* Column Header */}

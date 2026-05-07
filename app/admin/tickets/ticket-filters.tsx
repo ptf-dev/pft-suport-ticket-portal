@@ -30,7 +30,7 @@ interface TicketFiltersProps {
   }
 }
 
-const STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING_CLIENT', 'RESOLVED', 'CLOSED']
+const STATUSES = ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'WAITING_CLIENT', 'RESOLVED', 'CLOSED']
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
 
 // Virtual/composite filter options (not real DB statuses)

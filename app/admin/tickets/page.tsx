@@ -26,7 +26,7 @@ const SORT_MAP: Record<string, object> = {
 
 // Priority sort order for display purposes
 const PRIORITY_ORDER: Record<string, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, URGENT: 3 }
-const STATUS_ORDER: Record<string, number> = { OPEN: 0, IN_PROGRESS: 1, WAITING_CLIENT: 2, RESOLVED: 3, CLOSED: 4 }
+const STATUS_ORDER: Record<string, number> = { OPEN: 0, IN_PROGRESS: 1, BLOCKED: 2, WAITING_CLIENT: 3, RESOLVED: 4, CLOSED: 5 }
 
 export default async function AdminTicketsPage({
   searchParams,
@@ -65,9 +65,9 @@ export default async function AdminTicketsPage({
   if (searchParams.company) where.companyId = searchParams.company
   if (searchParams.status && searchParams.status !== 'DELETED') {
     if (searchParams.status === 'NOT_RESOLVED') {
-      where.status = { in: ['OPEN', 'IN_PROGRESS', 'WAITING_CLIENT'] as TicketStatus[] }
+      where.status = { in: ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'WAITING_CLIENT'] as TicketStatus[] }
     } else if (searchParams.status === 'ACTIVE_ONLY') {
-      where.status = { in: ['OPEN', 'IN_PROGRESS'] as TicketStatus[] }
+      where.status = { in: ['OPEN', 'IN_PROGRESS', 'BLOCKED'] as TicketStatus[] }
     } else {
       where.status = searchParams.status as TicketStatus
     }
@@ -354,6 +354,7 @@ export default async function AdminTicketsPage({
                       <Badge
                         variant={
                           ticket.status === 'OPEN'           ? 'destructive' :
+                          ticket.status === 'BLOCKED'        ? 'destructive' :
                           ticket.status === 'IN_PROGRESS'    ? 'default' :
                           ticket.status === 'WAITING_CLIENT' ? 'warning' :
                           ticket.status === 'RESOLVED'       ? 'success' :

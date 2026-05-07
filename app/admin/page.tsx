@@ -220,6 +220,7 @@ export default async function AdminDashboard({
                         <Badge
                           variant={
                             ticket.status === 'OPEN'           ? 'destructive' :
+                            ticket.status === 'BLOCKED'        ? 'destructive' :
                             ticket.status === 'IN_PROGRESS'    ? 'default' :
                             ticket.status === 'WAITING_CLIENT' ? 'warning' :
                             ticket.status === 'RESOLVED'       ? 'success' :

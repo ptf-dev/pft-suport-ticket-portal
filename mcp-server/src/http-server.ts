@@ -187,7 +187,7 @@ const TOOLS: Tool[] = [
       properties: {
         status: {
           type: "string",
-          enum: ["OPEN", "IN_PROGRESS", "WAITING_CLIENT", "RESOLVED", "CLOSED"],
+          enum: ["OPEN", "IN_PROGRESS", "BLOCKED", "WAITING_CLIENT", "RESOLVED", "CLOSED"],
           description: "Filter by ticket status",
         },
         priority: {
@@ -274,7 +274,7 @@ const TOOLS: Tool[] = [
         },
         status: {
           type: "string",
-          enum: ["OPEN", "IN_PROGRESS", "WAITING_CLIENT", "RESOLVED", "CLOSED"],
+          enum: ["OPEN", "IN_PROGRESS", "BLOCKED", "WAITING_CLIENT", "RESOLVED", "CLOSED"],
           description: "The new status for the ticket",
         },
       },
