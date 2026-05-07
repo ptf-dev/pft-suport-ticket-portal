@@ -49,6 +49,15 @@ enum NotificationStatus {
   RETRYING
 }
 
+enum TicketRelationType {
+  BLOCKS
+  BLOCKED_BY
+  RELATES_TO
+  IS_IDEA_FOR
+  WILL_IMPLEMENT_AFTER
+  ADDED_TO_ROADMAP
+}
+
 // ============================================================================
 // MODELS
 // ============================================================================
@@ -90,6 +99,7 @@ model User {
   createdTickets  Ticket[]        @relation("TicketCreator")
   assignedTickets Ticket[]        @relation("TicketAssignment")
   comments        TicketComment[]
+  ticketRelations TicketRelation[]
 
   // Composite unique constraint for tenant isolation
   @@unique([email, companyId])
@@ -121,6 +131,8 @@ model Ticket {
   comments         TicketComment[]
   images           TicketImage[]
   notificationLogs NotificationLog[]
+  relationsAsSource TicketRelation[] @relation("TicketRelationSource")
+  relationsAsTarget TicketRelation[] @relation("TicketRelationTarget")
 
   @@index([assignedToId])
   @@index([scheduledDate])
@@ -248,4 +260,22 @@ model SMTPSettings {
   updatedBy       String
 
   @@map("smtp_settings")
+}
+
+model TicketRelation {
+  id             String               @id @default(cuid())
+  sourceTicketId String
+  targetTicketId String
+  relationType   TicketRelationType
+  createdAt      DateTime             @default(now())
+  createdById    String?
+
+  sourceTicket   Ticket               @relation("TicketRelationSource", fields: [sourceTicketId], references: [id], onDelete: Cascade)
+  targetTicket   Ticket               @relation("TicketRelationTarget", fields: [targetTicketId], references: [id], onDelete: Cascade)
+  createdBy      User?                @relation(fields: [createdById], references: [id])
+
+  @@unique([sourceTicketId, targetTicketId, relationType])
+  @@index([sourceTicketId])
+  @@index([targetTicketId])
+  @@map("ticket_relations")
 }

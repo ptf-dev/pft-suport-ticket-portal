@@ -282,6 +282,74 @@ const TOOLS: Tool[] = [
     },
   },
   {
+    name: "create_ticket",
+    description: "Create a new support ticket. Use this to create tickets for feature requests, bug reports, or tasks. The ticket will be created by the MCP bot user.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: {
+          type: "string",
+          description: "The ticket title/subject",
+        },
+        description: {
+          type: "string",
+          description: "Detailed description of the ticket. Supports markdown.",
+        },
+        priority: {
+          type: "string",
+          enum: ["LOW", "MEDIUM", "HIGH", "URGENT"],
+          description: "Ticket priority level (default: MEDIUM)",
+        },
+        category: {
+          type: "string",
+          description: "Optional category for the ticket",
+        },
+        company_id: {
+          type: "string",
+          description: "The company ID to create the ticket under. Use get_companies to find available companies.",
+        },
+      },
+      required: ["title", "description", "company_id"],
+    },
+  },
+  {
+    name: "add_ticket_relation",
+    description: "Add a relation between two tickets. Use this to link related tickets, mark dependencies, or organize ticket relationships.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source_ticket_id: {
+          type: "string",
+          description: "The source ticket ID (the ticket FROM which the relation goes)",
+        },
+        target_ticket_id: {
+          type: "string",
+          description: "The target ticket ID (the ticket TO which the relation goes)",
+        },
+        relation_type: {
+          type: "string",
+          enum: ["BLOCKS", "BLOCKED_BY", "RELATES_TO", "IS_IDEA_FOR", "WILL_IMPLEMENT_AFTER", "ADDED_TO_ROADMAP"],
+          description: "The type of relation. BLOCKS = source blocks target, BLOCKED_BY = source is blocked by target, RELATES_TO = general relation, IS_IDEA_FOR = source is an idea for target, WILL_IMPLEMENT_AFTER = source will be implemented after target, ADDED_TO_ROADMAP = marked as roadmap item",
+        },
+      },
+      required: ["source_ticket_id", "target_ticket_id", "relation_type"],
+    },
+  },
+  {
+    name: "get_ticket_relations",
+    description: "Get all relations for a specific ticket. Shows what tickets it blocks, is blocked by, relates to, etc.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ticket_id: {
+          type: "string",
+          description: "The ticket ID to get relations for",
+        },
+      },
+      required: ["ticket_id"],
+    },
+  },
+  {
     name: "get_companies",
     description: "List all companies in the system. Useful for understanding which companies have tickets.",
     inputSchema: {
@@ -402,6 +470,64 @@ function createMCPServer() {
           const response = await api.patch(`/api/mcp/tickets/${ticket_id}/status`, {
             status,
           });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              },
+            ],
+          };
+        }
+
+        case "create_ticket": {
+          const { title, description, priority, category, company_id } = args as {
+            title: string;
+            description: string;
+            priority?: string;
+            category?: string;
+            company_id: string;
+          };
+          const response = await api.post(`/api/mcp/tickets/create`, {
+            title,
+            description,
+            priority: priority || "MEDIUM",
+            category,
+            companyId: company_id,
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              },
+            ],
+          };
+        }
+
+        case "add_ticket_relation": {
+          const { source_ticket_id, target_ticket_id, relation_type } = args as {
+            source_ticket_id: string;
+            target_ticket_id: string;
+            relation_type: string;
+          };
+          const response = await api.post(`/api/mcp/tickets/${source_ticket_id}/relations`, {
+            targetTicketId: target_ticket_id,
+            relationType: relation_type,
+          });
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(response.data, null, 2),
+              },
+            ],
+          };
+        }
+
+        case "get_ticket_relations": {
+          const { ticket_id } = args as { ticket_id: string };
+          const response = await api.get(`/api/mcp/tickets/${ticket_id}/relations`);
           return {
             content: [
               {
