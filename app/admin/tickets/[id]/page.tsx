@@ -16,6 +16,7 @@ import { DeleteImageButton } from '@/components/delete-image-button'
 import { DeleteCommentImageButton } from '@/components/delete-comment-image-button'
 import { ScheduleTicketButton } from './schedule-ticket-button'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
+import { TicketRelations } from './ticket-relations'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -408,6 +409,8 @@ export default async function AdminTicketDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          <TicketRelations ticketId={ticket.id} />
         </div>
       </div>
     </div>
