@@ -91,11 +91,10 @@ export function TicketRelations({ ticketId }: TicketRelationsProps) {
     }
     setSearching(true)
     try {
-      // Use the admin tickets API with search
-      const res = await fetch(`/api/admin/tickets?search=${encodeURIComponent(query)}&limit=5`)
+      const res = await fetch(`/api/admin/tickets/search?q=${encodeURIComponent(query)}&limit=5`)
       if (res.ok) {
         const data = await res.json()
-        const tickets = (data.tickets || data || [])
+        const tickets = (data.tickets || [])
           .filter((t: any) => t.id !== ticketId)
           .map((t: any) => ({
             id: t.id,
