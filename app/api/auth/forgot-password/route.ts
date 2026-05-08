@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
     const result = await PasswordResetService.requestPasswordReset(email)
 
     // If token was generated (user exists), send email
-    if (result.success && result.error) {
-      const token = result.error // Token is passed in error field internally
+    if (result.success && result.token) {
+      const token = result.token
       
       // Get user details for email
       const user = await prisma.user.findFirst({

@@ -35,6 +35,7 @@ export default async function AdminDashboard({
   const ticketsByStatus = await Promise.all([
     prisma.ticket.count({ where: { status: TicketStatus.OPEN, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.IN_PROGRESS, isDeleted: false } }),
+    prisma.ticket.count({ where: { status: TicketStatus.BLOCKED, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.WAITING_CLIENT, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.RESOLVED, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.CLOSED, isDeleted: false } }),
@@ -43,9 +44,10 @@ export default async function AdminDashboard({
   const statusCounts = {
     OPEN: ticketsByStatus[0],
     IN_PROGRESS: ticketsByStatus[1],
-    WAITING_CLIENT: ticketsByStatus[2],
-    RESOLVED: ticketsByStatus[3],
-    CLOSED: ticketsByStatus[4],
+    BLOCKED: ticketsByStatus[2],
+    WAITING_CLIENT: ticketsByStatus[3],
+    RESOLVED: ticketsByStatus[4],
+    CLOSED: ticketsByStatus[5],
   }
 
   const totalTickets = Object.values(statusCounts).reduce((a, b) => a + b, 0)
@@ -63,7 +65,7 @@ export default async function AdminDashboard({
   return (
     <div className="space-y-8">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         <Card className="relative overflow-hidden border-l-4 border-l-red-500 hover:shadow-lg transition-shadow">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -91,6 +93,21 @@ export default async function AdminDashboard({
             </div>
             <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.IN_PROGRESS}</div>
             <div className="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</div>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-l-4 border-l-orange-500 hover:shadow-lg transition-shadow">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                <span className="text-2xl">🚫</span>
+              </div>
+              <Badge variant="destructive" className="font-semibold">
+                {statusCounts.BLOCKED > 0 ? `${((statusCounts.BLOCKED / totalTickets) * 100).toFixed(0)}%` : '0%'}
+              </Badge>
+            </div>
+            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.BLOCKED}</div>
+            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Blocked</div>
           </CardContent>
         </Card>
 

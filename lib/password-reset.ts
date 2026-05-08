@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma'
 export interface PasswordResetResult {
   success: boolean
   message: string
+  token?: string  // The generated reset token (only set when user exists)
   error?: string
 }
 
@@ -70,8 +71,7 @@ export class PasswordResetService {
       return {
         success: true,
         message: 'If an account with that email exists, a password reset link has been sent.',
-        // Include token for email sending (not exposed to client)
-        error: resetToken, // Using error field to pass token internally
+        token: resetToken,
       }
     } catch (error) {
       console.error('Password reset request error:', error)
