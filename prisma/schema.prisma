@@ -85,15 +85,17 @@ model Company {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  password  String
-  role      Role
-  companyId String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String    @id @default(cuid())
+  name                   String
+  email                  String
+  password               String
+  role                   Role
+  companyId              String?
+  isActive               Boolean   @default(true)
+  resetPasswordToken     String?   @unique
+  resetPasswordExpiresAt DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   // Relations
   company         Company?        @relation(fields: [companyId], references: [id])
