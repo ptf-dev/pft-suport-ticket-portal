@@ -16,6 +16,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
+    "cleanup:tokens": "ts-node scripts/cleanup-expired-tokens.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
