@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireClient } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { NotificationService } from '@/lib/services/notification'
+import { ActivityService } from '@/lib/services/activity'
 import { z } from 'zod'
 
 /**
@@ -63,6 +64,8 @@ export async function POST(request: NextRequest) {
 
     // Fire-and-forget admin notification
     NotificationService.notifyAdminTicketCreated(ticket.id).catch(() => {})
+
+    ActivityService.created(ticket.id, userId, ticket.title).catch(() => {})
 
     return NextResponse.json(ticket, { status: 201 })
   } catch (error) {

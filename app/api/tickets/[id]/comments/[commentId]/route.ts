@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { ActivityService } from '@/lib/services/activity'
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string; commentId: string } }
 ) {
   try {
-    await requireAdmin()
+    const session = await requireAdmin()
 
     const comment = await prisma.ticketComment.findUnique({
       where: { id: params.commentId },
@@ -33,6 +34,8 @@ export async function PATCH(
       where: { id: params.commentId },
       data: { message: message.trim() },
     })
+
+    ActivityService.commentEdited(params.id, session.user.id, params.commentId).catch(() => {})
 
     return NextResponse.json(updated)
   } catch (error) {

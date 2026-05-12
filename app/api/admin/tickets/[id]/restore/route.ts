@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * Restore Deleted Ticket API Endpoint
@@ -15,9 +16,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin()
+    const session = await requireAdmin()
 
-    // Check if ticket exists
     const ticket = await prisma.ticket.findUnique({
       where: { id: params.id },
     })
@@ -36,7 +36,6 @@ export async function POST(
       )
     }
 
-    // Restore the ticket
     await prisma.ticket.update({
       where: { id: params.id },
       data: {
@@ -45,6 +44,8 @@ export async function POST(
         deletedBy: null,
       },
     })
+
+    ActivityService.restored(params.id, session.user.id).catch(() => {})
 
     return NextResponse.json(
       { message: 'Ticket restored successfully' },

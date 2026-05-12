@@ -9,10 +9,12 @@ import Link from 'next/link'
 import { TicketFilters } from './ticket-filters'
 import { InteractiveTicketBoard } from '@/app/portal/tickets/interactive-ticket-board'
 import { RestoreTicketButton } from './restore-ticket-button'
+import { ActivityQuickFilter } from '@/components/activity-quick-filter'
+import { BUCKET_ORDER, bucketToWhere, type ActivityBucket } from '@/lib/activity-buckets'
+import { LayoutGrid, Rows3, Plus, ExternalLink, TicketIcon, CalendarClock } from 'lucide-react'
 
 const PAGE_SIZE = 20
 
-// Map URL sort keys → Prisma orderBy
 const SORT_MAP: Record<string, object> = {
   title:      { title: 'asc' },
   company:    { company: { name: 'asc' } },
@@ -24,9 +26,27 @@ const SORT_MAP: Record<string, object> = {
   updatedAt:  { updatedAt: 'asc' },
 }
 
-// Priority sort order for display purposes
-const PRIORITY_ORDER: Record<string, number> = { LOW: 0, MEDIUM: 1, HIGH: 2, URGENT: 3 }
-const STATUS_ORDER: Record<string, number> = { OPEN: 0, IN_PROGRESS: 1, BLOCKED: 2, WAITING_CLIENT: 3, RESOLVED: 4, CLOSED: 5 }
+function applyOrder(obj: any, dir: string): any {
+  const result: any = {}
+  for (const k of Object.keys(obj)) {
+    result[k] = typeof obj[k] === 'object' ? applyOrder(obj[k], dir) : dir
+  }
+  return result
+}
+
+function timeAgo(d: Date): { label: string; fresh: boolean } {
+  const now = Date.now()
+  const diff = now - d.getTime()
+  const mins = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (mins < 1) return { label: 'just now', fresh: true }
+  if (mins < 60) return { label: `${mins}m`, fresh: true }
+  if (hours < 24) return { label: `${hours}h`, fresh: hours < 6 }
+  if (days < 30) return { label: `${days}d`, fresh: false }
+  const months = Math.floor(days / 30)
+  return { label: `${months}mo`, fresh: false }
+}
 
 export default async function AdminTicketsPage({
   searchParams,
@@ -42,6 +62,7 @@ export default async function AdminTicketsPage({
     multiSort?: string
     view?: string
     search?: string
+    activity?: string
     dateFilter?: string
     startDate?: string
     endDate?: string
@@ -53,15 +74,12 @@ export default async function AdminTicketsPage({
 
   const view = searchParams.view ?? 'board'
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10))
-  const sortKey = SORT_MAP[searchParams.sort ?? ''] ? (searchParams.sort ?? 'createdAt') : 'createdAt'
+  const sortKey = SORT_MAP[searchParams.sort ?? ''] ? (searchParams.sort ?? 'updatedAt') : 'updatedAt'
   const order = searchParams.order === 'asc' ? 'asc' : 'desc'
   const showDeleted = searchParams.status === 'DELETED'
   const multiSort = searchParams.multiSort
 
-  // Build filter conditions
-  const where: any = {
-    isDeleted: showDeleted ? true : false, // Filter by deleted status
-  }
+  const where: any = { isDeleted: showDeleted }
   if (searchParams.company) where.companyId = searchParams.company
   if (searchParams.status && searchParams.status !== 'DELETED') {
     if (searchParams.status === 'NOT_RESOLVED') {
@@ -73,15 +91,9 @@ export default async function AdminTicketsPage({
     }
   }
   if (searchParams.priority) where.priority = searchParams.priority as TicketPriority
-  
-  // Assignment filter (Requirements 5.3, 5.4, 5.5)
-  if (searchParams.assignedTo === 'unassigned') {
-    where.assignedToId = null
-  } else if (searchParams.assignedTo) {
-    where.assignedToId = searchParams.assignedTo
-  }
+  if (searchParams.assignedTo === 'unassigned') where.assignedToId = null
+  else if (searchParams.assignedTo) where.assignedToId = searchParams.assignedTo
 
-  // Search filter - search in title, description, and ticket ID
   if (searchParams.search) {
     where.OR = [
       { title: { contains: searchParams.search, mode: 'insensitive' } },
@@ -90,13 +102,13 @@ export default async function AdminTicketsPage({
     ]
   }
 
-  // Date filter - filter by last activity (updatedAt)
-  if (searchParams.dateFilter === 'lastWeek') {
-    const lastWeek = new Date()
-    lastWeek.setDate(lastWeek.getDate() - 7)
-    where.updatedAt = { gte: lastWeek }
+  const activity = searchParams.activity as ActivityBucket | undefined
+  if (activity && BUCKET_ORDER.includes(activity)) {
+    where.updatedAt = bucketToWhere(activity)
+  } else if (searchParams.dateFilter === 'lastWeek') {
+    const lw = new Date(); lw.setDate(lw.getDate() - 7)
+    where.updatedAt = { gte: lw }
   } else if (searchParams.dateFilter === 'activeWeek') {
-    // Get current week (Monday to Sunday)
     const now = new Date()
     const dayOfWeek = now.getDay()
     const monday = new Date(now)
@@ -104,149 +116,106 @@ export default async function AdminTicketsPage({
     monday.setHours(0, 0, 0, 0)
     where.updatedAt = { gte: monday }
   } else if (searchParams.startDate || searchParams.endDate) {
-    // Custom date range
     where.updatedAt = {}
-    if (searchParams.startDate) {
-      const start = new Date(searchParams.startDate)
-      start.setHours(0, 0, 0, 0)
-      where.updatedAt.gte = start
-    }
-    if (searchParams.endDate) {
-      const end = new Date(searchParams.endDate)
-      end.setHours(23, 59, 59, 999)
-      where.updatedAt.lte = end
-    }
+    if (searchParams.startDate) { const s = new Date(searchParams.startDate); s.setHours(0,0,0,0); where.updatedAt.gte = s }
+    if (searchParams.endDate) { const e = new Date(searchParams.endDate); e.setHours(23,59,59,999); where.updatedAt.lte = e }
   }
 
-  // Schedule filter - filter by scheduled date
   if (searchParams.scheduleFilter === 'today') {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    where.scheduledDate = { gte: today, lt: tomorrow }
+    const t = new Date(); t.setHours(0,0,0,0); const tm = new Date(t); tm.setDate(tm.getDate()+1)
+    where.scheduledDate = { gte: t, lt: tm }
   } else if (searchParams.scheduleFilter === 'tomorrow') {
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    tomorrow.setHours(0, 0, 0, 0)
-    const dayAfter = new Date(tomorrow)
-    dayAfter.setDate(dayAfter.getDate() + 1)
-    where.scheduledDate = { gte: tomorrow, lt: dayAfter }
+    const tm = new Date(); tm.setDate(tm.getDate()+1); tm.setHours(0,0,0,0); const da = new Date(tm); da.setDate(da.getDate()+1)
+    where.scheduledDate = { gte: tm, lt: da }
   } else if (searchParams.scheduleFilter === 'thisWeek') {
-    const now = new Date()
-    const dayOfWeek = now.getDay()
-    const monday = new Date(now)
-    monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1))
-    monday.setHours(0, 0, 0, 0)
-    const sunday = new Date(monday)
-    sunday.setDate(sunday.getDate() + 7)
-    where.scheduledDate = { gte: monday, lt: sunday }
+    const now = new Date(); const dow = now.getDay()
+    const mon = new Date(now); mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1)); mon.setHours(0,0,0,0)
+    const sun = new Date(mon); sun.setDate(sun.getDate()+7)
+    where.scheduledDate = { gte: mon, lt: sun }
   } else if (searchParams.scheduleFilter === 'unscheduled') {
     where.scheduledDate = null
   } else if (searchParams.scheduleDate) {
-    // Specific schedule date
-    const date = new Date(searchParams.scheduleDate)
-    date.setHours(0, 0, 0, 0)
-    const nextDay = new Date(date)
-    nextDay.setDate(nextDay.getDate() + 1)
-    where.scheduledDate = { gte: date, lt: nextDay }
+    const d = new Date(searchParams.scheduleDate); d.setHours(0,0,0,0); const n = new Date(d); n.setDate(n.getDate()+1)
+    where.scheduledDate = { gte: d, lt: n }
   }
 
-  // Helper function to apply sort direction to nested objects
-  const applyOrder = (obj: any, dir: string): any => {
-    const result: any = {}
-    for (const k of Object.keys(obj)) {
-      result[k] = typeof obj[k] === 'object' ? applyOrder(obj[k], dir) : dir
-    }
-    return result
-  }
-
-  // Build orderBy — replace direction in the sort map entry
   let orderBy: any
-  
   if (multiSort) {
-    // Multi-column sorting
-    const sortColumns = multiSort.split(',').map(s => {
+    orderBy = multiSort.split(',').map(s => {
       const [col, ord] = s.split(':')
       return { column: col, order: ord as 'asc' | 'desc' }
-    })
-    
-    // Build array of orderBy objects
-    orderBy = sortColumns
-      .filter(s => SORT_MAP[s.column]) // Only include valid columns
-      .map(s => {
-        const baseOrder = SORT_MAP[s.column]
-        return applyOrder(baseOrder, s.order)
-      })
+    }).filter(s => SORT_MAP[s.column]).map(s => applyOrder(SORT_MAP[s.column], s.order))
   } else {
-    // Single column sorting (legacy)
-    const baseOrder = SORT_MAP[sortKey]
-    orderBy = applyOrder(baseOrder, order)
+    orderBy = applyOrder(SORT_MAP[sortKey], order)
   }
 
-  const [total, tickets] = await Promise.all([
+  const bucketCountsWhere = { ...where }
+  delete bucketCountsWhere.updatedAt
+
+  const [total, tickets, companies, allTotal, bucketCounts] = await Promise.all([
     prisma.ticket.count({ where }),
     prisma.ticket.findMany({
       where,
-      orderBy: view === 'board' ? { createdAt: 'desc' } : orderBy,
+      orderBy: view === 'board' ? { updatedAt: 'desc' } : orderBy,
       skip: view === 'board' ? 0 : (page - 1) * PAGE_SIZE,
       take: view === 'board' ? undefined : PAGE_SIZE,
       include: {
         company: { select: { name: true } },
         createdBy: { select: { name: true } },
         assignedTo: { select: { id: true, name: true, email: true } },
-        _count: { select: { comments: true, images: true } },
+        _count: { select: { comments: true, images: true, activities: true } },
       },
     }),
+    prisma.company.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.ticket.count({ where: bucketCountsWhere }),
+    Promise.all(BUCKET_ORDER.map(async (k) => ({
+      key: k,
+      count: await prisma.ticket.count({ where: { ...bucketCountsWhere, updatedAt: bucketToWhere(k) } }),
+    }))),
   ])
 
-  const companies = await prisma.company.findMany({
-    select: { id: true, name: true },
-    orderBy: { name: 'asc' },
-  })
-
-  const currentSort = searchParams.sort ?? 'createdAt'
+  const currentSort = searchParams.sort ?? 'updatedAt'
   const currentOrder = (searchParams.order === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc'
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">All Tickets</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            View and manage tickets across all companies
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-ink-mute mb-2">
+            <span className="inline-block h-px w-6 bg-ink-mute/50" />
+            <span>Operations · All tickets</span>
+          </div>
+          <h1 className="font-display text-[clamp(2rem,4vw,3.25rem)] tracking-tightest text-ink leading-[0.95]">
+            Every ticket,<br className="hidden sm:block" />
+            <em className="font-display italic text-accent">one glance.</em>
+          </h1>
+          <p className="mt-3 text-sm text-ink-mute max-w-xl">
+            Filter by activity to catch yesterday&apos;s conversations, today&apos;s fires, and the tickets that went quiet.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-lg border border-line p-0.5">
             <Link href="/admin/tickets?view=board">
               <Button variant={view === 'board' ? 'default' : 'ghost'} size="sm" className="gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                </svg>
-                Board
+                <LayoutGrid className="w-4 h-4" />Board
               </Button>
             </Link>
             <Link href="/admin/tickets?view=table">
               <Button variant={view === 'table' ? 'default' : 'ghost'} size="sm" className="gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Table
+                <Rows3 className="w-4 h-4" />Table
               </Button>
             </Link>
           </div>
           <Link href="/admin/tickets/new">
-            <Button className="shadow-md hover:shadow-lg transition-shadow">
-              <span className="mr-2">➕</span>
-              New Ticket
+            <Button variant="accent" className="gap-2">
+              <Plus className="w-4 h-4" />New ticket
             </Button>
           </Link>
         </div>
-      </div>
+      </header>
 
-      {/* Filters */}
+      <ActivityQuickFilter counts={bucketCounts} current={activity} total={allTotal} />
+
       {view === 'table' && (
         <TicketFilters
           companies={companies}
@@ -265,262 +234,139 @@ export default async function AdminTicketsPage({
         />
       )}
 
-      {/* Board or Table View */}
       {view === 'board' ? (
         <InteractiveTicketBoard tickets={tickets} basePath="/admin/tickets" />
       ) : (
-        <>
-          {/* Table */}
-          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
-              <tr>
-                <SortableTh column="title"      label="Ticket"      currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                <SortableTh column="company"    label="Company"     currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                <SortableTh column="assignedTo" label="Assigned"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                <SortableTh column="updatedAt"  label="Last Active" currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
-              {tickets.length === 0 ? (
+        <div className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-line-soft">
+              <thead className="bg-bg-sunken">
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                        <span className="text-3xl">🎫</span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No tickets found</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">Try adjusting your filters</p>
-                    </div>
-                  </td>
+                  <SortableTh column="title"      label="Ticket"      currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                  <SortableTh column="company"    label="Company"     currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                  <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                  <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                  <SortableTh column="assignedTo" label="Assigned"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                  <SortableTh column="updatedAt"  label="Last active" currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                  <th className="px-4 py-3" />
                 </tr>
-              ) : (
-                tickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    {/* Ticket */}
-                    <td className="px-3 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                          ticket.priority === 'URGENT' ? 'bg-red-500' :
-                          ticket.priority === 'HIGH'   ? 'bg-orange-500' :
-                          ticket.priority === 'MEDIUM' ? 'bg-yellow-500' :
-                                                         'bg-gray-400'
-                        }`}>
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                          </svg>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <Link
-                            href={`/admin/tickets/${ticket.id}`}
-                            className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-2 block"
-                          >
-                            {ticket.title}
-                          </Link>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
-                            #{ticket.id.slice(0, 8)}
-                          </div>
-                        </div>
+              </thead>
+              <tbody className="divide-y divide-line-soft">
+                {tickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-20 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <TicketIcon className="w-10 h-10 text-ink-faint" strokeWidth={1.2} />
+                        <p className="font-display text-2xl tracking-tightest text-ink">Nothing here.</p>
+                        <p className="text-xs text-ink-mute">Try another activity window or clear your filters.</p>
                       </div>
-                    </td>
-
-                    {/* Company & Created By */}
-                    <td className="px-4 py-3">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {ticket.company.name}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
-                            <span className="text-[9px] font-bold text-white">
-                              {ticket.createdBy.name?.charAt(0).toUpperCase() ?? '?'}
-                            </span>
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                            {ticket.createdBy.name}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-4 py-3">
-                      <Badge
-                        variant={
-                          ticket.status === 'OPEN'           ? 'destructive' :
-                          ticket.status === 'BLOCKED'        ? 'destructive' :
-                          ticket.status === 'IN_PROGRESS'    ? 'default' :
-                          ticket.status === 'WAITING_CLIENT' ? 'warning' :
-                          ticket.status === 'RESOLVED'       ? 'success' :
-                                                               'secondary'
-                        }
-                        className="font-semibold text-xs whitespace-nowrap"
-                      >
-                        {ticket.status === 'IN_PROGRESS' ? 'IN PROG' : 
-                         ticket.status === 'WAITING_CLIENT' ? 'WAITING' :
-                         ticket.status.replace(/_/g, ' ')}
-                      </Badge>
-                    </td>
-
-                    {/* Priority */}
-                    <td className="px-4 py-3">
-                      <Badge
-                        variant={
-                          ticket.priority === 'URGENT' ? 'destructive' :
-                          ticket.priority === 'HIGH'   ? 'warning' :
-                                                         'secondary'
-                        }
-                        className="font-semibold text-xs"
-                      >
-                        {ticket.priority}
-                      </Badge>
-                    </td>
-
-                    {/* Assigned To */}
-                    <td className="px-4 py-3">
-                      {ticket.assignedToId && !ticket.assignedTo ? (
-                        <span className="text-xs text-gray-400 dark:text-gray-500 italic">Deleted</span>
-                      ) : ticket.assignedTo ? (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-bold text-white">
-                              {ticket.assignedTo.name?.charAt(0).toUpperCase() ?? '?'}
-                            </span>
-                          </div>
-                          <div className="text-sm text-gray-900 dark:text-white font-medium leading-tight truncate">
-                            {ticket.assignedTo.name}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-400 dark:text-gray-500 italic">Unassigned</span>
-                      )}
-                    </td>
-
-                    {/* Created */}
-                    <td className="px-4 py-3">
-                      <div className="text-sm text-gray-900 dark:text-white font-medium">
-                        {new Date(ticket.createdAt).toLocaleDateString('en-US', {
-                          month: 'short', day: 'numeric', year: 'numeric',
-                        })}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {(() => {
-                          const now = new Date()
-                          const created = new Date(ticket.createdAt)
-                          const diffMs = now.getTime() - created.getTime()
-                          const diffMins = Math.floor(diffMs / 60000)
-                          const diffHours = Math.floor(diffMs / 3600000)
-                          const diffDays = Math.floor(diffMs / 86400000)
-                          
-                          if (diffMins < 1) return 'just now'
-                          if (diffMins < 60) return `${diffMins}m ago`
-                          if (diffHours < 24) return `${diffHours}h ago`
-                          if (diffDays < 30) return `${diffDays}d ago`
-                          return `${Math.floor(diffDays / 30)}mo ago`
-                        })()}
-                      </div>
-                    </td>
-
-                    {/* Last Active */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1.5">
-                        {(() => {
-                          const now = new Date()
-                          const updated = new Date(ticket.updatedAt)
-                          const diffMs = now.getTime() - updated.getTime()
-                          const diffMins = Math.floor(diffMs / 60000)
-                          const diffHours = Math.floor(diffMs / 3600000)
-                          const diffDays = Math.floor(diffMs / 86400000)
-                          
-                          let timeAgo = ''
-                          let isRecent = false
-                          
-                          if (diffMins < 1) {
-                            timeAgo = 'just now'
-                            isRecent = true
-                          } else if (diffMins < 60) {
-                            timeAgo = `${diffMins}m ago`
-                            isRecent = true
-                          } else if (diffHours < 24) {
-                            timeAgo = `${diffHours}h ago`
-                            isRecent = diffHours < 6
-                          } else if (diffDays < 30) {
-                            timeAgo = `${diffDays}d ago`
-                            isRecent = false
-                          } else {
-                            timeAgo = `${Math.floor(diffDays / 30)}mo ago`
-                            isRecent = false
-                          }
-                          
-                          return (
-                            <>
-                              {isRecent && (
-                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse shrink-0" title="Recently active" />
-                              )}
-                              <div className="min-w-0">
-                                <div className={`text-sm font-medium ${isRecent ? 'text-green-600 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>
-                                  {timeAgo}
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                  {updated.toLocaleDateString('en-US', {
-                                    month: 'short', day: 'numeric',
-                                  })}
-                                </div>
-                              </div>
-                            </>
-                          )
-                        })()}
-                      </div>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-3 py-3 text-right">
-                      {showDeleted ? (
-                        <RestoreTicketButton ticketId={ticket.id} />
-                      ) : (
-                        <Link
-                          href={`/admin/tickets/${ticket.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                          aria-label="Open in new tab"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </Link>
-                      )}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <TablePagination total={total} page={page} pageSize={PAGE_SIZE} />
-      </div>
-        </>
-      )}
-
-      {/* Summary */}
-      {total > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-md">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-              <span className="text-sm">📊</span>
-            </div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {total} ticket{total !== 1 ? 's' : ''} total
-            </div>
+                ) : (
+                  tickets.map((ticket) => {
+                    const ago = timeAgo(new Date(ticket.updatedAt))
+                    return (
+                      <tr key={ticket.id} className="group hover:bg-bg-sunken transition-colors">
+                        <td className="px-4 py-4">
+                          <div className="flex items-start gap-3">
+                            <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${
+                              ticket.priority === 'URGENT' ? 'bg-danger' :
+                              ticket.priority === 'HIGH'   ? 'bg-warn' :
+                              ticket.priority === 'MEDIUM' ? 'bg-accent' :
+                                                             'bg-ink-faint'
+                            }`} />
+                            <div className="min-w-0 flex-1">
+                              <Link href={`/admin/tickets/${ticket.id}`}
+                                className="font-medium text-ink hover:text-accent transition-colors line-clamp-1 block">
+                                {ticket.title}
+                              </Link>
+                              <div className="flex items-center gap-2 mt-1 text-[11px] font-mono text-ink-mute">
+                                <span>#{ticket.id.slice(0, 8)}</span>
+                                {ticket._count.comments > 0 && <span>· {ticket._count.comments} msg</span>}
+                                {ticket._count.activities > 0 && <span>· {ticket._count.activities} events</span>}
+                                {ticket.scheduledDate && (
+                                  <span className="inline-flex items-center gap-1 text-accent">
+                                    <CalendarClock className="w-3 h-3" />
+                                    {new Date(ticket.scheduledDate).toLocaleDateString('en-US', { month:'short', day:'numeric' })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="text-sm text-ink">{ticket.company.name}</div>
+                          <div className="text-xs text-ink-mute mt-0.5">{ticket.createdBy.name}</div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <Badge variant={
+                            ticket.status === 'OPEN' ? 'destructive' :
+                            ticket.status === 'BLOCKED' ? 'destructive' :
+                            ticket.status === 'IN_PROGRESS' ? 'info' :
+                            ticket.status === 'WAITING_CLIENT' ? 'warning' :
+                            ticket.status === 'RESOLVED' ? 'success' : 'secondary'
+                          }>
+                            {ticket.status === 'IN_PROGRESS' ? 'In prog' :
+                             ticket.status === 'WAITING_CLIENT' ? 'Waiting' :
+                             ticket.status.replace(/_/g, ' ').toLowerCase()}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-4">
+                          <Badge variant={
+                            ticket.priority === 'URGENT' ? 'destructive' :
+                            ticket.priority === 'HIGH' ? 'warning' : 'secondary'
+                          }>
+                            {ticket.priority.toLowerCase()}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-4">
+                          {ticket.assignedTo ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-ink text-bg flex items-center justify-center text-[10px] font-semibold">
+                                {ticket.assignedTo.name?.charAt(0).toUpperCase() ?? '?'}
+                              </div>
+                              <div className="text-sm text-ink">{ticket.assignedTo.name}</div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-ink-faint italic">Unassigned</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            {ago.fresh && (
+                              <span className="relative flex h-2 w-2">
+                                <span className="absolute inline-flex h-full w-full rounded-full bg-pulse opacity-75 animate-ping" />
+                                <span className="relative inline-flex h-2 w-2 rounded-full bg-pulse" />
+                              </span>
+                            )}
+                            <div>
+                              <div className={`text-sm font-medium tabular-nums ${ago.fresh ? 'text-pulse' : 'text-ink'}`}>
+                                {ago.label} ago
+                              </div>
+                              <div className="text-[10px] text-ink-mute font-mono uppercase tracking-widest">
+                                {new Date(ticket.updatedAt).toLocaleDateString('en-US', { month:'short', day:'numeric' })}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-4 text-right">
+                          {showDeleted ? (
+                            <RestoreTicketButton ticketId={ticket.id} />
+                          ) : (
+                            <Link href={`/admin/tickets/${ticket.id}`} target="_blank" rel="noopener noreferrer"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity text-ink-mute hover:text-ink">
+                              <ExternalLink className="w-4 h-4 inline" />
+                            </Link>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
+          <TablePagination total={total} page={page} pageSize={PAGE_SIZE} />
         </div>
       )}
     </div>

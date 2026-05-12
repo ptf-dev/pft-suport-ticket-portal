@@ -17,6 +17,7 @@ import { DeleteCommentImageButton } from '@/components/delete-comment-image-butt
 import { ScheduleTicketButton } from './schedule-ticket-button'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { TicketRelations } from './ticket-relations'
+import { ActivityTimeline } from '@/components/activity-timeline'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -82,6 +83,13 @@ export default async function AdminTicketDetailPage({
       },
       images: {
         orderBy: { uploadedAt: 'asc' },
+      },
+      activities: {
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+        include: {
+          actor: { select: { name: true, role: true } },
+        },
       },
     },
   })
@@ -413,6 +421,18 @@ export default async function AdminTicketDetailPage({
           </Card>
 
           <TicketRelations ticketId={ticket.id} />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity log</CardTitle>
+              <p className="text-xs text-ink-mute mt-1">
+                {ticket.activities.length} {ticket.activities.length === 1 ? 'event' : 'events'} recorded
+              </p>
+            </CardHeader>
+            <CardContent>
+              <ActivityTimeline activities={ticket.activities} />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

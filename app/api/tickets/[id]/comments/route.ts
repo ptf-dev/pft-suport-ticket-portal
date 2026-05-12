@@ -3,6 +3,7 @@ import { requireAuth, requireCompanyAccess } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { Role } from '@prisma/client'
 import { NotificationService } from '@/lib/services/notification'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * Comment Creation API
@@ -90,6 +91,8 @@ export async function POST(
     if (mentions.length > 0) {
       await NotificationService.notifyMentionedUsers(params.id, comment.id, mentions)
     }
+
+    ActivityService.commented(params.id, session.user.id, comment.id, isInternal, message.trim()).catch(() => {})
 
     return NextResponse.json(comment, { status: 201 })
   } catch (error) {

@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { Role } from '@prisma/client'
 import { NotificationService } from '@/lib/services/notification'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * PATCH /api/admin/tickets/[id]/assign
@@ -14,16 +15,15 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Require admin authentication
-    await requireAdmin()
+    const session = await requireAdmin()
 
     // Parse request body
     const body = await request.json()
     const { assignedToId } = body
 
-    // Check if ticket exists
     const ticket = await prisma.ticket.findUnique({
       where: { id: params.id },
+      include: { assignedTo: { select: { name: true } } },
     })
 
     if (!ticket) {
@@ -83,9 +83,16 @@ export async function PATCH(
       },
     })
 
-    // Send notification if ticket was assigned (not unassigned)
-    if (assignedToId) {
+    if (assignedToId && ticket.assignedToId !== assignedToId) {
+      ActivityService.assigned(
+        params.id,
+        session.user.id,
+        assignedToId,
+        updatedTicket.assignedTo?.name ?? 'Unknown',
+      ).catch(() => {})
       NotificationService.notifyAgentTicketAssigned(params.id).catch(() => {})
+    } else if (!assignedToId && ticket.assignedToId) {
+      ActivityService.unassigned(params.id, session.user.id, ticket.assignedTo?.name ?? null).catch(() => {})
     }
 
     return NextResponse.json(updatedTicket)

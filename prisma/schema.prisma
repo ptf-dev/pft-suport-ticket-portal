@@ -59,6 +59,29 @@ enum TicketRelationType {
   ADDED_TO_ROADMAP
 }
 
+enum ActivityType {
+  CREATED
+  EDITED
+  DELETED
+  RESTORED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
+  ASSIGNED
+  UNASSIGNED
+  SCHEDULED
+  UNSCHEDULED
+  CATEGORY_CHANGED
+  COMMENTED
+  COMMENT_EDITED
+  COMMENT_DELETED
+  INTERNAL_NOTE
+  IMAGE_UPLOADED
+  IMAGE_DELETED
+  RELATION_ADDED
+  RELATION_REMOVED
+  MENTIONED
+}
+
 // ============================================================================
 // MODELS
 // ============================================================================
@@ -103,6 +126,7 @@ model User {
   assignedTickets Ticket[]        @relation("TicketAssignment")
   comments        TicketComment[]
   ticketRelations TicketRelation[]
+  activities      TicketActivity[]
 
   // Composite unique constraint for tenant isolation
   @@unique([email, companyId])
@@ -136,9 +160,12 @@ model Ticket {
   notificationLogs NotificationLog[]
   relationsAsSource TicketRelation[] @relation("TicketRelationSource")
   relationsAsTarget TicketRelation[] @relation("TicketRelationTarget")
+  activities       TicketActivity[]
 
   @@index([assignedToId])
   @@index([scheduledDate])
+  @@index([updatedAt])
+  @@index([companyId, isDeleted, updatedAt])
   @@map("tickets")
 }
 
@@ -281,4 +308,24 @@ model TicketRelation {
   @@index([sourceTicketId])
   @@index([targetTicketId])
   @@map("ticket_relations")
+}
+
+model TicketActivity {
+  id         String       @id @default(cuid())
+  ticketId   String
+  actorId    String?
+  type       ActivityType
+  fromValue  String?
+  toValue    String?
+  message    String?
+  meta       Json?
+  createdAt  DateTime     @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorId], references: [id])
+
+  @@index([ticketId, createdAt])
+  @@index([createdAt])
+  @@index([type])
+  @@map("ticket_activities")
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TicketPriority } from '@prisma/client'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * PATCH /api/admin/tickets/[id]/priority
@@ -13,8 +14,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Require admin authentication
-    await requireAdmin()
+    const session = await requireAdmin()
 
     // Parse request body
     const body = await request.json()
@@ -40,11 +40,14 @@ export async function PATCH(
       )
     }
 
-    // Update ticket priority
     const updatedTicket = await prisma.ticket.update({
       where: { id: params.id },
       data: { priority },
     })
+
+    if (ticket.priority !== priority) {
+      ActivityService.priorityChanged(params.id, session.user.id, ticket.priority, priority).catch(() => {})
+    }
 
     return NextResponse.json(updatedTicket)
   } catch (error) {

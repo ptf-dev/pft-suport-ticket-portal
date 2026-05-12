@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * Ticket Scheduling API Endpoint
@@ -21,8 +22,7 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Require admin authentication
-    await requireAdmin()
+    const session = await requireAdmin()
 
     const ticketId = params.id
 
@@ -98,10 +98,16 @@ export async function PATCH(
       },
     })
 
+    if (scheduledDateValue) {
+      ActivityService.scheduled(ticketId, session.user.id, existingTicket.scheduledDate, scheduledDateValue).catch(() => {})
+    } else if (existingTicket.scheduledDate) {
+      ActivityService.unscheduled(ticketId, session.user.id, existingTicket.scheduledDate).catch(() => {})
+    }
+
     return NextResponse.json(
       {
-        message: scheduledDateValue 
-          ? 'Ticket scheduled successfully' 
+        message: scheduledDateValue
+          ? 'Ticket scheduled successfully'
           : 'Scheduled date cleared',
         ticket: updatedTicket,
       },

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { ActivityService } from '@/lib/services/activity'
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
@@ -13,7 +14,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin()
+    const session = await requireAdmin()
 
     const ticket = await prisma.ticket.findUnique({ where: { id: params.id } })
     if (!ticket) {
@@ -68,6 +69,7 @@ export async function POST(
       })
 
       uploadedImages.push(image)
+      ActivityService.imageUploaded(params.id, session.user.id, filename, 'ticket').catch(() => {})
     }
 
     return NextResponse.json({ images: uploadedImages, count: uploadedImages.length }, { status: 201 })

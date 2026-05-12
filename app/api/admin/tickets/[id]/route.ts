@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { ActivityService } from '@/lib/services/activity'
 
-/**
- * Admin Ticket Update API Endpoint
- * PATCH /api/admin/tickets/[id]
- */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAdmin()
+    const session = await requireAdmin()
 
     const ticket = await prisma.ticket.findUnique({ where: { id: params.id } })
     if (!ticket) {
@@ -31,6 +28,17 @@ export async function PATCH(
       where: { id: params.id },
       data: { title, description, category: category || null },
     })
+
+    const changed: string[] = []
+    if (ticket.title !== title) changed.push('title')
+    if (ticket.description !== description) changed.push('description')
+    const newCategory = category || null
+    if (ticket.category !== newCategory) {
+      ActivityService.categoryChanged(params.id, session.user.id, ticket.category, newCategory).catch(() => {})
+    }
+    if (changed.length > 0) {
+      ActivityService.edited(params.id, session.user.id, changed).catch(() => {})
+    }
 
     return NextResponse.json(updatedTicket)
   } catch (error) {

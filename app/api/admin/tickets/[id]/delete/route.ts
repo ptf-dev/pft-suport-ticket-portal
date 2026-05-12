@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * Soft Delete Ticket API Endpoint
@@ -37,7 +38,6 @@ export async function DELETE(
       )
     }
 
-    // Soft delete the ticket
     await prisma.ticket.update({
       where: { id: params.id },
       data: {
@@ -46,6 +46,8 @@ export async function DELETE(
         deletedBy: session.user.id,
       },
     })
+
+    ActivityService.deleted(params.id, session.user.id).catch(() => {})
 
     return NextResponse.json(
       { message: 'Ticket deleted successfully' },

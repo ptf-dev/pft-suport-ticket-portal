@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, getSession } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TicketRelationType } from '@prisma/client'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * Inverse relation mapping:
@@ -177,6 +178,13 @@ export async function POST(
         : []),
     ])
 
+    if (createdById) {
+      ActivityService.relationAdded(params.id, createdById, relationType, targetTicketId).catch(() => {})
+      if (inverseType !== relationType) {
+        ActivityService.relationAdded(targetTicketId, createdById, inverseType, params.id).catch(() => {})
+      }
+    }
+
     return NextResponse.json({
       success: true,
       relation: {
@@ -230,11 +238,13 @@ export async function DELETE(
     const inverseType = INVERSE_RELATIONS[relation.relationType] as TicketRelationType
 
     // Delete both the relation and its inverse in a transaction
+    const session = await getSession().catch(() => null)
+    const actorId = session?.user?.id
+
     await prisma.$transaction([
       prisma.ticketRelation.delete({
         where: { id: relationId },
       }),
-      // Delete inverse relation if it exists and is different
       ...(inverseType !== relation.relationType
         ? [
             prisma.ticketRelation.deleteMany({
@@ -247,6 +257,13 @@ export async function DELETE(
           ]
         : []),
     ])
+
+    if (actorId) {
+      ActivityService.relationRemoved(relation.sourceTicketId, actorId, relation.relationType, relation.targetTicketId).catch(() => {})
+      if (inverseType !== relation.relationType) {
+        ActivityService.relationRemoved(relation.targetTicketId, actorId, inverseType, relation.sourceTicketId).catch(() => {})
+      }
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

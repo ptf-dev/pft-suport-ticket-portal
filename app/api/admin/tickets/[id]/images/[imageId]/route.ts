@@ -3,13 +3,14 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { unlink } from 'fs/promises'
 import { join } from 'path'
+import { ActivityService } from '@/lib/services/activity'
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string; imageId: string } }
 ) {
   try {
-    await requireAdmin()
+    const session = await requireAdmin()
 
     const image = await prisma.ticketImage.findUnique({
       where: { id: params.imageId },
@@ -25,6 +26,8 @@ export async function DELETE(
     await prisma.ticketImage.delete({
       where: { id: params.imageId },
     })
+
+    ActivityService.imageDeleted(params.id, session.user.id, image.filename, 'ticket').catch(() => {})
 
     try {
       const filepath = join(process.cwd(), 'public', 'uploads', 'tickets', params.id, image.filename)

@@ -3,6 +3,7 @@ import { requireClient } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { NotificationService } from '@/lib/services/notification'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * Comment Creation API Endpoint (Client Portal)
@@ -85,10 +86,11 @@ export async function POST(
     // Send email notification to admins
     await NotificationService.notifyAdminNewComment(params.id, comment.id)
 
-    // Send email notifications to mentioned users
     if (data.mentionedUsers && data.mentionedUsers.length > 0) {
       await NotificationService.notifyMentionedUsers(params.id, comment.id, data.mentionedUsers)
     }
+
+    ActivityService.commented(params.id, userId, comment.id, false, data.message).catch(() => {})
 
     return NextResponse.json(comment, { status: 201 })
   } catch (error) {

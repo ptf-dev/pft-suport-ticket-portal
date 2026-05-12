@@ -5,145 +5,137 @@ import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import {
+  LayoutDashboard, Ticket, Building2, Users, Settings, LogOut, Menu, X,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-/**
- * Modern Admin Navigation with Sidebar
- * Requirements: 10.2, 10.3, 10.4
- */
 interface ModernAdminNavProps {
-  user: {
-    name: string
-    email: string
-  }
+  user: { name: string; email: string }
   children: React.ReactNode
 }
 
+const NAV_ITEMS = [
+  { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
+  { href: '/admin/tickets', label: 'Tickets', icon: Ticket },
+  { href: '/admin/companies', label: 'Companies', icon: Building2 },
+  { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/settings/smtp', label: 'SMTP', icon: Settings },
+]
+
 export default function ModernAdminNav({ user, children }: ModernAdminNavProps) {
   const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/login' })
-  }
+  const [open, setOpen] = useState(false)
 
-  const navItems = [
-    { href: '/admin', label: 'Dashboard', icon: '📊', exact: true },
-    { href: '/admin/tickets', label: 'Tickets', icon: '🎫' },
-    { href: '/admin/companies', label: 'Companies', icon: '🏢' },
-    { href: '/admin/users', label: 'Users', icon: '👥' },
-    { href: '/admin/settings/smtp', label: 'SMTP Settings', icon: '⚙️' },
-  ]
+  const isActive = (href: string, exact?: boolean) =>
+    exact ? pathname === href : pathname.startsWith(href)
 
-  const isActive = (href: string, exact?: boolean) => {
-    if (exact) {
-      return pathname === href
-    }
-    return pathname.startsWith(href)
-  }
+  const current = NAV_ITEMS.find((i) => isActive(i.href, i.exact))
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
+    <div className="flex h-screen bg-bg">
+      {open && (
+        <div className="fixed inset-0 bg-ink/40 z-40 md:hidden" onClick={() => setOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed md:static w-64 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col shadow-sm z-50 transform transition-transform duration-300 ease-in-out ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-      }`}>
-        {/* Logo */}
-        <div className="h-16 flex items-center px-6 border-b border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-white text-lg font-bold">P</span>
+      <aside
+        className={cn(
+          'fixed md:static w-64 h-screen bg-bg-elev border-r border-line flex flex-col z-50 transform transition-transform duration-300',
+          open ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        )}
+      >
+        <div className="h-16 flex items-center px-5 border-b border-line">
+          <Link href="/admin" className="flex items-center gap-3 group">
+            <div className="w-9 h-9 bg-ink text-bg rounded-lg flex items-center justify-center font-display text-lg tracking-tightest shadow-ink">
+              P
             </div>
-            <div>
-              <h1 className="text-sm font-bold text-gray-900 dark:text-gray-100">PropFirmsTech</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Admin Portal</p>
+            <div className="leading-tight">
+              <div className="font-display text-lg text-ink tracking-tightest">PropFirmsTech</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute">Ops console</div>
             </div>
-          </div>
+          </Link>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                isActive(item.href, item.exact)
-                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900 dark:to-indigo-900 text-blue-700 dark:text-blue-300 shadow-sm border border-blue-100 dark:border-blue-700'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-              }`}
-            >
-              <span className="text-xl">{item.icon}</span>
-              <span>{item.label}</span>
-              {isActive(item.href, item.exact) && (
-                <div className="ml-auto w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-              )}
-            </Link>
-          ))}
+        <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto">
+          <div className="px-3 pb-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">Workspace</span>
+          </div>
+          {NAV_ITEMS.map((item) => {
+            const active = isActive(item.href, item.exact)
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  'group relative flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
+                  active
+                    ? 'bg-ink text-bg font-medium'
+                    : 'text-ink-soft hover:text-ink hover:bg-mute',
+                )}
+              >
+                <Icon className={cn('w-4 h-4', active ? 'text-bg' : 'text-ink-mute group-hover:text-ink')} strokeWidth={1.75} />
+                <span className="tracking-tight">{item.label}</span>
+                {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent" />}
+              </Link>
+            )
+          })}
         </nav>
 
-        {/* User Section */}
-        <div className="p-4 pb-6 md:pb-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="p-4 border-t border-line">
+          <div className="flex items-center gap-3 mb-3 px-1">
+            <div className="w-9 h-9 rounded-full bg-ink text-bg flex items-center justify-center font-medium text-sm">
+              {user.name?.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-ink truncate">{user.name}</div>
+              <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute truncate">{user.email}</div>
+            </div>
+          </div>
           <Button
             variant="outline"
             size="sm"
-            onClick={handleLogout}
-            className="w-full hover:bg-red-50 dark:hover:bg-red-900 hover:text-red-600 dark:hover:text-red-300 hover:border-red-200 dark:hover:border-red-700 transition-colors"
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="w-full"
           >
-            <span className="mr-2">🚪</span>
-            Logout
+            <LogOut className="w-3.5 h-3.5" /> Sign out
           </Button>
-          <div className="flex items-center gap-3 mb-3 p-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-white font-bold text-sm">
-                {user.name?.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
-            </div>
-          </div>
-          
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden w-full">
-        {/* Top Bar */}
-        <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 md:px-8 shadow-sm">
+        <header className="h-16 bg-bg-elev border-b border-line flex items-center justify-between px-4 md:px-8">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="md:hidden p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              onClick={() => setOpen(!open)}
+              className="md:hidden p-2 hover:bg-mute rounded-md text-ink-soft"
               aria-label="Toggle sidebar"
             >
-              <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-gray-100">
-            {navItems.find(item => isActive(item.href, item.exact))?.label || 'Admin'}
-            </h2>
-          </div>
-          <div className="hidden sm:flex items-center gap-4">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Welcome back, <span className="font-semibold text-gray-900 dark:text-gray-100">{user.name}</span>
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute">
+                {current?.label === 'Overview' ? 'Command center' : 'Operations'}
+              </div>
+              <h1 className="font-display text-xl tracking-tightest text-ink leading-none mt-0.5">
+                {current?.label ?? 'Admin'}
+              </h1>
             </div>
+          </div>
+          <div className="hidden md:flex items-center gap-2 text-xs">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-pulse opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-pulse" />
+            </span>
+            <span className="font-mono uppercase tracking-widest text-ink-mute">Live</span>
           </div>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 p-4 md:p-8">
-          {children}
+        <main className="flex-1 overflow-y-auto bg-bg p-4 md:p-8 bg-dots">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

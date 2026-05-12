@@ -1,299 +1,247 @@
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TicketStatus } from '@prisma/client'
 import Link from 'next/link'
+import { ArrowUpRight, CalendarClock, Flame, TrendingUp } from 'lucide-react'
+import { ActivityTimeline } from '@/components/activity-timeline'
+import { bucketToWhere } from '@/lib/activity-buckets'
 
-export default async function AdminDashboard({
-  searchParams,
-}: {
-  searchParams: { sort?: string; order?: string }
-}) {
+const STATUS_META: Record<TicketStatus, { label: string; tone: string; accent: string }> = {
+  OPEN:           { label: 'Open',           tone: 'text-danger', accent: 'bg-danger' },
+  IN_PROGRESS:    { label: 'In progress',    tone: 'text-info',   accent: 'bg-info' },
+  BLOCKED:        { label: 'Blocked',        tone: 'text-danger', accent: 'bg-danger' },
+  WAITING_CLIENT: { label: 'Waiting client', tone: 'text-warn',   accent: 'bg-warn' },
+  RESOLVED:       { label: 'Resolved',       tone: 'text-ok',     accent: 'bg-ok' },
+  CLOSED:         { label: 'Closed',         tone: 'text-ink-mute', accent: 'bg-ink-faint' },
+}
+
+export default async function AdminDashboard() {
   await requireAdmin()
 
-  const SORT_MAP: Record<string, object> = {
-    title:     { title: 'asc' },
-    company:   { company: { name: 'asc' } },
-    status:    { status: 'asc' },
-    priority:  { priority: 'asc' },
-    createdAt: { createdAt: 'asc' },
-  }
-  function applyDir(obj: any, dir: string): any {
-    const r: any = {}
-    for (const k of Object.keys(obj)) r[k] = typeof obj[k] === 'object' ? applyDir(obj[k], dir) : dir
-    return r
-  }
-  const sortKey = SORT_MAP[searchParams.sort ?? ''] ? (searchParams.sort ?? 'createdAt') : 'createdAt'
-  const order   = searchParams.order === 'asc' ? 'asc' : 'desc'
-  const orderBy = applyDir(SORT_MAP[sortKey], order)
-  const currentSort  = searchParams.sort ?? 'createdAt'
-  const currentOrder = (order) as 'asc' | 'desc'
+  const todayRange = bucketToWhere('today')
+  const yesterdayRange = bucketToWhere('yesterday')
+  const weekRange = bucketToWhere('thisWeek')
 
-  const ticketsByStatus = await Promise.all([
+  const [
+    openCount, inProgressCount, blockedCount, waitingCount, resolvedCount, closedCount,
+    todayActivity, yesterdayActivity, weekActivity,
+    urgentCount, unassignedOpenCount,
+    todayFeed,
+  ] = await Promise.all([
     prisma.ticket.count({ where: { status: TicketStatus.OPEN, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.IN_PROGRESS, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.BLOCKED, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.WAITING_CLIENT, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.RESOLVED, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.CLOSED, isDeleted: false } }),
+    prisma.ticket.count({ where: { isDeleted: false, updatedAt: todayRange } }),
+    prisma.ticket.count({ where: { isDeleted: false, updatedAt: yesterdayRange } }),
+    prisma.ticket.count({ where: { isDeleted: false, updatedAt: weekRange } }),
+    prisma.ticket.count({ where: { isDeleted: false, priority: 'URGENT', status: { notIn: ['RESOLVED', 'CLOSED'] } } }),
+    prisma.ticket.count({ where: { isDeleted: false, assignedToId: null, status: { notIn: ['RESOLVED', 'CLOSED'] } } }),
+    prisma.ticketActivity.findMany({
+      where: { createdAt: todayRange },
+      take: 20,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        actor: { select: { name: true, role: true } },
+        ticket: { select: { id: true, title: true, company: { select: { name: true } } } },
+      },
+    }),
   ])
 
   const statusCounts = {
-    OPEN: ticketsByStatus[0],
-    IN_PROGRESS: ticketsByStatus[1],
-    BLOCKED: ticketsByStatus[2],
-    WAITING_CLIENT: ticketsByStatus[3],
-    RESOLVED: ticketsByStatus[4],
-    CLOSED: ticketsByStatus[5],
+    OPEN: openCount, IN_PROGRESS: inProgressCount, BLOCKED: blockedCount,
+    WAITING_CLIENT: waitingCount, RESOLVED: resolvedCount, CLOSED: closedCount,
   }
-
+  const totalActive = openCount + inProgressCount + blockedCount + waitingCount
   const totalTickets = Object.values(statusCounts).reduce((a, b) => a + b, 0)
 
-  const recentTickets = await prisma.ticket.findMany({
-    where: { isDeleted: false },
-    take: 10,
-    orderBy,
-    include: {
-      company: { select: { name: true } },
-      createdBy: { select: { name: true } },
-    },
-  })
+  const velocity = yesterdayActivity === 0 ? null : ((todayActivity - yesterdayActivity) / Math.max(1, yesterdayActivity)) * 100
 
   return (
     <div className="space-y-8">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
-        <Card className="relative overflow-hidden border-l-4 border-l-red-500 hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">🔴</span>
-              </div>
-              <Badge variant="destructive" className="font-semibold">
-                {statusCounts.OPEN > 0 ? `${((statusCounts.OPEN / totalTickets) * 100).toFixed(0)}%` : '0%'}
-              </Badge>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.OPEN}</div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Open Tickets</div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-l-4 border-l-blue-500 hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">⚡</span>
-              </div>
-              <Badge variant="default" className="font-semibold">
-                {statusCounts.IN_PROGRESS > 0 ? `${((statusCounts.IN_PROGRESS / totalTickets) * 100).toFixed(0)}%` : '0%'}
-              </Badge>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.IN_PROGRESS}</div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-l-4 border-l-orange-500 hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">🚫</span>
-              </div>
-              <Badge variant="destructive" className="font-semibold">
-                {statusCounts.BLOCKED > 0 ? `${((statusCounts.BLOCKED / totalTickets) * 100).toFixed(0)}%` : '0%'}
-              </Badge>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.BLOCKED}</div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Blocked</div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-l-4 border-l-yellow-500 hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">⏳</span>
-              </div>
-              <Badge variant="warning" className="font-semibold">
-                {statusCounts.WAITING_CLIENT > 0 ? `${((statusCounts.WAITING_CLIENT / totalTickets) * 100).toFixed(0)}%` : '0%'}
-              </Badge>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.WAITING_CLIENT}</div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Waiting Client</div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-l-4 border-l-green-500 hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">✅</span>
-              </div>
-              <Badge variant="success" className="font-semibold">
-                {statusCounts.RESOLVED > 0 ? `${((statusCounts.RESOLVED / totalTickets) * 100).toFixed(0)}%` : '0%'}
-              </Badge>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.RESOLVED}</div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Resolved</div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-l-4 border-l-gray-500 hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-                <span className="text-2xl">📦</span>
-              </div>
-              <Badge variant="secondary" className="font-semibold">
-                {statusCounts.CLOSED > 0 ? `${((statusCounts.CLOSED / totalTickets) * 100).toFixed(0)}%` : '0%'}
-              </Badge>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{statusCounts.CLOSED}</div>
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400">Closed</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Tickets Table */}
-      <Card className="shadow-md">
-        <CardHeader className="border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-xl">Recent Tickets</CardTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Latest support requests across all companies</p>
-            </div>
-            <Link href="/admin/tickets">
-              <Button variant="outline" size="sm">View All →</Button>
-            </Link>
+      <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-ink-mute mb-2">
+            <span className="inline-block h-px w-6 bg-ink-mute/50" />
+            <span>Command center</span>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
-                <tr>
-                  <SortableTh column="title"     label="Ticket"  currentSort={currentSort} currentOrder={currentOrder} />
-                  <SortableTh column="company"   label="Company" currentSort={currentSort} currentOrder={currentOrder} />
-                  <SortableTh column="status"    label="Status"  currentSort={currentSort} currentOrder={currentOrder} />
-                  <SortableTh column="priority"  label="Priority" currentSort={currentSort} currentOrder={currentOrder} />
-                  <SortableTh column="createdAt" label="Created" currentSort={currentSort} currentOrder={currentOrder} />
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
-                {recentTickets.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                          <span className="text-3xl">📭</span>
-                        </div>
-                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No tickets found</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  recentTickets.map((ticket) => (
-                    <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                      {/* Ticket */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                            ticket.priority === 'URGENT' ? 'bg-red-500' :
-                            ticket.priority === 'HIGH'   ? 'bg-orange-500' :
-                            ticket.priority === 'MEDIUM' ? 'bg-yellow-500' :
-                                                           'bg-gray-400'
-                          }`}>
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                            </svg>
-                          </div>
-                          <div className="min-w-0">
-                            <Link
-                              href={`/admin/tickets/${ticket.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-1 block"
-                            >
-                              {ticket.title}
-                            </Link>
-                            <div className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
-                              #{ticket.id.slice(0, 8)}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
+          <h1 className="font-display text-[clamp(2.25rem,5vw,4rem)] leading-[0.92] tracking-tightest text-ink">
+            Good to see you.<br />
+            <em className="font-display italic text-accent">Here&apos;s the pulse.</em>
+          </h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link href="/admin/tickets?activity=today">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Flame className="w-4 h-4" /> Today&apos;s tickets
+            </Button>
+          </Link>
+          <Link href="/admin/tickets">
+            <Button variant="default" size="sm" className="gap-2">
+              All tickets <ArrowUpRight className="w-4 h-4" />
+            </Button>
+          </Link>
+        </div>
+      </header>
 
-                      {/* Company */}
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{ticket.company.name}</div>
-                      </td>
+      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-px bg-line rounded-xl overflow-hidden border border-line">
+        <StatCell
+          label="Today"
+          value={todayActivity}
+          sub={velocity !== null ? `${velocity > 0 ? '+' : ''}${velocity.toFixed(0)}% vs yesterday` : 'no comparison yet'}
+          tone={velocity !== null && velocity > 0 ? 'text-pulse' : 'text-ink'}
+          live
+        />
+        <StatCell label="This week" value={weekActivity} sub={`${Math.round((weekActivity / Math.max(1, totalTickets)) * 100)}% of portfolio`} />
+        <StatCell label="Active backlog" value={totalActive} sub={`${totalTickets} total in system`} />
+        <StatCell label="Urgent" value={urgentCount} sub="unresolved & urgent" tone="text-danger" />
+        <StatCell label="Unassigned" value={unassignedOpenCount} sub="active & no owner" tone={unassignedOpenCount > 0 ? 'text-warn' : 'text-ink'} />
+      </section>
 
-                      {/* Status */}
-                      <td className="px-6 py-4">
-                        <Badge
-                          variant={
-                            ticket.status === 'OPEN'           ? 'destructive' :
-                            ticket.status === 'BLOCKED'        ? 'destructive' :
-                            ticket.status === 'IN_PROGRESS'    ? 'default' :
-                            ticket.status === 'WAITING_CLIENT' ? 'warning' :
-                            ticket.status === 'RESOLVED'       ? 'success' :
-                                                                 'secondary'
-                          }
-                          className="font-semibold text-xs whitespace-nowrap"
-                        >
-                          {ticket.status.replace(/_/g, ' ')}
-                        </Badge>
-                      </td>
-
-                      {/* Priority */}
-                      <td className="px-6 py-4">
-                        <Badge
-                          variant={
-                            ticket.priority === 'URGENT' ? 'destructive' :
-                            ticket.priority === 'HIGH'   ? 'warning' :
-                                                           'secondary'
-                          }
-                          className="font-semibold text-xs"
-                        >
-                          {ticket.priority}
-                        </Badge>
-                      </td>
-
-                      {/* Created */}
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900 dark:text-white font-medium">
-                          {new Date(ticket.createdAt).toLocaleDateString('en-US', {
-                            month: 'short', day: 'numeric', year: 'numeric',
-                          })}
-                        </div>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-6 py-4 text-right">
-                        <Link
-                          href={`/admin/tickets/${ticket.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm transition-colors"
-                        >
-                          View
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </Link>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+          <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
+            <h2 className="font-display text-2xl tracking-tightest text-ink">Status mix</h2>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Live distribution</span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="rule mx-6" />
+          <div className="px-6 py-5 space-y-4">
+            <div className="flex h-3 rounded-full overflow-hidden bg-bg-sunken">
+              {(Object.keys(STATUS_META) as TicketStatus[]).map((s) => {
+                const c = statusCounts[s]
+                if (c === 0 || totalTickets === 0) return null
+                const pct = (c / totalTickets) * 100
+                return (
+                  <span
+                    key={s}
+                    title={`${STATUS_META[s].label}: ${c}`}
+                    className={`${STATUS_META[s].accent} transition-all`}
+                    style={{ width: `${pct}%` }}
+                  />
+                )
+              })}
+            </div>
+            <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+              {(Object.keys(STATUS_META) as TicketStatus[]).map((s) => (
+                <li key={s} className="flex items-center gap-2 group">
+                  <span className={`h-2 w-2 rounded-full ${STATUS_META[s].accent}`} />
+                  <span className="text-sm text-ink-soft flex-1">{STATUS_META[s].label}</span>
+                  <span className="font-mono tabular-nums text-sm text-ink">{statusCounts[s]}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+          <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
+            <h2 className="font-display text-2xl tracking-tightest text-ink">Needs you</h2>
+          </div>
+          <div className="rule mx-6" />
+          <div className="px-6 py-5 space-y-3">
+            <QuickLink href="/admin/tickets?activity=today" label="Today's movement" value={todayActivity} accent />
+            <QuickLink href="/admin/tickets?priority=URGENT&status=NOT_RESOLVED" label="Urgent unresolved" value={urgentCount} />
+            <QuickLink href="/admin/tickets?assignedTo=unassigned&status=NOT_RESOLVED" label="Unassigned & open" value={unassignedOpenCount} />
+            <QuickLink href="/admin/tickets?status=WAITING_CLIENT" label="Waiting on client" value={waitingCount} />
+            <QuickLink href="/admin/tickets?scheduleFilter=today" label="Scheduled today" value={0} icon={<CalendarClock className="w-3.5 h-3.5" />} />
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+        <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
+          <div>
+            <h2 className="font-display text-2xl tracking-tightest text-ink">Today at a glance</h2>
+            <p className="text-xs text-ink-mute mt-1">Every move across every ticket, oldest last.</p>
+          </div>
+          <Link href="/admin/tickets?activity=today" className="text-xs font-mono uppercase tracking-widest text-ink-mute hover:text-ink inline-flex items-center gap-1">
+            See tickets <ArrowUpRight className="w-3 h-3" />
+          </Link>
+        </div>
+        <div className="rule mx-6" />
+        <div className="px-6 py-5">
+          {todayFeed.length === 0 ? (
+            <div className="py-8 text-center text-sm text-ink-mute">Quiet so far today.</div>
+          ) : (
+            <ul className="space-y-3">
+              {todayFeed.map((a) => (
+                <li key={a.id} className="flex items-center gap-3 text-sm group">
+                  <span className="font-mono tabular-nums text-[10px] uppercase tracking-widest text-ink-faint w-16 shrink-0">
+                    {new Date(a.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                  </span>
+                  <span className="text-ink-soft flex-1 truncate">
+                    <strong className="text-ink">{a.actor?.name ?? 'System'}</strong>{' '}
+                    <span className="font-mono text-[11px] uppercase tracking-wider text-accent">{a.type.replace(/_/g, ' ').toLowerCase()}</span>{' '}
+                    on{' '}
+                    <Link href={`/admin/tickets/${a.ticketId}`} className="text-ink hover:text-accent font-medium">
+                      {a.ticket?.title}
+                    </Link>
+                    <span className="text-ink-mute"> · {a.ticket?.company.name}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
     </div>
+  )
+}
+
+function StatCell({
+  label, value, sub, tone, live,
+}: {
+  label: string
+  value: number
+  sub?: string
+  tone?: string
+  live?: boolean
+}) {
+  return (
+    <div className="bg-bg-elev p-5 relative">
+      <div className="flex items-center gap-2 mb-3">
+        {live && (
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-pulse opacity-75 animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-pulse" />
+          </span>
+        )}
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute">{label}</span>
+      </div>
+      <div className={`font-display text-5xl tracking-tightest leading-none tabular-nums ${tone ?? 'text-ink'}`}>
+        {value}
+      </div>
+      {sub && <div className="mt-2 text-xs text-ink-mute">{sub}</div>}
+    </div>
+  )
+}
+
+function QuickLink({
+  href, label, value, accent, icon,
+}: {
+  href: string
+  label: string
+  value: number
+  accent?: boolean
+  icon?: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex items-center justify-between py-2 border-b border-line-soft last:border-0 -mx-2 px-2 rounded-md hover:bg-mute transition-colors"
+    >
+      <span className="flex items-center gap-2 text-sm text-ink-soft group-hover:text-ink">
+        {icon}
+        {label}
+      </span>
+      <span className="flex items-center gap-2">
+        <span className={`font-mono tabular-nums text-base ${accent ? 'text-accent' : 'text-ink'}`}>{value}</span>
+        <ArrowUpRight className="w-3.5 h-3.5 text-ink-faint group-hover:text-ink transition-colors" />
+      </span>
+    </Link>
   )
 }

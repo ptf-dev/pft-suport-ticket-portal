@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TicketStatus } from '@prisma/client'
 import { NotificationService } from '@/lib/services/notification'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * PATCH /api/admin/tickets/[id]/status
@@ -14,14 +15,11 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Require admin authentication
-    await requireAdmin()
+    const session = await requireAdmin()
 
-    // Parse request body
     const body = await request.json()
     const { status } = body
 
-    // Validate status
     if (!status || !Object.values(TicketStatus).includes(status)) {
       return NextResponse.json(
         { error: 'Invalid status value' },
@@ -29,7 +27,6 @@ export async function PATCH(
       )
     }
 
-    // Check if ticket exists
     const ticket = await prisma.ticket.findUnique({
       where: { id: params.id },
     })
@@ -41,13 +38,15 @@ export async function PATCH(
       )
     }
 
-    // Update ticket status
     const updatedTicket = await prisma.ticket.update({
       where: { id: params.id },
       data: { status },
     })
 
-    // Notify client about status change (fire-and-forget)
+    if (ticket.status !== status) {
+      ActivityService.statusChanged(params.id, session.user.id, ticket.status, status).catch(() => {})
+    }
+
     NotificationService.notifyClientStatusChanged(params.id, ticket.status, status).catch(() => {})
 
     return NextResponse.json(updatedTicket)

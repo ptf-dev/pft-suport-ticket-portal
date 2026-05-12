@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { NotificationService } from '@/lib/services/notification'
+import { ActivityService } from '@/lib/services/activity'
 
 const createTicketSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -16,7 +17,7 @@ const createTicketSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin()
+    const session = await requireAdmin()
 
     const body = await request.json()
     const result = createTicketSchema.safeParse(body)
@@ -83,9 +84,12 @@ export async function POST(request: NextRequest) {
     // Notify admin (fire-and-forget)
     NotificationService.notifyAdminTicketCreated(ticket.id).catch(() => {})
 
+    ActivityService.created(ticket.id, session.user.id, ticket.title).catch(() => {})
+
     // Notify assigned agent if ticket was assigned during creation
     if (assignedToId) {
       NotificationService.notifyAgentTicketAssigned(ticket.id).catch(() => {})
+      ActivityService.assigned(ticket.id, session.user.id, assignedToId, '').catch(() => {})
     }
 
     return NextResponse.json(ticket, { status: 201 })
