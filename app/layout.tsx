@@ -31,6 +31,16 @@ export const metadata: Metadata = {
   manifest: "/site.webmanifest",
 };
 
+const themeInit = `
+(function(){try{
+  var t = localStorage.getItem('theme');
+  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  var dark = t === 'dark' || (!t && prefersDark);
+  if (dark) document.documentElement.classList.add('dark');
+  document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+}catch(e){}})();
+`
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -38,6 +48,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
       <body className="font-sans antialiased">{children}</body>
     </html>
   );

@@ -62,19 +62,17 @@ export default async function AdminDashboard() {
   const velocity = yesterdayActivity === 0 ? null : ((todayActivity - yesterdayActivity) / Math.max(1, yesterdayActivity)) * 100
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-ink-mute mb-2">
-            <span className="inline-block h-px w-6 bg-ink-mute/50" />
-            <span>Command center</span>
-          </div>
-          <h1 className="font-display text-[clamp(2.25rem,5vw,4rem)] leading-[0.92] tracking-tightest text-ink">
-            Good to see you.<br />
-            <em className="font-display italic text-accent">Here&apos;s the pulse.</em>
+    <div className="space-y-6">
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="font-display text-2xl tracking-tightest text-ink leading-none">
+            Good to see you. <em className="italic text-accent">Here&apos;s the pulse.</em>
           </h1>
+          <span className="hidden md:inline font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute">
+            Command center
+          </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           <Link href="/admin/tickets?activity=today">
             <Button variant="outline" size="sm" className="gap-2">
               <Flame className="w-4 h-4" /> Today&apos;s tickets

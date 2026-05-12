@@ -179,21 +179,16 @@ export default async function AdminTicketsPage({
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-ink-mute mb-2">
-            <span className="inline-block h-px w-6 bg-ink-mute/50" />
-            <span>Operations · All tickets</span>
-          </div>
-          <h1 className="font-display text-[clamp(2rem,4vw,3.25rem)] tracking-tightest text-ink leading-[0.95]">
-            Every ticket,<br className="hidden sm:block" />
-            <em className="font-display italic text-accent">one glance.</em>
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="font-display text-2xl tracking-tightest text-ink leading-none">
+            Every ticket, <em className="italic text-accent">one glance.</em>
           </h1>
-          <p className="mt-3 text-sm text-ink-mute max-w-xl">
-            Filter by activity to catch yesterday&apos;s conversations, today&apos;s fires, and the tickets that went quiet.
-          </p>
+          <span className="hidden md:inline font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute truncate">
+            Operations · All tickets
+          </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <div className="inline-flex rounded-lg border border-line p-0.5">
             <Link href="/admin/tickets?view=board">
               <Button variant={view === 'board' ? 'default' : 'ghost'} size="sm" className="gap-2">

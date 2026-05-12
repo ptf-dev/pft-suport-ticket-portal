@@ -9,6 +9,7 @@ import {
   LayoutDashboard, Ticket, Building2, Users, Settings, LogOut, Menu, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 interface ModernAdminNavProps {
   user: { name: string; email: string }
@@ -123,12 +124,15 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
               </h1>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-2 text-xs">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-pulse opacity-75 animate-ping" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-pulse" />
-            </span>
-            <span className="font-mono uppercase tracking-widest text-ink-mute">Live</span>
+          <div className="flex items-center gap-3 text-xs">
+            <div className="hidden md:flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-pulse opacity-75 animate-ping" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-pulse" />
+              </span>
+              <span className="font-mono uppercase tracking-widest text-ink-mute">Live</span>
+            </div>
+            <ThemeToggle compact />
           </div>
         </header>
 
