@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * MCP API: Get Ticket Comments
@@ -100,7 +101,8 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { content } = body
+    const { content, internal } = body
+    const isInternal = internal === true
 
     if (!content || typeof content !== 'string') {
       return NextResponse.json(
@@ -143,12 +145,12 @@ export async function POST(
       })
     }
 
-    // Create comment
     const comment = await prisma.ticketComment.create({
       data: {
         ticketId: params.id,
         authorId: mcpUser.id,
         message: content,
+        internal: isInternal,
       },
       include: {
         author: {
@@ -162,11 +164,14 @@ export async function POST(
       },
     })
 
+    ActivityService.commented(params.id, mcpUser.id, comment.id, isInternal, content).catch(() => {})
+
     return NextResponse.json({
       success: true,
       comment: {
         id: comment.id,
         content: comment.message,
+        internal: comment.internal,
         author: comment.author,
         createdAt: comment.createdAt,
       },

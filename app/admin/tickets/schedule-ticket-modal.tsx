@@ -3,12 +3,22 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
+import { CalendarClock, Pin, Forward, CalendarDays, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface ScheduleTicketModalProps {
   ticketId: string
   ticketTitle: string
   currentScheduledDate: Date | null
   onClose: () => void
+}
+
+function toISODate(d: Date): string {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 export function ScheduleTicketModal({
@@ -19,28 +29,24 @@ export function ScheduleTicketModal({
 }: ScheduleTicketModalProps) {
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState<string>(
-    currentScheduledDate
-      ? new Date(currentScheduledDate).toISOString().split('T')[0]
-      : ''
+    currentScheduledDate ? toISODate(new Date(currentScheduledDate)) : '',
   )
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  // Quick date options
   const getQuickDate = (days: number): string => {
     const date = new Date()
     date.setDate(date.getDate() + days)
-    return date.toISOString().split('T')[0]
+    return toISODate(date)
   }
 
-  const handleQuickSelect = (days: number) => {
-    setSelectedDate(getQuickDate(days))
-  }
+  const today = getQuickDate(0)
+  const tomorrow = getQuickDate(1)
+  const nextWeek = getQuickDate(7)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     setLoading(true)
     setError(null)
 
@@ -48,22 +54,17 @@ export function ScheduleTicketModal({
       const response = await fetch(`/api/admin/tickets/${ticketId}/schedule`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          scheduledDate: selectedDate || null,
-        }),
+        body: JSON.stringify({ scheduledDate: selectedDate || null }),
       })
 
       const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update schedule')
-      }
+      if (!response.ok) throw new Error(data.error || 'Failed to update schedule')
 
       setSuccess(true)
       setTimeout(() => {
         router.refresh()
         onClose()
-      }, 1000)
+      }, 700)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -81,18 +82,14 @@ export function ScheduleTicketModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scheduledDate: null }),
       })
-
       const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to clear schedule')
-      }
+      if (!response.ok) throw new Error(data.error || 'Failed to clear schedule')
 
       setSuccess(true)
       setTimeout(() => {
         router.refresh()
         onClose()
-      }, 1000)
+      }, 700)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -100,123 +97,121 @@ export function ScheduleTicketModal({
     }
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  const QuickChip = ({
+    value,
+    icon,
+    label,
+  }: {
+    value: string
+    icon: React.ReactNode
+    label: string
+  }) => (
+    <button
+      type="button"
+      onClick={() => setSelectedDate(value)}
+      disabled={loading || success}
+      className={cn(
+        'inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-medium transition-colors border',
+        selectedDate === value
+          ? 'bg-ink text-bg border-ink'
+          : 'bg-bg-elev text-ink-soft border-line hover:text-ink hover:border-ink/40',
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  )
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-md w-full border border-gray-200 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-md">
-              <span className="text-2xl">📅</span>
+    <div className="fixed inset-0 bg-ink/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-bg-elev rounded-xl shadow-soft max-w-md w-full border border-line overflow-hidden animate-fade-up">
+        <header className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-line-soft">
+          <div className="flex items-start gap-3 min-w-0">
+            <div className="w-10 h-10 bg-mute rounded-lg flex items-center justify-center shrink-0">
+              <CalendarClock className="w-5 h-5 text-ink" />
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Schedule Ticket
-              </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute mb-0.5">
+                Schedule ticket
+              </div>
+              <h2 className="font-display text-xl tracking-tightest text-ink leading-tight truncate">
                 {ticketTitle}
-              </p>
+              </h2>
             </div>
           </div>
-        </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-md text-ink-mute hover:text-ink hover:bg-mute transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </header>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-sm text-red-800 dark:text-red-200 font-medium">
-                {error}
-              </p>
+            <div className="px-3 py-2 bg-danger-soft border border-danger/30 rounded-md text-sm text-danger">
+              {error}
             </div>
           )}
 
           {success && (
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <p className="text-sm text-green-800 dark:text-green-200 font-medium">
-                ✓ Schedule updated successfully!
-              </p>
+            <div className="px-3 py-2 bg-ok-soft border border-ok/30 rounded-md text-sm text-ok">
+              Saved.
             </div>
           )}
 
-          {/* Quick Select Buttons */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Quick Select
+            <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute mb-2">
+              Quick select
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              <Button
-                type="button"
-                variant={selectedDate === getQuickDate(0) ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleQuickSelect(0)}
-                disabled={loading || success}
-                className="text-xs"
-              >
-                📌 Today
-              </Button>
-              <Button
-                type="button"
-                variant={selectedDate === getQuickDate(1) ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleQuickSelect(1)}
-                disabled={loading || success}
-                className="text-xs"
-              >
-                ⏭️ Tomorrow
-              </Button>
-              <Button
-                type="button"
-                variant={selectedDate === getQuickDate(7) ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => handleQuickSelect(7)}
-                disabled={loading || success}
-                className="text-xs"
-              >
-                📆 Next Week
-              </Button>
+            <div className="flex flex-wrap gap-2">
+              <QuickChip value={today} icon={<Pin className="w-3 h-3" />} label="Today" />
+              <QuickChip value={tomorrow} icon={<Forward className="w-3 h-3" />} label="Tomorrow" />
+              <QuickChip value={nextWeek} icon={<CalendarDays className="w-3 h-3" />} label="Next week" />
             </div>
           </div>
 
-          {/* Date Picker */}
           <div>
-            <label htmlFor="scheduled-date" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Or Choose Custom Date
+            <label className="block font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute mb-2">
+              Custom date
             </label>
-            <input
-              type="date"
-              id="scheduled-date"
+            <DatePicker
               value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              min={today}
-              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              onChange={setSelectedDate}
+              minDate={new Date(new Date().setHours(0, 0, 0, 0))}
+              placeholder="Pick a date"
               disabled={loading || success}
             />
           </div>
 
           {currentScheduledDate && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>Current schedule:</strong>{' '}
+            <div className="px-3 py-2 bg-mute rounded-md">
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute">
+                Currently scheduled
+              </div>
+              <div className="text-sm text-ink mt-0.5">
                 {new Date(currentScheduledDate).toLocaleDateString('en-US', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
                 })}
-              </p>
+              </div>
             </div>
           )}
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-2 pt-2">
             {currentScheduledDate && (
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleClear}
                 disabled={loading || success}
-                className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="flex-1 text-danger hover:bg-danger-soft hover:border-danger/30"
               >
-                Clear Schedule
+                Clear
               </Button>
             )}
             <Button
@@ -233,7 +228,7 @@ export function ScheduleTicketModal({
               disabled={loading || success || !selectedDate}
               className="flex-1"
             >
-              {loading ? 'Saving...' : success ? 'Saved!' : 'Save Schedule'}
+              {loading ? 'Saving…' : success ? 'Saved' : 'Save'}
             </Button>
           </div>
         </form>

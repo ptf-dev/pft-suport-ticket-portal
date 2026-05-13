@@ -2,8 +2,9 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Search, X, ChevronDown, Pin, Forward, CalendarDays, HelpCircle, CalendarClock } from 'lucide-react'
+import { Search, X, ChevronDown, Pin, Forward, CalendarDays, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { DatePicker } from '@/components/ui/date-picker'
 
 interface TicketFiltersProps {
   companies: { id: string; name: string }[]
@@ -307,23 +308,20 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
           Unscheduled
         </Chip>
 
-        <div className="inline-flex items-center h-8 rounded-md border border-line bg-bg-elev overflow-hidden">
-          <CalendarClock className="w-3.5 h-3.5 text-ink-mute ml-2" />
-          <input
-            type="date"
-            value={scheduleDate}
-            onChange={(e) => setScheduleDate(e.target.value)}
-            className="h-full px-2 text-xs bg-transparent text-ink outline-none font-mono tabular-nums"
-          />
-          {scheduleDate && scheduleDate !== currentFilters.scheduleDate && (
-            <button
-              onClick={applyScheduleDate}
-              className="h-full px-2.5 text-xs font-medium text-bg bg-ink hover:brightness-110 transition"
-            >
-              Go
-            </button>
-          )}
-        </div>
+        <DatePicker
+          compact
+          value={scheduleDate}
+          onChange={(v) => {
+            setScheduleDate(v)
+            const params = new URLSearchParams(searchParams.toString())
+            params.delete('scheduleFilter')
+            if (v) params.set('scheduleDate', v)
+            else params.delete('scheduleDate')
+            params.set('page', '1')
+            router.push(`/admin/tickets?${params.toString()}`)
+          }}
+          placeholder="Pick date"
+        />
 
         {activeCount > 0 && (
           <div className="ml-auto flex items-center gap-2">

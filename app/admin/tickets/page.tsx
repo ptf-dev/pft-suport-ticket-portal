@@ -211,23 +211,21 @@ export default async function AdminTicketsPage({
 
       <ActivityQuickFilter counts={bucketCounts} current={activity} total={allTotal} />
 
-      {view === 'table' && (
-        <TicketFilters
-          companies={companies}
-          currentFilters={{
-            company: searchParams.company,
-            status: searchParams.status,
-            priority: searchParams.priority,
-            assignedTo: searchParams.assignedTo,
-            search: searchParams.search,
-            dateFilter: searchParams.dateFilter,
-            startDate: searchParams.startDate,
-            endDate: searchParams.endDate,
-            scheduleFilter: searchParams.scheduleFilter,
-            scheduleDate: searchParams.scheduleDate,
-          }}
-        />
-      )}
+      <TicketFilters
+        companies={companies}
+        currentFilters={{
+          company: searchParams.company,
+          status: searchParams.status,
+          priority: searchParams.priority,
+          assignedTo: searchParams.assignedTo,
+          search: searchParams.search,
+          dateFilter: searchParams.dateFilter,
+          startDate: searchParams.startDate,
+          endDate: searchParams.endDate,
+          scheduleFilter: searchParams.scheduleFilter,
+          scheduleDate: searchParams.scheduleDate,
+        }}
+      />
 
       {view === 'board' ? (
         <InteractiveTicketBoard tickets={tickets} basePath="/admin/tickets" />
