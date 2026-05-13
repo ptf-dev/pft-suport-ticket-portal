@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { DayPicker } from 'react-day-picker'
 import { CalendarIcon, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -30,6 +31,9 @@ function fromISO(value?: string): Date | undefined {
   return new Date(y, m - 1, d)
 }
 
+const POPOVER_W = 280
+const POPOVER_H = 320
+
 export function DatePicker({
   value,
   onChange,
@@ -40,13 +44,44 @@ export function DatePicker({
   allowClear = true,
 }: DatePickerProps) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const popRef = useRef<HTMLDivElement>(null)
   const selected = fromISO(value)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!open || !triggerRef.current) return
+    const update = () => {
+      const r = triggerRef.current!.getBoundingClientRect()
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      let left = r.left
+      if (left + POPOVER_W > vw - 8) left = Math.max(8, vw - POPOVER_W - 8)
+      let top = r.bottom + 4
+      if (top + POPOVER_H > vh - 8) top = Math.max(8, r.top - POPOVER_H - 4)
+      setPos({ top, left })
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
     const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (triggerRef.current?.contains(t)) return
+      if (popRef.current?.contains(t)) return
+      setOpen(false)
     }
     const onEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
@@ -63,9 +98,52 @@ export function DatePicker({
     ? selected.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
     : placeholder
 
+  const popover = open && pos && mounted ? createPortal(
+    <div
+      ref={popRef}
+      style={{ top: pos.top, left: pos.left, width: POPOVER_W }}
+      className="fixed z-[100] bg-bg-elev border border-line rounded-xl shadow-soft overflow-hidden animate-fade-up"
+    >
+      <DayPicker
+        mode="single"
+        selected={selected}
+        onSelect={(d) => {
+          if (d) {
+            onChange(toISODate(d))
+            setOpen(false)
+          }
+        }}
+        disabled={minDate ? { before: minDate } : undefined}
+        showOutsideDays
+        weekStartsOn={1}
+        className="p-3 text-ink"
+        classNames={{
+          month_caption: 'flex justify-center relative items-center pb-2 h-8',
+          caption_label: 'font-display text-base tracking-tightest',
+          nav: 'flex items-center justify-between absolute inset-x-2 top-2',
+          button_previous: 'inline-flex items-center justify-center w-7 h-7 rounded-md hover:bg-mute text-ink-soft hover:text-ink transition-colors',
+          button_next: 'inline-flex items-center justify-center w-7 h-7 rounded-md hover:bg-mute text-ink-soft hover:text-ink transition-colors',
+          chevron: 'w-4 h-4 fill-current',
+          month_grid: 'w-full border-collapse mt-1',
+          weekdays: 'flex',
+          weekday: 'w-9 font-mono text-[10px] uppercase tracking-widest text-ink-faint font-normal',
+          week: 'flex w-full mt-1',
+          day: 'w-9 h-9 text-center relative p-0',
+          day_button: 'w-9 h-9 inline-flex items-center justify-center rounded-md text-sm text-ink-soft hover:bg-mute hover:text-ink transition-colors tabular-nums cursor-pointer',
+          selected: '[&>button]:!bg-ink [&>button]:!text-bg hover:[&>button]:!bg-ink',
+          today: '[&>button]:text-accent [&>button]:font-semibold',
+          outside: '[&>button]:text-ink-faint/60',
+          disabled: '[&>button]:text-ink-faint/40 [&>button]:cursor-not-allowed [&>button]:hover:bg-transparent',
+        }}
+      />
+    </div>,
+    document.body,
+  ) : null
+
   return (
-    <div ref={ref} className="relative inline-block">
+    <>
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
@@ -95,43 +173,7 @@ export function DatePicker({
           </span>
         )}
       </button>
-
-      {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-bg-elev border border-line rounded-xl shadow-soft overflow-hidden animate-fade-up">
-          <DayPicker
-            mode="single"
-            selected={selected}
-            onSelect={(d) => {
-              if (d) {
-                onChange(toISODate(d))
-                setOpen(false)
-              }
-            }}
-            disabled={minDate ? { before: minDate } : undefined}
-            showOutsideDays
-            weekStartsOn={1}
-            className="p-3 text-ink"
-            classNames={{
-              month_caption: 'flex justify-center relative items-center pb-2 h-8',
-              caption_label: 'font-display text-base tracking-tightest',
-              nav: 'flex items-center justify-between absolute inset-x-2 top-2',
-              button_previous: 'inline-flex items-center justify-center w-7 h-7 rounded-md hover:bg-mute text-ink-soft hover:text-ink transition-colors',
-              button_next: 'inline-flex items-center justify-center w-7 h-7 rounded-md hover:bg-mute text-ink-soft hover:text-ink transition-colors',
-              chevron: 'w-4 h-4 fill-current',
-              month_grid: 'w-full border-collapse mt-1',
-              weekdays: 'flex',
-              weekday: 'w-9 font-mono text-[10px] uppercase tracking-widest text-ink-faint font-normal',
-              week: 'flex w-full mt-1',
-              day: 'w-9 h-9 text-center relative p-0',
-              day_button: 'w-9 h-9 inline-flex items-center justify-center rounded-md text-sm text-ink-soft hover:bg-mute hover:text-ink transition-colors tabular-nums cursor-pointer',
-              selected: '[&>button]:!bg-ink [&>button]:!text-bg hover:[&>button]:!bg-ink',
-              today: '[&>button]:text-accent [&>button]:font-semibold',
-              outside: '[&>button]:text-ink-faint/60',
-              disabled: '[&>button]:text-ink-faint/40 [&>button]:cursor-not-allowed [&>button]:hover:bg-transparent',
-            }}
-          />
-        </div>
-      )}
-    </div>
+      {popover}
+    </>
   )
 }
