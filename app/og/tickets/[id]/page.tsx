@@ -23,6 +23,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
       siteName: 'PropFirmsTech Support Portal',
       type: 'website',
     },
+    twitter: {
+      card: 'summary_large_image',
+      title: ticket.title,
+      description: `Support ticket — Status: ${statusLabel}`,
+    },
   }
 }
 
