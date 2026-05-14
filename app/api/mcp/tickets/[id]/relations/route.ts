@@ -14,15 +14,6 @@ const INVERSE_RELATIONS: Record<string, string> = {
   ADDED_TO_ROADMAP: 'ADDED_TO_ROADMAP',
 }
 
-const INCOMING_LABELS: Record<string, string> = {
-  BLOCKS: 'BLOCKED_BY',
-  BLOCKED_BY: 'BLOCKS',
-  RELATES_TO: 'RELATES_TO',
-  IS_IDEA_FOR: 'IS_IDEA_FOR',
-  WILL_IMPLEMENT_AFTER: 'WILL_IMPLEMENT_AFTER',
-  ADDED_TO_ROADMAP: 'ADDED_TO_ROADMAP',
-}
-
 /**
  * MCP API: Get Ticket Relations
  */
@@ -62,40 +53,18 @@ export async function GET(
       },
     })
 
-    const relationsAsTarget = await prisma.ticketRelation.findMany({
-      where: { targetTicketId: params.id },
-      include: {
-        sourceTicket: {
-          select: { id: true, title: true, status: true, priority: true },
-        },
-        createdBy: {
-          select: { name: true },
-        },
-      },
-    })
-
     return NextResponse.json({
       ticketId: params.id,
       ticketTitle: ticket.title,
-      relations: [
-        ...relationsAsSource.map(r => ({
-          id: r.id,
-          type: r.relationType,
-          direction: 'outgoing' as const,
-          relatedTicket: r.targetTicket,
-          createdBy: r.createdBy?.name || 'System',
-          createdAt: r.createdAt,
-        })),
-        ...relationsAsTarget.map(r => ({
-          id: r.id,
-          type: INCOMING_LABELS[r.relationType] || r.relationType,
-          direction: 'incoming' as const,
-          relatedTicket: r.sourceTicket,
-          createdBy: r.createdBy?.name || 'System',
-          createdAt: r.createdAt,
-        })),
-      ],
-      count: relationsAsSource.length + relationsAsTarget.length,
+      relations: relationsAsSource.map(r => ({
+        id: r.id,
+        type: r.relationType,
+        direction: 'outgoing' as const,
+        relatedTicket: r.targetTicket,
+        createdBy: r.createdBy?.name || 'System',
+        createdAt: r.createdAt,
+      })),
+      count: relationsAsSource.length,
     })
   } catch (error) {
     console.error('MCP API Error:', error)

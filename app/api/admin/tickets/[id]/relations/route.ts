@@ -18,19 +18,6 @@ const INVERSE_RELATIONS: Record<string, string> = {
 }
 
 /**
- * How to display a relation when viewing it from the *target* ticket's perspective.
- * e.g. If A -> BLOCKS -> B, then on ticket B we show "Blocked by A"
- */
-const INCOMING_LABELS: Record<string, string> = {
-  BLOCKS: 'BLOCKED_BY',
-  BLOCKED_BY: 'BLOCKS',
-  RELATES_TO: 'RELATES_TO',
-  IS_IDEA_FOR: 'IS_IDEA_FOR',
-  WILL_IMPLEMENT_AFTER: 'WILL_IMPLEMENT_AFTER',
-  ADDED_TO_ROADMAP: 'ADDED_TO_ROADMAP',
-}
-
-/**
  * Admin API: Get Ticket Relations
  */
 export async function GET(
@@ -53,39 +40,15 @@ export async function GET(
       orderBy: { createdAt: 'desc' },
     })
 
-    const relationsAsTarget = await prisma.ticketRelation.findMany({
-      where: { targetTicketId: params.id },
-      include: {
-        sourceTicket: {
-          select: { id: true, title: true, status: true, priority: true },
-        },
-        createdBy: {
-          select: { name: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
-
     return NextResponse.json({
-      relations: [
-        ...relationsAsSource.map(r => ({
-          id: r.id,
-          type: r.relationType,
-          direction: 'outgoing',
-          relatedTicket: r.targetTicket,
-          createdBy: r.createdBy?.name || 'System',
-          createdAt: r.createdAt,
-        })),
-        // For incoming relations, show the inverse label
-        ...relationsAsTarget.map(r => ({
-          id: r.id,
-          type: INCOMING_LABELS[r.relationType] || r.relationType,
-          direction: 'incoming',
-          relatedTicket: r.sourceTicket,
-          createdBy: r.createdBy?.name || 'System',
-          createdAt: r.createdAt,
-        })),
-      ],
+      relations: relationsAsSource.map(r => ({
+        id: r.id,
+        type: r.relationType,
+        direction: 'outgoing',
+        relatedTicket: r.targetTicket,
+        createdBy: r.createdBy?.name || 'System',
+        createdAt: r.createdAt,
+      })),
     })
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
