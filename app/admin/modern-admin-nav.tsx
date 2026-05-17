@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
   LayoutDashboard, Ticket, Building2, Users, Settings, LogOut, Menu, X,
+  LifeBuoy,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -89,8 +90,8 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
           })}
         </nav>
 
-        <div className="p-4 border-t border-line shrink-0 safe-pb">
-          <div className="flex items-center gap-3 px-1">
+        <div className="p-3 border-t border-line shrink-0 safe-pb space-y-2">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-md bg-mute/40">
             <div className="w-9 h-9 rounded-full bg-ink text-bg flex items-center justify-center font-medium text-sm shrink-0">
               {user.name?.charAt(0).toUpperCase()}
             </div>
@@ -98,6 +99,17 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
               <div className="text-sm font-medium text-ink truncate">{user.name}</div>
               <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute truncate">{user.email}</div>
             </div>
+            <span className="relative flex h-1.5 w-1.5 shrink-0" title="Online">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-pulse opacity-75 animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-pulse" />
+            </span>
+          </div>
+          <div className="flex items-center justify-between px-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">v2 · staging</span>
+            <span className="flex items-center gap-1 text-[11px] text-ink-mute">
+              <LifeBuoy className="w-3 h-3" strokeWidth={1.75} />
+              <span>Ops console</span>
+            </span>
           </div>
         </div>
       </aside>

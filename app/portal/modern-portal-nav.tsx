@@ -84,8 +84,8 @@ export default function ModernPortalNav({ user, companyName, children }: ModernP
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0 safe-pb">
-          <div className="flex items-center gap-3 p-2">
+        <div className="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 shrink-0 safe-pb space-y-2">
+          <div className="flex items-center gap-3 p-2 rounded-xl bg-white dark:bg-gray-900 shadow-sm">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-md shrink-0">
               <span className="text-white font-bold text-sm">
                 {user.name?.charAt(0).toUpperCase()}
@@ -95,6 +95,19 @@ export default function ModernPortalNav({ user, companyName, children }: ModernP
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{user.name}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
             </div>
+            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" title="Online" />
+          </div>
+          <Link
+            href="/portal/tickets/new"
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center justify-center gap-2 w-full px-3 py-2 rounded-xl text-xs font-medium bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 transition-all shadow-sm"
+          >
+            <span>➕</span>
+            <span>New ticket</span>
+          </Link>
+          <div className="flex items-center justify-between px-1 text-[11px] text-gray-500 dark:text-gray-400">
+            <span>{companyName}</span>
+            <span className="font-mono">v2</span>
           </div>
         </div>
       </aside>
