@@ -35,7 +35,7 @@ export async function PATCH(
     // Get ticket and verify tenant access
     const ticket = await prisma.ticket.findUnique({
       where: { id: params.id },
-      select: { companyId: true },
+      select: { companyId: true, status: true },
     })
 
     if (!ticket) {
@@ -50,7 +50,15 @@ export async function PATCH(
     // Update ticket status
     const updatedTicket = await prisma.ticket.update({
       where: { id: params.id },
-      data: { status },
+      data: {
+        status,
+        resolvedAt:
+          status === 'RESOLVED' && ticket.status !== 'RESOLVED'
+            ? new Date()
+            : status !== 'RESOLVED'
+            ? null
+            : undefined,
+      },
       select: {
         id: true,
         status: true,

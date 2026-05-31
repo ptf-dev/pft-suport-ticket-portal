@@ -33,11 +33,27 @@ export async function PATCH(
       )
     }
 
+    // Capture prior status so we only stamp resolvedAt on transition into RESOLVED
+    const existing = await prisma.ticket.findUnique({
+      where: { id: params.id },
+      select: { status: true },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+    }
+
     // Update ticket
     const ticket = await prisma.ticket.update({
       where: { id: params.id },
       data: {
         status,
+        resolvedAt:
+          status === 'RESOLVED' && existing.status !== 'RESOLVED'
+            ? new Date()
+            : status !== 'RESOLVED'
+            ? null
+            : undefined,
         updatedAt: new Date(),
       },
       include: {

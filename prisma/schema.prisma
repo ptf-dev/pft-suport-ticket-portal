@@ -145,6 +145,7 @@ model Ticket {
   assignedToId String? // References User.id, nullable
   assignedAt   DateTime? // Timestamp of assignment
   scheduledDate DateTime? // Date when ticket is scheduled to be worked on
+  resolvedAt   DateTime? // Set when status becomes RESOLVED, cleared when leaving RESOLVED
   isDeleted    Boolean        @default(false) // Soft delete flag
   deletedAt    DateTime? // When ticket was deleted
   deletedBy    String? // Admin who deleted the ticket
@@ -165,6 +166,7 @@ model Ticket {
   @@index([assignedToId])
   @@index([scheduledDate])
   @@index([updatedAt])
+  @@index([resolvedAt])
   @@index([companyId, isDeleted, updatedAt])
   @@map("tickets")
 }

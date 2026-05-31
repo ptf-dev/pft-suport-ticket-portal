@@ -40,7 +40,15 @@ export async function PATCH(
 
     const updatedTicket = await prisma.ticket.update({
       where: { id: params.id },
-      data: { status },
+      data: {
+        status,
+        resolvedAt:
+          status === 'RESOLVED' && ticket.status !== 'RESOLVED'
+            ? new Date()
+            : status !== 'RESOLVED'
+            ? null
+            : undefined,
+      },
     })
 
     if (ticket.status !== status) {

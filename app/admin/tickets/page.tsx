@@ -240,6 +240,7 @@ export default async function AdminTicketsPage({
                   <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
                   <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
                   <SortableTh column="assignedTo" label="Assigned"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
+                  <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
                   <SortableTh column="updatedAt"  label="Last active" currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
                   <th className="px-4 py-3" />
                 </tr>
@@ -247,7 +248,7 @@ export default async function AdminTicketsPage({
               <tbody className="divide-y divide-line-soft">
                 {tickets.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-20 text-center">
+                    <td colSpan={8} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <TicketIcon className="w-10 h-10 text-ink-faint" strokeWidth={1.2} />
                         <p className="font-display text-2xl tracking-tightest text-ink">Nothing here.</p>
@@ -323,6 +324,14 @@ export default async function AdminTicketsPage({
                           ) : (
                             <span className="text-xs text-ink-faint italic">Unassigned</span>
                           )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="text-sm text-ink tabular-nums">
+                            {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </div>
+                          <div className="text-[10px] text-ink-mute font-mono uppercase tracking-widest mt-0.5">
+                            {timeAgo(new Date(ticket.createdAt)).label} old
+                          </div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
