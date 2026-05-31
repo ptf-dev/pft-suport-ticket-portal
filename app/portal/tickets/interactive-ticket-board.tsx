@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { TicketStatus, TicketPriority } from '@prisma/client'
 import { GripVertical, MessageSquare, Paperclip, Folder } from 'lucide-react'
@@ -57,6 +57,10 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
   const [dragOverColumn, setDragOverColumn] = useState<TicketStatus | null>(null)
   const [localTickets, setLocalTickets] = useState(tickets)
   const [isUpdating, setIsUpdating] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLocalTickets(tickets)
+  }, [tickets])
 
   const ticketsByStatus = STATUS_COLUMNS.map((column) => ({
     ...column,
