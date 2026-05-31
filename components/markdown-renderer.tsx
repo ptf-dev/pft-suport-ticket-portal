@@ -61,18 +61,27 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
         ),
         
         // Code
-        code: ({ node, inline, ...props }: any) =>
-          inline ? (
-            <code
-              className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm"
-              {...props}
-            />
-          ) : (
+        code: ({ node, className, children, ...props }: any) => {
+          // react-markdown v9 removed the `inline` prop. Block code carries a
+          // `language-*` className or spans multiple lines; everything else is inline.
+          const isBlock =
+            /^language-/.test(className || '') || /\n/.test(String(children))
+          return isBlock ? (
             <code
               className="block p-4 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm overflow-x-auto mb-4"
               {...props}
-            />
-          ),
+            >
+              {children}
+            </code>
+          ) : (
+            <code
+              className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm"
+              {...props}
+            >
+              {children}
+            </code>
+          )
+        },
         
         // Pre (code blocks)
         pre: ({ node, ...props }) => (
