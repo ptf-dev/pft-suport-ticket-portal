@@ -10,6 +10,7 @@ import Link from 'next/link'
 
 interface FormErrors {
   name?: string[]
+  projectId?: string[]
   contactEmail?: string[]
   subdomain?: string[]
   whatsappLink?: string[]
@@ -19,6 +20,7 @@ interface FormErrors {
 
 interface CompanyFormData {
   name: string
+  projectId?: string
   contactEmail: string
   subdomain: string
   whatsappLink?: string
@@ -44,6 +46,7 @@ export function CompanyFormFields({ initialData, companyId, mode }: CompanyFormF
     const formData = new FormData(e.currentTarget)
     const data = {
       name: formData.get('name') as string,
+      projectId: (formData.get('projectId') as string) || '',
       contactEmail: formData.get('contactEmail') as string,
       subdomain: formData.get('subdomain') as string,
       whatsappLink: formData.get('whatsappLink') as string,
@@ -131,6 +134,27 @@ export function CompanyFormFields({ initialData, companyId, mode }: CompanyFormF
             />
             {errors.name && (
               <p className="text-sm text-red-600 dark:text-red-400">{errors.name[0]}</p>
+            )}
+          </div>
+
+          {/* Super-Admin Project ID */}
+          <div className="space-y-2">
+            <Label htmlFor="projectId" className="dark:text-gray-300">
+              Super-Admin Project ID
+            </Label>
+            <Input
+              id="projectId"
+              name="projectId"
+              type="text"
+              placeholder="e.g., trading-cult"
+              defaultValue={initialData?.projectId}
+              disabled={isSubmitting}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Must match the project ID in Super-Admin (dashboard backend PROJECT_ID). Used when issuing tickets from the dashboard.
+            </p>
+            {errors.projectId && (
+              <p className="text-sm text-red-600 dark:text-red-400">{errors.projectId[0]}</p>
             )}
           </div>
 

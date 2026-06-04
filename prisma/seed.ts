@@ -41,9 +41,10 @@ async function main() {
   
   const company1 = await prisma.company.upsert({
     where: { subdomain: 'trading-cult' },
-    update: {},
+    update: { projectId: 'trading-cult' },
     create: {
       name: 'Trading Cult',
+      projectId: 'trading-cult',
       subdomain: 'trading-cult',
       contactEmail: 'support-pro@tradingcult.com',
       whatsappLink: 'https://wa.me/1234567890',

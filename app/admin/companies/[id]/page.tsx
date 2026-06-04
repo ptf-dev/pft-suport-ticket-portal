@@ -68,6 +68,7 @@ export default async function CompanyDetailPage({
         companyId={company.id}
         initialData={{
           name: company.name,
+          projectId: company.projectId || '',
           contactEmail: company.contactEmail,
           subdomain: company.subdomain,
           whatsappLink: company.whatsappLink || '',

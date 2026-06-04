@@ -15,8 +15,17 @@ import { z } from 'zod'
  */
 
 // Validation schema
+const projectIdSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9-]+$/, 'Project ID must contain only lowercase letters, numbers, and hyphens')
+  .optional()
+  .or(z.literal(''))
+
 const createCompanySchema = z.object({
   name: z.string().min(1, 'Company name is required'),
+  projectId: projectIdSchema,
   contactEmail: z.string().email('Valid email address is required'),
   subdomain: z.string()
     .min(1, 'Subdomain is required')
@@ -48,6 +57,22 @@ export async function POST(request: NextRequest) {
     }
 
     const data = validationResult.data
+    const projectId = data.projectId?.trim() || null
+
+    if (projectId) {
+      const existingByProject = await prisma.company.findUnique({
+        where: { projectId },
+      })
+      if (existingByProject) {
+        return NextResponse.json(
+          {
+            error: 'Validation failed',
+            details: { projectId: ['This Super-Admin project ID is already linked to another company'] },
+          },
+          { status: 400 }
+        )
+      }
+    }
 
     // Check subdomain uniqueness
     const existingCompany = await prisma.company.findUnique({
@@ -70,6 +95,7 @@ export async function POST(request: NextRequest) {
     const company = await prisma.company.create({
       data: {
         name: data.name,
+        projectId,
         contactEmail: data.contactEmail,
         subdomain: data.subdomain,
         whatsappLink: data.whatsappLink || null,

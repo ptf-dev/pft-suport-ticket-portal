@@ -89,6 +89,8 @@ enum ActivityType {
 model Company {
   id           String   @id @default(cuid())
   name         String
+  /// Super-Admin projectId — links this brand to a dashboard deployment
+  projectId    String?  @unique
   subdomain    String   @unique // For tenant resolution
   contactEmail String
   whatsappLink String?
