@@ -192,7 +192,7 @@ const TOOLS: Tool[] = [
         },
         priority: {
           type: "string",
-          enum: ["LOW", "MEDIUM", "HIGH", "URGENT"],
+          enum: ["BACKLOG", "LOW", "MEDIUM", "HIGH", "EXTRA_HIGH", "URGENT", "ULTRA_URGENT"],
           description: "Filter by priority level",
         },
         company_id: {
@@ -297,7 +297,7 @@ const TOOLS: Tool[] = [
         },
         priority: {
           type: "string",
-          enum: ["LOW", "MEDIUM", "HIGH", "URGENT"],
+          enum: ["BACKLOG", "LOW", "MEDIUM", "HIGH", "EXTRA_HIGH", "URGENT", "ULTRA_URGENT"],
           description: "Ticket priority level (default: MEDIUM)",
         },
         category: {

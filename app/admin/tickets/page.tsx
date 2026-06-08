@@ -11,6 +11,7 @@ import { InteractiveTicketBoard } from '@/app/portal/tickets/interactive-ticket-
 import { RestoreTicketButton } from './restore-ticket-button'
 import { ActivityQuickFilter } from '@/components/activity-quick-filter'
 import { BUCKET_ORDER, bucketToWhere, type ActivityBucket } from '@/lib/activity-buckets'
+import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { LayoutGrid, Rows3, Plus, ExternalLink, TicketIcon, CalendarClock } from 'lucide-react'
 
 const PAGE_SIZE = 20
@@ -263,12 +264,7 @@ export default async function AdminTicketsPage({
                       <tr key={ticket.id} className="group hover:bg-bg-sunken transition-colors">
                         <td className="px-4 py-4">
                           <div className="flex items-start gap-3">
-                            <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${
-                              ticket.priority === 'URGENT' ? 'bg-danger' :
-                              ticket.priority === 'HIGH'   ? 'bg-warn' :
-                              ticket.priority === 'MEDIUM' ? 'bg-accent' :
-                                                             'bg-ink-faint'
-                            }`} />
+                            <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${priorityMeta(ticket.priority).dotClass}`} />
                             <div className="min-w-0 flex-1">
                               <Link href={`/admin/tickets/${ticket.id}`}
                                 className="font-medium text-ink hover:text-accent transition-colors line-clamp-1 block">
@@ -306,11 +302,8 @@ export default async function AdminTicketsPage({
                           </Badge>
                         </td>
                         <td className="px-4 py-4">
-                          <Badge variant={
-                            ticket.priority === 'URGENT' ? 'destructive' :
-                            ticket.priority === 'HIGH' ? 'warning' : 'secondary'
-                          }>
-                            {ticket.priority.toLowerCase()}
+                          <Badge variant={priorityMeta(ticket.priority).badgeVariant}>
+                            {priorityLabel(ticket.priority)}
                           </Badge>
                         </td>
                         <td className="px-4 py-4">

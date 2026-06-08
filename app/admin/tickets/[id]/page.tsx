@@ -18,6 +18,7 @@ import { ScheduleTicketButton } from './schedule-ticket-button'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { TicketRelations } from './ticket-relations'
 import { ActivityTimeline } from '@/components/activity-timeline'
+import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -339,16 +340,8 @@ export default async function AdminTicketDetailPage({
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
                   Current Priority
                 </label>
-                <Badge
-                  variant={
-                    ticket.priority === 'URGENT'
-                      ? 'destructive'
-                      : ticket.priority === 'HIGH'
-                      ? 'warning'
-                      : 'secondary'
-                  }
-                >
-                  {ticket.priority}
+                <Badge variant={priorityMeta(ticket.priority).badgeVariant}>
+                  {priorityLabel(ticket.priority)}
                 </Badge>
               </div>
 

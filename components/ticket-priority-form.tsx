@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TicketPriority } from '@prisma/client'
+import {
+  PRIORITY_ORDER,
+  PRIORITY_META,
+  priorityMeta,
+  type PriorityBadgeVariant,
+} from '@/lib/priorities'
 
 interface TicketPriorityFormProps {
   ticketId: string
@@ -12,32 +18,25 @@ interface TicketPriorityFormProps {
   isAdmin?: boolean
 }
 
-const PRIORITY_CONFIG = {
-  LOW: { 
-    label: 'Low', 
-    variant: 'secondary' as const, 
-    icon: '🟢',
-    description: 'Not urgent, can be addressed when convenient' 
-  },
-  MEDIUM: { 
-    label: 'Medium', 
-    variant: 'default' as const, 
-    icon: '🟡',
-    description: 'Normal priority, should be addressed soon' 
-  },
-  HIGH: { 
-    label: 'High', 
-    variant: 'warning' as const, 
-    icon: '🟠',
-    description: 'Important issue, needs prompt attention' 
-  },
-  URGENT: { 
-    label: 'Urgent', 
-    variant: 'destructive' as const, 
-    icon: '🔴',
-    description: 'Critical issue requiring immediate attention' 
-  },
+interface PriorityConfigEntry {
+  label: string
+  variant: PriorityBadgeVariant
+  icon: string
+  description: string
 }
+
+// Derived from the central priority config so all priorities stay in sync.
+// Ordered low -> high via PRIORITY_ORDER for stable dropdown/list ordering.
+const PRIORITY_CONFIG = PRIORITY_ORDER.reduce((acc, priority) => {
+  const meta = PRIORITY_META[priority]
+  acc[priority] = {
+    label: meta.label,
+    variant: meta.badgeVariant,
+    icon: meta.icon,
+    description: meta.description,
+  }
+  return acc
+}, {} as Record<TicketPriority, PriorityConfigEntry>)
 
 export function TicketPriorityForm({ ticketId, currentPriority, isAdmin = false }: TicketPriorityFormProps) {
   const router = useRouter()
@@ -121,7 +120,13 @@ export function TicketPriorityForm({ ticketId, currentPriority, isAdmin = false 
   }
 
   // Enhanced UI for clients
-  const currentPriorityConfig = PRIORITY_CONFIG[currentPriority]
+  const currentMeta = priorityMeta(currentPriority)
+  const currentPriorityConfig: PriorityConfigEntry = {
+    label: currentMeta.label,
+    variant: currentMeta.badgeVariant,
+    icon: currentMeta.icon,
+    description: currentMeta.description,
+  }
 
   return (
     <div className="space-y-3">

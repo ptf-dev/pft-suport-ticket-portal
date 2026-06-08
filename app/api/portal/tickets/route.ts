@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { NotificationService } from '@/lib/services/notification'
 import { ActivityService } from '@/lib/services/activity'
 import { z } from 'zod'
+import { PRIORITY_VALUES } from '@/lib/priorities'
 
 /**
  * Ticket Creation API Endpoint (Client Portal)
@@ -19,7 +20,7 @@ import { z } from 'zod'
 const createTicketSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT'], {
+  priority: z.enum(PRIORITY_VALUES, {
     message: 'Invalid priority value',
   }),
   category: z.string().optional(),

@@ -13,6 +13,7 @@ import { TicketPriorityForm } from '@/components/ticket-priority-form'
 import { DeleteImageButton } from '@/components/delete-image-button'
 import { DeleteCommentImageButton } from '@/components/delete-comment-image-button'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
+import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -140,16 +141,8 @@ export default async function ClientTicketDetailPage({
           >
             {ticket.status.replace('_', ' ')}
           </Badge>
-          <Badge
-            variant={
-              ticket.priority === 'URGENT'
-                ? 'destructive'
-                : ticket.priority === 'HIGH'
-                ? 'warning'
-                : 'secondary'
-            }
-          >
-            {ticket.priority}
+          <Badge variant={priorityMeta(ticket.priority).badgeVariant}>
+            {priorityLabel(ticket.priority)}
           </Badge>
         </div>
       </div>

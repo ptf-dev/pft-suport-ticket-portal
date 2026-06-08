@@ -6,6 +6,7 @@ import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TablePagination } from '@/components/ui/table-pagination'
 import { InteractiveTicketBoard } from './interactive-ticket-board'
 import { TicketSearch } from './ticket-search'
+import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import Link from 'next/link'
 
 const PAGE_SIZE = 20
@@ -139,11 +140,7 @@ export default async function PortalTicketsPage({
                   <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                          ticket.priority === 'URGENT' ? 'bg-red-500' :
-                          ticket.priority === 'HIGH'   ? 'bg-orange-500' :
-                          ticket.priority === 'MEDIUM' ? 'bg-yellow-500' : 'bg-gray-400'
-                        }`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${priorityMeta(ticket.priority).dotClass}`}>
                           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                           </svg>
@@ -166,9 +163,9 @@ export default async function PortalTicketsPage({
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant={ticket.priority === 'URGENT' ? 'destructive' : ticket.priority === 'HIGH' ? 'warning' : 'secondary'}
+                      <Badge variant={priorityMeta(ticket.priority).badgeVariant}
                         className="font-semibold text-xs">
-                        {ticket.priority}
+                        {priorityLabel(ticket.priority)}
                       </Badge>
                     </td>
                     <td className="px-6 py-4">

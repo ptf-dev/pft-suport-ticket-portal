@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { TicketStatus, TicketPriority } from '@prisma/client'
+import { priorityMeta, priorityLabel } from '@/lib/priorities'
 
 interface Ticket {
   id: string
@@ -70,16 +71,10 @@ export function TicketBoard({ tickets }: TicketBoardProps) {
                       {/* Priority Badge */}
                       <div className="mb-3">
                         <Badge
-                          variant={
-                            ticket.priority === 'URGENT'
-                              ? 'destructive'
-                              : ticket.priority === 'HIGH'
-                              ? 'warning'
-                              : 'secondary'
-                          }
+                          variant={priorityMeta(ticket.priority).badgeVariant}
                           className="text-xs font-semibold"
                         >
-                          {ticket.priority}
+                          {priorityLabel(ticket.priority)}
                         </Badge>
                       </div>
 

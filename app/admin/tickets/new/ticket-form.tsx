@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
+import { PRIORITY_OPTIONS } from '@/lib/priorities'
 import Link from 'next/link'
 
 interface Company {
@@ -29,12 +30,7 @@ interface Props {
   companies: Company[]
 }
 
-const PRIORITIES = [
-  { value: 'LOW', label: 'Low - General inquiry' },
-  { value: 'MEDIUM', label: 'Medium - Normal issue' },
-  { value: 'HIGH', label: 'High - Important issue' },
-  { value: 'URGENT', label: 'Urgent - Critical issue' },
-]
+const PRIORITIES = PRIORITY_OPTIONS
 
 const CATEGORIES = [
   'Account Issue', 'Technical Problem', 'Billing Question',

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { TicketPriority } from '@prisma/client'
+import { PRIORITY_VALUES } from '@/lib/priorities'
 
 /**
  * MCP API: Create Ticket
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate priority
-    const validPriorities: TicketPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+    const validPriorities = PRIORITY_VALUES
     const ticketPriority = (priority && validPriorities.includes(priority)) ? priority : 'MEDIUM'
 
     // Verify company exists

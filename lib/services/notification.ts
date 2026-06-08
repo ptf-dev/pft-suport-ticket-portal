@@ -1,5 +1,7 @@
 import { SMTPService } from './smtp'
 import { prisma } from '@/lib/prisma'
+import type { TicketPriority } from '@prisma/client'
+import { priorityLabel as priorityLabelFromConfig } from '@/lib/priorities'
 
 /**
  * Notification service — sends emails on ticket events.
@@ -12,7 +14,7 @@ function statusLabel(status: string): string {
 }
 
 function priorityLabel(priority: string): string {
-  return priority.charAt(0) + priority.slice(1).toLowerCase()
+  return priorityLabelFromConfig(priority as TicketPriority)
 }
 
 function baseHtml(title: string, body: string): string {

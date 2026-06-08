@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/prisma'
+import { priorityMeta, priorityLabel } from '@/lib/priorities'
 
 export const runtime = 'nodejs'
 export const alt = 'PropFirmsTech Support Ticket'
@@ -13,13 +14,6 @@ const STATUS_COLORS: Record<string, { bg: string; fg: string }> = {
   WAITING_CLIENT: { bg: '#fef9c3', fg: '#a16207' },
   RESOLVED: { bg: '#dcfce7', fg: '#15803d' },
   CLOSED: { bg: '#e5e7eb', fg: '#374151' },
-}
-
-const PRIORITY_COLORS: Record<string, { bg: string; fg: string }> = {
-  LOW: { bg: '#dcfce7', fg: '#15803d' },
-  MEDIUM: { bg: '#dbeafe', fg: '#1d4ed8' },
-  HIGH: { bg: '#fed7aa', fg: '#c2410c' },
-  URGENT: { bg: '#fee2e2', fg: '#b91c1c' },
 }
 
 export default async function Image({ params }: { params: { id: string } }) {
@@ -59,7 +53,7 @@ export default async function Image({ params }: { params: { id: string } }) {
   }
 
   const status = STATUS_COLORS[ticket.status] || STATUS_COLORS.OPEN
-  const priority = PRIORITY_COLORS[ticket.priority] || PRIORITY_COLORS.MEDIUM
+  const priority = priorityMeta(ticket.priority).og
   const shortId = ticket.id.slice(-8)
   const created = new Date(ticket.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -163,7 +157,7 @@ export default async function Image({ params }: { params: { id: string } }) {
               fontWeight: 600,
             }}
           >
-            {ticket.priority} PRIORITY
+            {priorityLabel(ticket.priority).toUpperCase()} PRIORITY
           </div>
           <div
             style={{

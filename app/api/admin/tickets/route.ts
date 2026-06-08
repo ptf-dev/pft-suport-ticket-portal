@@ -4,11 +4,12 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { NotificationService } from '@/lib/services/notification'
 import { ActivityService } from '@/lib/services/activity'
+import { PRIORITY_VALUES } from '@/lib/priorities'
 
 const createTicketSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(1, 'Description is required'),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
+  priority: z.enum(PRIORITY_VALUES),
   category: z.string().optional(),
   companyId: z.string().min(1, 'Company is required'),
   createdById: z.string().min(1, 'User is required'),

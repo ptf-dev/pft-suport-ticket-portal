@@ -29,10 +29,13 @@ enum TicketStatus {
 }
 
 enum TicketPriority {
+  BACKLOG
   LOW
   MEDIUM
   HIGH
+  EXTRA_HIGH
   URGENT
+  ULTRA_URGENT
 }
 
 enum NotificationTemplateType {

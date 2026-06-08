@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TicketStatus } from '@prisma/client'
+import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { DashboardSearch } from './dashboard-search'
 import Link from 'next/link'
 
@@ -199,16 +200,8 @@ export default async function PortalDashboard({
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge
-                          variant={
-                            ticket.priority === 'URGENT'
-                              ? 'destructive'
-                              : ticket.priority === 'HIGH'
-                              ? 'warning'
-                              : 'secondary'
-                          }
-                        >
-                          {ticket.priority}
+                        <Badge variant={priorityMeta(ticket.priority).badgeVariant}>
+                          {priorityLabel(ticket.priority)}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

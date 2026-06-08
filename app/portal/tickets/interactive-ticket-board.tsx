@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { TicketStatus, TicketPriority } from '@prisma/client'
 import { GripVertical, MessageSquare, Paperclip, Folder } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { priorityMeta, priorityLabel } from '@/lib/priorities'
 
 interface Ticket {
   id: string
@@ -44,13 +45,6 @@ const STATUS_COLUMNS: {
   { status: 'RESOLVED',       label: 'Resolved',       dot: 'bg-ok',        hover: 'border-ok' },
   { status: 'CLOSED',         label: 'Closed',         dot: 'bg-ink-faint', hover: 'border-ink-faint' },
 ]
-
-const PRIORITY_BAR: Record<TicketPriority, string> = {
-  URGENT: 'bg-danger',
-  HIGH:   'bg-warn',
-  MEDIUM: 'bg-accent',
-  LOW:    'bg-ink-faint',
-}
 
 export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }: TicketBoardProps) {
   const [draggedTicket, setDraggedTicket] = useState<string | null>(null)
@@ -173,7 +167,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
                       )}
                     >
                       <span
-                        className={cn('absolute inset-y-0 left-0 w-0.5', PRIORITY_BAR[ticket.priority])}
+                        className={cn('absolute inset-y-0 left-0 w-0.5', priorityMeta(ticket.priority).dotClass)}
                         aria-hidden
                       />
                       <GripVertical
@@ -187,7 +181,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
                             #{ticket.id.slice(0, 6)}
                           </span>
                           <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">
-                            {ticket.priority.toLowerCase()}
+                            {priorityLabel(ticket.priority)}
                           </span>
                         </div>
 

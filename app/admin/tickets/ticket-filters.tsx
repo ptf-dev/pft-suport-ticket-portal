@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { Search, X, ChevronDown, Pin, Forward, CalendarDays, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DatePicker } from '@/components/ui/date-picker'
+import { PRIORITY_ORDER, priorityLabel } from '@/lib/priorities'
 
 interface TicketFiltersProps {
   companies: { id: string; name: string }[]
@@ -23,7 +24,7 @@ interface TicketFiltersProps {
 }
 
 const STATUSES = ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'WAITING_CLIENT', 'RESOLVED', 'CLOSED']
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+const PRIORITIES = PRIORITY_ORDER
 const VIRTUAL_STATUSES = [
   { value: 'NOT_RESOLVED', label: 'Not Resolved' },
   { value: 'ACTIVE_ONLY', label: 'Active (excl. Waiting & Resolved)' },
@@ -258,7 +259,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
           active={!!currentFilters.priority}
         >
           {PRIORITIES.map((p) => (
-            <option key={p} value={p}>{p.toLowerCase()}</option>
+            <option key={p} value={p}>{priorityLabel(p)}</option>
           ))}
         </FilterSelect>
 
