@@ -325,4 +325,65 @@ export class NotificationService {
       console.error('[NotificationService] notifyAgentTicketAssigned failed:', err)
     }
   }
+
+  /**
+   * Notify the team/lead when a ticket has bounced back from WAITING_CLIENT
+   * two or more times — a repeat reopen means the fix keeps missing the mark.
+   * Recipients: the assigned owner + the brand support inbox + any configured
+   * recipient emails (deduped). No-ops if SMTP is not configured.
+   */
+  static async notifyEscalation(ticketId: string, bounceCount: number): Promise<void> {
+    try {
+      const smtpSettings = await prisma.sMTPSettings.findFirst({
+        where: { isActive: true },
+        orderBy: { updatedAt: 'desc' },
+      })
+      if (!smtpSettings) return
+
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+          company: { select: { name: true, contactEmail: true } },
+          createdBy: { select: { name: true } },
+          assignedTo: { select: { name: true, email: true } },
+        },
+      })
+      if (!ticket) return
+
+      const notifSettings = await prisma.notificationSettings.findUnique({
+        where: { companyId: ticket.companyId },
+      })
+
+      const recipients = Array.from(
+        new Set(
+          [
+            ticket.assignedTo?.email,
+            ticket.company.contactEmail,
+            ...(notifSettings?.recipientEmails ?? []),
+          ].filter((e): e is string => Boolean(e)),
+        ),
+      )
+      if (recipients.length === 0) return
+
+      const owner = ticket.assignedTo?.name ?? 'Unassigned'
+      const subject = `[Escalation] "${ticket.title}" reopened ${bounceCount}× by client`
+      const html = baseHtml('Ticket reopened — needs priority attention', `
+        <p>This ticket has bounced back from <strong>Waiting for client</strong> into the active queue <strong>${bounceCount} times</strong>. The client keeps disagreeing that it is resolved — please prioritise it over new tickets.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;color:#6b7280;width:120px;">Ticket</td><td style="padding:8px;font-weight:600;">${ticket.title}</td></tr>
+          <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Company</td><td style="padding:8px;">${ticket.company.name}</td></tr>
+          <tr><td style="padding:8px;color:#6b7280;">Raised by</td><td style="padding:8px;">${ticket.createdBy.name}</td></tr>
+          <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Owner</td><td style="padding:8px;">${owner}</td></tr>
+          <tr><td style="padding:8px;color:#6b7280;">Reopened</td><td style="padding:8px;font-weight:600;color:#dc2626;">${bounceCount} times</td></tr>
+        </table>
+        <a href="${process.env.NEXTAUTH_URL}/admin/tickets/${ticket.id}" style="display:inline-block;background:#dc2626;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">Open ticket →</a>
+      `)
+
+      for (const to of recipients) {
+        await SMTPService.sendEmail({ to, subject, html })
+      }
+    } catch (err) {
+      console.error('[NotificationService] notifyEscalation failed:', err)
+    }
+  }
 }

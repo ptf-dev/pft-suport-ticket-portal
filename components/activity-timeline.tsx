@@ -2,7 +2,7 @@ import { ActivityType } from '@prisma/client'
 import {
   Sparkles, Pencil, Trash2, RotateCcw, ArrowRight, UserPlus, UserMinus,
   CalendarClock, CalendarX, Tag, MessageSquare, MessageSquareOff,
-  MessageSquareQuote, ImagePlus, ImageOff, Link2, Link2Off, AtSign, Activity,
+  MessageSquareQuote, ImagePlus, ImageOff, Link2, Link2Off, AtSign, Activity, Undo2,
 } from 'lucide-react'
 import { ReactNode } from 'react'
 
@@ -56,18 +56,29 @@ function groupByDay(entries: ActivityEntry[]): Map<string, ActivityEntry[]> {
   return groups
 }
 
+/** A bounce = client/dev sent a "waiting on client" ticket back into the queue. */
+function isBounceEntry(e: ActivityEntry): boolean {
+  return e.type === 'STATUS_CHANGED' && e.fromValue === 'WAITING_CLIENT' && (e.toValue === 'OPEN' || e.toValue === 'IN_PROGRESS')
+}
+
 function renderDetail(e: ActivityEntry): ReactNode {
   const meta = META[e.type]
   const actor = e.actor?.name ?? 'Someone'
   const lower = meta.verb
 
   if (e.type === 'STATUS_CHANGED' || e.type === 'PRIORITY_CHANGED') {
+    const bounce = isBounceEntry(e)
     return (
       <>
-        <strong className="text-ink">{actor}</strong> {lower}{' '}
+        <strong className="text-ink">{actor}</strong> {bounce ? 'reopened this — bounced back' : lower}{' '}
         <span className="font-mono text-[11px] uppercase tracking-wider text-ink-mute">{e.fromValue?.replace(/_/g, ' ')}</span>
         {' → '}
-        <span className={`font-mono text-[11px] uppercase tracking-wider ${meta.tone}`}>{e.toValue?.replace(/_/g, ' ')}</span>
+        <span className={`font-mono text-[11px] uppercase tracking-wider ${bounce ? 'text-danger' : meta.tone}`}>{e.toValue?.replace(/_/g, ' ')}</span>
+        {bounce && (
+          <span className="ml-2 inline-flex items-center gap-0.5 rounded bg-danger-soft px-1 py-0.5 text-[10px] font-semibold text-danger not-italic">
+            <Undo2 className="w-2.5 h-2.5" strokeWidth={2} /> reopened
+          </span>
+        )}
       </>
     )
   }
@@ -136,10 +147,12 @@ export function ActivityTimeline({ activities }: { activities: ActivityEntry[] }
           <ol className="relative space-y-3 pl-6 before:absolute before:left-2 before:top-1 before:bottom-1 before:w-px before:bg-line-soft">
             {entries.map((e) => {
               const meta = META[e.type]
+              const bounce = isBounceEntry(e)
+              const tone = bounce ? 'text-danger' : meta.tone
               return (
                 <li key={e.id} className="relative">
-                  <span className={`absolute -left-6 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-bg-elev border border-line ${meta.tone}`}>
-                    {meta.icon}
+                  <span className={`absolute -left-6 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-bg-elev border ${bounce ? 'border-danger' : 'border-line'} ${tone}`}>
+                    {bounce ? <Undo2 className="w-3.5 h-3.5" /> : meta.icon}
                   </span>
                   <div className="text-sm text-ink-soft">
                     {renderDetail(e)}

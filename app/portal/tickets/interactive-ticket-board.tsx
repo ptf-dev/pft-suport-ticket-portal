@@ -2,10 +2,11 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { TicketStatus, TicketPriority } from '@prisma/client'
-import { GripVertical, MessageSquare, Paperclip, Folder } from 'lucide-react'
+import { TicketStatus, TicketPriority, Role } from '@prisma/client'
+import { GripVertical, MessageSquare, Paperclip, Folder, Undo2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
+import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
 
 interface Ticket {
   id: string
@@ -15,6 +16,8 @@ interface Ticket {
   priority: TicketPriority
   category: string | null
   createdAt: Date
+  bounceCount?: number | null
+  reopenedByRole?: Role | null
   createdBy: {
     name: string | null
   }
@@ -153,21 +156,29 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
                     {isDragTarget ? 'Drop here' : 'Empty'}
                   </div>
                 ) : (
-                  column.tickets.map((ticket) => (
+                  column.tickets.map((ticket) => {
+                    const bmrang = isBoomerang(ticket)
+                    const bm = bmrang ? boomerangMeta(ticket.reopenedByRole, ticket.bounceCount ?? 0) : null
+                    return (
                     <article
                       key={ticket.id}
                       draggable
                       onDragStart={() => handleDragStart(ticket.id)}
                       onDragEnd={handleDragEnd}
                       className={cn(
-                        'group relative rounded-lg bg-bg-elev border border-line overflow-hidden',
+                        'group relative rounded-lg bg-bg-elev border overflow-hidden',
                         'hover:border-ink/30 hover:shadow-soft transition-all cursor-grab active:cursor-grabbing',
+                        bmrang ? (bm!.tone === 'danger' ? 'border-danger' : 'border-warn') : 'border-line',
                         draggedTicket === ticket.id && 'opacity-40',
                         isUpdating === ticket.id && 'animate-pulse',
                       )}
                     >
                       <span
-                        className={cn('absolute inset-y-0 left-0 w-0.5', priorityMeta(ticket.priority).dotClass)}
+                        className={cn(
+                          'absolute inset-y-0 left-0',
+                          bmrang ? 'w-1' : 'w-0.5',
+                          bmrang ? (bm!.tone === 'danger' ? 'bg-danger' : 'bg-warn') : priorityMeta(ticket.priority).dotClass,
+                        )}
                         aria-hidden
                       />
                       <GripVertical
@@ -184,6 +195,19 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
                             {priorityLabel(ticket.priority)}
                           </span>
                         </div>
+
+                        {bmrang && (
+                          <div
+                            className={cn(
+                              'flex items-center gap-1 mb-1.5 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                              bm!.tone === 'danger' ? 'bg-danger-soft text-danger' : 'bg-warn-soft text-warn',
+                            )}
+                            title="Bounced back from Waiting — client disagreed it was resolved"
+                          >
+                            <Undo2 className="w-3 h-3" strokeWidth={2} aria-hidden />
+                            <span>{bm!.label}{bm!.suffix}</span>
+                          </div>
+                        )}
 
                         <Link href={`${basePath}/${ticket.id}`} className="block">
                           <h4 className="text-sm font-medium text-ink leading-snug line-clamp-2 hover:text-accent transition-colors">
@@ -235,7 +259,8 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
                         </div>
                       </div>
                     </article>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </section>
