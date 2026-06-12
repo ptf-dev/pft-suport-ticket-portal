@@ -1,5 +1,7 @@
-import { ActivityType, Prisma } from '@prisma/client'
+import { ActivityType, Prisma, Role } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { isBounceTransition } from '@/lib/boomerang'
+import { NotificationService } from './notification'
 
 type LogInput = {
   ticketId: string
@@ -50,8 +52,51 @@ export class ActivityService {
     })
   }
 
-  static statusChanged(ticketId: string, actorId: string, from: string, to: string) {
-    return this.log({ ticketId, actorId, type: ActivityType.STATUS_CHANGED, fromValue: from, toValue: to })
+  static async statusChanged(ticketId: string, actorId: string, from: string, to: string) {
+    await this.log({ ticketId, actorId, type: ActivityType.STATUS_CHANGED, fromValue: from, toValue: to })
+    // Boomerang: client/dev sent a "waiting on client" ticket back into the queue.
+    if (isBounceTransition(from, to)) {
+      await this.recordBounce(ticketId, actorId)
+    }
+  }
+
+  /** Stamp the denormalised boomerang counters used by the board/table highlight. */
+  private static async recordBounce(ticketId: string, actorId: string | null): Promise<void> {
+    try {
+      let role: Role | null = null
+      if (actorId) {
+        const actor = await prisma.user.findUnique({
+          where: { id: actorId },
+          select: { role: true },
+        })
+        role = actor?.role ?? null
+      }
+      const updated = await prisma.ticket.update({
+        where: { id: ticketId },
+        data: {
+          bounceCount: { increment: 1 },
+          reopenedAt: new Date(),
+          reopenedByRole: role,
+        },
+        select: { bounceCount: true },
+      })
+
+      // Escalate repeat offenders: a ticket the client has sent back 2+ times is a
+      // communication breakdown. Drop an internal note so it surfaces in the
+      // timeline and the ops activity feed and can't quietly slip through.
+      if (updated.bounceCount >= 2) {
+        await this.log({
+          ticketId,
+          actorId: null,
+          type: ActivityType.INTERNAL_NOTE,
+          message: `⚠ Escalation: bounced back from Waiting ${updated.bounceCount}× — the client keeps disagreeing the fix is complete. Prioritise this and consider reaching out directly.`,
+        })
+        // Push an email to the owner + lead so a repeat reopen can't sit unseen.
+        NotificationService.notifyEscalation(ticketId, updated.bounceCount).catch(() => {})
+      }
+    } catch (err) {
+      console.error('[activity] recordBounce failed', err)
+    }
   }
 
   static priorityChanged(ticketId: string, actorId: string, from: string, to: string) {

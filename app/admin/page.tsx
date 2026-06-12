@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TicketStatus } from '@prisma/client'
 import Link from 'next/link'
-import { ArrowUpRight, CalendarClock, Flame, TrendingUp } from 'lucide-react'
+import { ArrowUpRight, CalendarClock, Flame, TrendingUp, Undo2 } from 'lucide-react'
 import { ActivityTimeline } from '@/components/activity-timeline'
 import { bucketToWhere } from '@/lib/activity-buckets'
 
@@ -28,6 +28,7 @@ export default async function AdminDashboard() {
     openCount, inProgressCount, blockedCount, waitingCount, resolvedCount, closedCount,
     todayActivity, yesterdayActivity, weekActivity,
     urgentCount, unassignedOpenCount,
+    bouncedCount, hotBouncedCount, bouncedThisWeek,
     todayFeed,
   ] = await Promise.all([
     prisma.ticket.count({ where: { status: TicketStatus.OPEN, isDeleted: false } }),
@@ -41,6 +42,11 @@ export default async function AdminDashboard() {
     prisma.ticket.count({ where: { isDeleted: false, updatedAt: weekRange } }),
     prisma.ticket.count({ where: { isDeleted: false, priority: 'URGENT', status: { notIn: ['RESOLVED', 'CLOSED'] } } }),
     prisma.ticket.count({ where: { isDeleted: false, assignedToId: null, status: { notIn: ['RESOLVED', 'CLOSED'] } } }),
+    // Boomerangs: active tickets the client bounced back from WAITING_CLIENT.
+    prisma.ticket.count({ where: { isDeleted: false, bounceCount: { gt: 0 }, status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+    prisma.ticket.count({ where: { isDeleted: false, bounceCount: { gte: 2 }, status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+    // Bounced back this week (last reopen within the current week window).
+    prisma.ticket.count({ where: { isDeleted: false, reopenedAt: weekRange } }),
     prisma.ticketActivity.findMany({
       where: { createdAt: todayRange },
       take: 20,
@@ -86,7 +92,7 @@ export default async function AdminDashboard() {
         </div>
       </header>
 
-      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-px bg-line rounded-xl overflow-hidden border border-line">
+      <section className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-line rounded-xl overflow-hidden border border-line">
         <StatCell
           label="Today"
           value={todayActivity}
@@ -98,6 +104,12 @@ export default async function AdminDashboard() {
         <StatCell label="Active backlog" value={totalActive} sub={`${totalTickets} total in system`} />
         <StatCell label="Urgent" value={urgentCount} sub="unresolved & urgent" tone="text-danger" />
         <StatCell label="Unassigned" value={unassignedOpenCount} sub="active & no owner" tone={unassignedOpenCount > 0 ? 'text-warn' : 'text-ink'} />
+        <StatCell
+          label="Bounced this week"
+          value={bouncedThisWeek}
+          sub={hotBouncedCount > 0 ? `${hotBouncedCount} reopened 2×+ now` : `${bouncedCount} active total`}
+          tone={bouncedThisWeek > 0 || hotBouncedCount > 0 ? 'text-danger' : 'text-ink'}
+        />
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -143,6 +155,7 @@ export default async function AdminDashboard() {
           <div className="px-6 py-5 space-y-3">
             <QuickLink href="/admin/tickets?activity=today" label="Today's movement" value={todayActivity} accent />
             <QuickLink href="/admin/tickets?priority=URGENT&status=NOT_RESOLVED" label="Urgent unresolved" value={urgentCount} />
+            <QuickLink href="/admin/tickets?bounced=1" label="Reopened by client" value={bouncedCount} icon={<Undo2 className="w-3.5 h-3.5" />} />
             <QuickLink href="/admin/tickets?assignedTo=unassigned&status=NOT_RESOLVED" label="Unassigned & open" value={unassignedOpenCount} />
             <QuickLink href="/admin/tickets?status=WAITING_CLIENT" label="Waiting on client" value={waitingCount} />
             <QuickLink href="/admin/tickets?scheduleFilter=today" label="Scheduled today" value={0} icon={<CalendarClock className="w-3.5 h-3.5" />} />

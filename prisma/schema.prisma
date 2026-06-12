@@ -151,6 +151,10 @@ model Ticket {
   assignedAt   DateTime? // Timestamp of assignment
   scheduledDate DateTime? // Date when ticket is scheduled to be worked on
   resolvedAt   DateTime? // Set when status becomes RESOLVED, cleared when leaving RESOLVED
+  // Boomerang tracking — see lib/boomerang.ts
+  bounceCount    Int      @default(0) // # of times status went WAITING_CLIENT -> OPEN/IN_PROGRESS
+  reopenedAt     DateTime? // When it was last bounced back from WAITING_CLIENT
+  reopenedByRole Role? // Who bounced it back last (CLIENT = real frustration signal)
   isDeleted    Boolean        @default(false) // Soft delete flag
   deletedAt    DateTime? // When ticket was deleted
   deletedBy    String? // Admin who deleted the ticket
@@ -172,6 +176,7 @@ model Ticket {
   @@index([scheduledDate])
   @@index([updatedAt])
   @@index([resolvedAt])
+  @@index([bounceCount])
   @@index([companyId, isDeleted, updatedAt])
   @@map("tickets")
 }

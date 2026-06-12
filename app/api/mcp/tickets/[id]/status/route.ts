@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { TicketStatus } from '@prisma/client'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * MCP API: Update Ticket Status
@@ -83,6 +84,11 @@ export async function PATCH(
           message: `Status changed to ${status} by PFT AI Agent`,
         },
       })
+
+      // Log to the activity timeline + maintain boomerang counters (lib/boomerang.ts).
+      if (existing.status !== status) {
+        ActivityService.statusChanged(params.id, mcpUser.id, existing.status, status).catch(() => {})
+      }
     }
 
     return NextResponse.json({

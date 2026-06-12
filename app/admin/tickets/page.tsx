@@ -12,7 +12,9 @@ import { RestoreTicketButton } from './restore-ticket-button'
 import { ActivityQuickFilter } from '@/components/activity-quick-filter'
 import { BUCKET_ORDER, bucketToWhere, type ActivityBucket } from '@/lib/activity-buckets'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
-import { LayoutGrid, Rows3, Plus, ExternalLink, TicketIcon, CalendarClock } from 'lucide-react'
+import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
+import { cn } from '@/lib/utils'
+import { LayoutGrid, Rows3, Plus, ExternalLink, TicketIcon, CalendarClock, Undo2 } from 'lucide-react'
 
 const PAGE_SIZE = 20
 
@@ -63,6 +65,7 @@ export default async function AdminTicketsPage({
     multiSort?: string
     view?: string
     search?: string
+    bounced?: string
     activity?: string
     dateFilter?: string
     startDate?: string
@@ -94,6 +97,13 @@ export default async function AdminTicketsPage({
   if (searchParams.priority) where.priority = searchParams.priority as TicketPriority
   if (searchParams.assignedTo === 'unassigned') where.assignedToId = null
   else if (searchParams.assignedTo) where.assignedToId = searchParams.assignedTo
+
+  // Boomerang filter: reopened-from-WAITING_CLIENT tickets that are active again.
+  const bouncedOnly = searchParams.bounced === '1'
+  if (bouncedOnly) {
+    where.bounceCount = { gt: 0 }
+    where.status = { in: ['OPEN', 'IN_PROGRESS'] as TicketStatus[] }
+  }
 
   if (searchParams.search) {
     where.OR = [
@@ -153,11 +163,21 @@ export default async function AdminTicketsPage({
   const bucketCountsWhere = { ...where }
   delete bucketCountsWhere.updatedAt
 
-  const [total, tickets, companies, allTotal, bucketCounts] = await Promise.all([
+  // Active boomerangs (reopened after WAITING_CLIENT) for the attention banner —
+  // scoped to the company filter but independent of status/activity/date filters.
+  const bouncedWhere: any = {
+    isDeleted: false,
+    bounceCount: { gt: 0 },
+    status: { in: ['OPEN', 'IN_PROGRESS'] as TicketStatus[] },
+  }
+  if (searchParams.company) bouncedWhere.companyId = searchParams.company
+
+  const [total, tickets, companies, allTotal, bucketCounts, bouncedCount] = await Promise.all([
     prisma.ticket.count({ where }),
     prisma.ticket.findMany({
       where,
-      orderBy: view === 'board' ? { updatedAt: 'desc' } : orderBy,
+      // Board: float boomerangs to the top of each column so they can't get lost.
+      orderBy: view === 'board' ? [{ bounceCount: 'desc' }, { updatedAt: 'desc' }] : orderBy,
       skip: view === 'board' ? 0 : (page - 1) * PAGE_SIZE,
       take: view === 'board' ? undefined : PAGE_SIZE,
       include: {
@@ -173,6 +193,7 @@ export default async function AdminTicketsPage({
       key: k,
       count: await prisma.ticket.count({ where: { ...bucketCountsWhere, updatedAt: bucketToWhere(k) } }),
     }))),
+    prisma.ticket.count({ where: bouncedWhere }),
   ])
 
   const currentSort = searchParams.sort ?? 'updatedAt'
@@ -209,6 +230,26 @@ export default async function AdminTicketsPage({
           </Link>
         </div>
       </header>
+
+      {bouncedCount > 0 && (
+        <Link href={bouncedOnly ? '/admin/tickets' : '/admin/tickets?bounced=1'} className="block">
+          <div
+            className={cn(
+              'flex items-center gap-2 rounded-xl border px-4 py-3 text-sm transition-colors',
+              bouncedOnly
+                ? 'border-danger bg-danger-soft text-danger'
+                : 'border-line bg-danger-soft text-danger hover:brightness-95',
+            )}
+          >
+            <Undo2 className="w-4 h-4 shrink-0" strokeWidth={2} />
+            <span className="font-semibold tabular-nums">{bouncedCount}</span>
+            <span>
+              ticket{bouncedCount !== 1 ? 's' : ''} bounced back from &ldquo;Waiting&rdquo; — client disagreed it was resolved.{' '}
+              {bouncedOnly ? 'Showing these. Click to clear.' : 'Click to prioritise.'}
+            </span>
+          </div>
+        </Link>
+      )}
 
       <ActivityQuickFilter counts={bucketCounts} current={activity} total={allTotal} />
 
@@ -260,8 +301,20 @@ export default async function AdminTicketsPage({
                 ) : (
                   tickets.map((ticket) => {
                     const ago = timeAgo(new Date(ticket.updatedAt))
+                    const bmrang = isBoomerang(ticket)
+                    const bm = bmrang ? boomerangMeta(ticket.reopenedByRole, ticket.bounceCount ?? 0) : null
                     return (
-                      <tr key={ticket.id} className="group hover:bg-bg-sunken transition-colors">
+                      <tr
+                        key={ticket.id}
+                        className={cn(
+                          'group transition-colors',
+                          bmrang
+                            ? bm!.tone === 'danger'
+                              ? 'bg-danger-soft'
+                              : 'bg-warn-soft'
+                            : 'hover:bg-bg-sunken',
+                        )}
+                      >
                         <td className="px-4 py-4">
                           <div className="flex items-start gap-3">
                             <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${priorityMeta(ticket.priority).dotClass}`} />
@@ -271,6 +324,18 @@ export default async function AdminTicketsPage({
                                 {ticket.title}
                               </Link>
                               <div className="flex items-center gap-2 mt-1 text-[11px] font-mono text-ink-mute">
+                                {bmrang && (
+                                  <span
+                                    className={cn(
+                                      'inline-flex items-center gap-0.5 rounded px-1 py-0.5 font-semibold not-italic',
+                                      bm!.tone === 'danger' ? 'bg-danger-soft text-danger' : 'bg-warn-soft text-warn',
+                                    )}
+                                    title="Bounced back from Waiting — client disagreed it was resolved"
+                                  >
+                                    <Undo2 className="w-3 h-3" strokeWidth={2} />
+                                    {bm!.label}{bm!.suffix}
+                                  </span>
+                                )}
                                 <span>#{ticket.id.slice(0, 8)}</span>
                                 {ticket._count.comments > 0 && <span>· {ticket._count.comments} msg</span>}
                                 {ticket._count.activities > 0 && <span>· {ticket._count.activities} events</span>}

@@ -19,6 +19,9 @@ import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { TicketRelations } from './ticket-relations'
 import { ActivityTimeline } from '@/components/activity-timeline'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
+import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
+import { cn } from '@/lib/utils'
+import { Undo2 } from 'lucide-react'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -128,6 +131,47 @@ export default async function AdminTicketDetailPage({
         </div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{ticket.title}</h1>
       </div>
+
+      {/* Boomerang banner — client bounced this back from Waiting */}
+      {ticket.bounceCount > 0 && (() => {
+        const bounceEvents = ticket.activities.filter(
+          (a) => a.type === 'STATUS_CHANGED' && a.fromValue === 'WAITING_CLIENT' && (a.toValue === 'OPEN' || a.toValue === 'IN_PROGRESS'),
+        )
+        const last = bounceEvents[0] // activities are ordered newest-first
+        const active = isBoomerang(ticket)
+        const meta = boomerangMeta(ticket.reopenedByRole, ticket.bounceCount)
+        const accent = active ? (meta.tone === 'danger' ? 'text-danger' : 'text-warn') : 'text-ink-mute'
+        return (
+          <div
+            className={cn(
+              'flex items-start gap-3 rounded-xl border px-4 py-3',
+              active
+                ? meta.tone === 'danger'
+                  ? 'border-danger bg-danger-soft'
+                  : 'border-warn bg-warn-soft'
+                : 'border-line bg-bg-sunken',
+            )}
+          >
+            <Undo2 className={cn('w-5 h-5 mt-0.5 shrink-0', accent)} strokeWidth={2} />
+            <div className="min-w-0">
+              <p className={cn('text-sm font-semibold', accent)}>
+                {meta.label}{meta.suffix} — client disagreed this was resolved
+              </p>
+              <p className="text-xs text-ink-mute mt-0.5">
+                Bounced back from Waiting {ticket.bounceCount} time{ticket.bounceCount !== 1 ? 's' : ''}.
+                {last && (
+                  <>
+                    {' '}Last by <strong className="text-ink-soft">{last.actor?.name ?? 'someone'}</strong>
+                    {last.actor?.role ? ` (${last.actor.role.toLowerCase()})` : ''} on{' '}
+                    {new Date(last.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}.
+                  </>
+                )}
+                {active ? ' Prioritise over new tickets.' : ' Currently resolved/closed again.'}
+              </p>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Edit and Add Attachments Actions */}
       <div className="flex gap-2 items-center justify-between">

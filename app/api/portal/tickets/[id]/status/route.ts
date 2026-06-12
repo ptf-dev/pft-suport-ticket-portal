@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { TicketStatus } from '@prisma/client'
+import { ActivityService } from '@/lib/services/activity'
 
 /**
  * PATCH /api/portal/tickets/[id]/status
@@ -65,6 +66,12 @@ export async function PATCH(
         updatedAt: true,
       },
     })
+
+    // Log the change so it shows in the timeline AND so a client bouncing a
+    // ticket out of WAITING_CLIENT gets counted as a boomerang (see lib/boomerang.ts).
+    if (ticket.status !== status) {
+      ActivityService.statusChanged(params.id, session.user.id, ticket.status, status).catch(() => {})
+    }
 
     return NextResponse.json(updatedTicket)
   } catch (error) {
