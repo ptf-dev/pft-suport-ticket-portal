@@ -199,6 +199,22 @@ export default async function AdminTicketsPage({
   const currentSort = searchParams.sort ?? 'updatedAt'
   const currentOrder = (searchParams.order === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc'
 
+  // Build a tickets URL that keeps every current filter and only changes the
+  // given keys (null removes a key). Keeps view + filters in sync when toggling
+  // board/table or the bounced banner instead of resetting the page.
+  const buildHref = (overrides: Record<string, string | null>): string => {
+    const params = new URLSearchParams()
+    for (const [k, v] of Object.entries(searchParams)) {
+      if (typeof v === 'string' && v.length > 0) params.set(k, v)
+    }
+    for (const [k, v] of Object.entries(overrides)) {
+      if (v === null) params.delete(k)
+      else params.set(k, v)
+    }
+    const qs = params.toString()
+    return qs ? `/admin/tickets?${qs}` : '/admin/tickets'
+  }
+
   return (
     <div className="space-y-6">
       <header className="flex items-center justify-between gap-4">
@@ -212,12 +228,12 @@ export default async function AdminTicketsPage({
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <div className="inline-flex rounded-lg border border-line p-0.5">
-            <Link href="/admin/tickets?view=board">
+            <Link href={buildHref({ view: 'board' })}>
               <Button variant={view === 'board' ? 'default' : 'ghost'} size="sm" className="gap-2">
                 <LayoutGrid className="w-4 h-4" />Board
               </Button>
             </Link>
-            <Link href="/admin/tickets?view=table">
+            <Link href={buildHref({ view: 'table' })}>
               <Button variant={view === 'table' ? 'default' : 'ghost'} size="sm" className="gap-2">
                 <Rows3 className="w-4 h-4" />Table
               </Button>
@@ -232,7 +248,7 @@ export default async function AdminTicketsPage({
       </header>
 
       {bouncedCount > 0 && (
-        <Link href={bouncedOnly ? '/admin/tickets' : '/admin/tickets?bounced=1'} className="block">
+        <Link href={buildHref(bouncedOnly ? { bounced: null, page: null } : { bounced: '1', page: null })} className="block">
           <div
             className={cn(
               'flex items-center gap-2 rounded-xl border px-4 py-3 text-sm transition-colors',
