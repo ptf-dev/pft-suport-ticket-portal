@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/button'
 import { signOut } from 'next-auth/react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Ticket, Building2, Users, Settings, LogOut, Menu, X,
-  Rocket,
+  Rocket, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -27,9 +27,25 @@ const NAV_ITEMS = [
   { href: '/admin/settings/smtp', label: 'SMTP', icon: Settings },
 ]
 
+const COLLAPSE_KEY = 'pft.sidebarCollapsed'
+
 export default function ModernAdminNav({ user, version, children }: ModernAdminNavProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === '1')
+    } catch { /* ignore */ }
+  }, [])
+
+  const toggleCollapse = () =>
+    setCollapsed((v) => {
+      const next = !v
+      try { localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0') } catch { /* ignore */ }
+      return next
+    })
 
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname.startsWith(href)
@@ -49,24 +65,40 @@ export default function ModernAdminNav({ user, version, children }: ModernAdminN
 
       <aside
         className={cn(
-          'fixed md:static top-0 left-0 w-[85vw] max-w-xs md:w-64 h-dvh bg-bg-elev border-r border-line flex flex-col z-50 transform transition-transform duration-300 safe-pl',
+          'fixed md:static top-0 left-0 w-[85vw] max-w-xs h-dvh bg-bg-elev border-r border-line flex flex-col z-50 transform transition-all duration-300 safe-pl',
+          collapsed ? 'md:w-16' : 'md:w-72',
           open ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         )}
       >
-        <div className="h-16 flex items-center px-5 border-b border-line shrink-0 safe-pt">
-          <Link href="/admin" className="flex items-center gap-3 group" onClick={() => setOpen(false)}>
-            <div className="w-9 h-9 bg-ink text-bg rounded-lg flex items-center justify-center font-display text-lg tracking-tightest shadow-ink">
+        <div className={cn('h-16 flex items-center border-b border-line shrink-0 safe-pt', collapsed ? 'md:px-0 px-5' : 'px-5')}>
+          <Link
+            href="/admin"
+            className={cn('flex items-center gap-3 group min-w-0', collapsed && 'md:hidden')}
+            onClick={() => setOpen(false)}
+          >
+            <div className="w-9 h-9 bg-ink text-bg rounded-lg flex items-center justify-center font-display text-lg tracking-tightest shadow-ink shrink-0">
               P
             </div>
-            <div className="leading-tight">
-              <div className="font-display text-lg text-ink tracking-tightest">PropFirmsTech</div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute">Ticket portal</div>
+            <div className="leading-tight min-w-0">
+              <div className="font-display text-lg text-ink tracking-tightest truncate">PropFirmsTech</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute truncate">Ticket portal</div>
             </div>
           </Link>
+          <button
+            onClick={toggleCollapse}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className={cn(
+              'hidden md:inline-flex items-center justify-center w-8 h-8 rounded-md text-ink-mute hover:text-ink hover:bg-mute transition-colors shrink-0',
+              collapsed ? 'md:mx-auto' : 'ml-auto',
+            )}
+          >
+            {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
         </div>
 
         <nav className="flex-1 px-3 py-5 space-y-0.5 overflow-y-auto overscroll-contain">
-          <div className="px-3 pb-2">
+          <div className={cn('px-3 pb-2', collapsed && 'md:hidden')}>
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">Workspace</span>
           </div>
           {NAV_ITEMS.map((item) => {
@@ -77,36 +109,38 @@ export default function ModernAdminNav({ user, version, children }: ModernAdminN
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
+                title={collapsed ? item.label : undefined}
                 className={cn(
                   'group relative flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors',
+                  collapsed && 'md:justify-center md:gap-0 md:px-0',
                   active
                     ? 'bg-ink text-bg font-medium'
                     : 'text-ink-soft hover:text-ink hover:bg-mute',
                 )}
               >
-                <Icon className={cn('w-4 h-4', active ? 'text-bg' : 'text-ink-mute group-hover:text-ink')} strokeWidth={1.75} />
-                <span className="tracking-tight">{item.label}</span>
-                {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-accent" />}
+                <Icon className={cn('w-4 h-4 shrink-0', active ? 'text-bg' : 'text-ink-mute group-hover:text-ink')} strokeWidth={1.75} />
+                <span className={cn('tracking-tight', collapsed && 'md:hidden')}>{item.label}</span>
+                {active && <span className={cn('ml-auto h-1.5 w-1.5 rounded-full bg-accent', collapsed && 'md:hidden')} />}
               </Link>
             )
           })}
         </nav>
 
         <div className="p-3 border-t border-line shrink-0 safe-pb space-y-2">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-md bg-mute/40">
+          <div className={cn('flex items-center gap-3 px-2 py-2 rounded-md bg-mute/40', collapsed && 'md:px-0 md:gap-0 md:justify-center')}>
             <div className="w-9 h-9 rounded-full bg-ink text-bg flex items-center justify-center font-medium text-sm shrink-0">
               {user.name?.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className={cn('flex-1 min-w-0', collapsed && 'md:hidden')}>
               <div className="text-sm font-medium text-ink truncate">{user.name}</div>
               <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute truncate">{user.email}</div>
             </div>
-            <span className="relative flex h-1.5 w-1.5 shrink-0" title="Online">
+            <span className={cn('relative flex h-1.5 w-1.5 shrink-0', collapsed && 'md:hidden')} title="Online">
               <span className="absolute inline-flex h-full w-full rounded-full bg-pulse opacity-75 animate-ping" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-pulse" />
             </span>
           </div>
-          <div className="px-1">
+          <div className={cn('px-1', collapsed && 'md:hidden')}>
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">v{version} · production</span>
           </div>
         </div>
