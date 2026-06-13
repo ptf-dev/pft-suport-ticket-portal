@@ -10,6 +10,7 @@ import { priorityLabel } from '@/lib/priorities'
 import type { SprintStatus } from '@prisma/client'
 import { SprintActions } from './sprint-actions'
 import { SprintBacklog } from './sprint-backlog'
+import { SprintEdit } from './sprint-edit'
 
 function fmt(d: Date) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -73,6 +74,7 @@ export default async function SprintDetailPage({ params }: { params: { id: strin
           >
             <BarChart3 className="w-4 h-4" /> Report
           </Link>
+          <SprintEdit id={sprint.id} name={sprint.name} goal={sprint.goal} startDate={sprint.startDate} endDate={sprint.endDate} />
           <SprintActions id={sprint.id} status={sprint.status} />
         </div>
       </header>
