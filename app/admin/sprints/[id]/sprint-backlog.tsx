@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Loader2, Layers } from 'lucide-react'
+import { Plus, Search, Loader2, Layers, CheckSquare, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface BacklogTicket {
@@ -35,6 +35,16 @@ export function SprintBacklog({ sprintId, tickets }: { sprintId: string; tickets
     })
   }, [])
 
+  const allFilteredSelected = filtered.length > 0 && filtered.every((t) => selected.has(t.id))
+  const toggleAllFiltered = useCallback(() => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      const allSel = filtered.length > 0 && filtered.every((t) => next.has(t.id))
+      filtered.forEach((t) => (allSel ? next.delete(t.id) : next.add(t.id)))
+      return next
+    })
+  }, [filtered])
+
   const addToSprint = useCallback(async () => {
     if (selected.size === 0) return
     setBusy(true)
@@ -61,15 +71,26 @@ export function SprintBacklog({ sprintId, tickets }: { sprintId: string; tickets
           <Layers className="w-3.5 h-3.5" /> Backlog
           <span className="text-ink-mute">({tickets.length})</span>
         </h2>
-        <button
-          type="button"
-          disabled={busy || selected.size === 0}
-          onClick={addToSprint}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-accent text-accent-ink text-xs font-medium hover:opacity-90 transition disabled:opacity-40"
-        >
-          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-          Add{selected.size > 0 ? ` ${selected.size}` : ''} to sprint
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={filtered.length === 0}
+            onClick={toggleAllFiltered}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-line bg-bg-elev text-ink-soft hover:text-ink hover:border-ink/40 text-xs font-medium transition disabled:opacity-40"
+          >
+            {allFilteredSelected ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+            {allFilteredSelected ? 'Clear' : 'Select all'}
+          </button>
+          <button
+            type="button"
+            disabled={busy || selected.size === 0}
+            onClick={addToSprint}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-accent text-accent-ink text-xs font-medium hover:opacity-90 transition disabled:opacity-40"
+          >
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+            Add{selected.size > 0 ? ` ${selected.size}` : ''} to sprint
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 px-4 py-2 border-b border-line-soft">

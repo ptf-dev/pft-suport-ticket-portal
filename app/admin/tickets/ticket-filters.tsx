@@ -22,6 +22,7 @@ interface TicketFiltersProps {
     scheduleFilter?: string
     scheduleDate?: string
     sla?: string
+    sprint?: string
   }
 }
 
@@ -112,6 +113,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
   const router = useRouter()
   const searchParams = useSearchParams()
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [sprints, setSprints] = useState<{ id: string; name: string }[]>([])
   const [searchInput, setSearchInput] = useState(currentFilters.search || '')
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [scheduleDate, setScheduleDate] = useState(currentFilters.scheduleDate || '')
@@ -120,6 +122,12 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     fetch('/api/admin/users')
       .then((r) => (r.ok ? r.json() : []))
       .then((users: AdminUser[]) => setAdminUsers(users.filter((u) => u.role === 'ADMIN' && u.isActive)))
+      .catch(() => {})
+    fetch('/api/admin/sprints')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: { id: string; name: string; status: string }[]) =>
+        setSprints(list.filter((s) => s.status !== 'COMPLETED').map((s) => ({ id: s.id, name: s.name }))),
+      )
       .catch(() => {})
   }, [])
 
@@ -195,6 +203,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
       'scheduleFilter',
       'scheduleDate',
       'sla',
+      'sprint',
     ].forEach((k) => params.delete(k))
     params.set('page', '1')
     setSearchInput('')
@@ -211,6 +220,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     currentFilters.scheduleFilter,
     currentFilters.scheduleDate,
     currentFilters.sla,
+    currentFilters.sprint,
   ].filter(Boolean).length
 
   return (
@@ -288,6 +298,20 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </FilterSelect>
+
+        {sprints.length > 0 && (
+          <FilterSelect
+            label="Sprint"
+            value={currentFilters.sprint || ''}
+            onChange={(v) => update('sprint', v)}
+            active={!!currentFilters.sprint}
+          >
+            <option value="none">Backlog (no sprint)</option>
+            {sprints.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </FilterSelect>
+        )}
 
         <div className="h-5 w-px bg-line mx-1" />
 

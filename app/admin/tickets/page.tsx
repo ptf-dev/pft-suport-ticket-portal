@@ -309,6 +309,7 @@ export default async function AdminTicketsPage({
           scheduleFilter: searchParams.scheduleFilter,
           scheduleDate: searchParams.scheduleDate,
           sla: searchParams.sla,
+          sprint: searchParams.sprint,
         }}
       />
 
