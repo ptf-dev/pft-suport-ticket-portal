@@ -12,12 +12,19 @@ function fmt(d: Date) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+// Render order: active work first, then what's coming up, then history.
+const SECTIONS: { key: SprintStatus; label: string }[] = [
+  { key: 'ACTIVE', label: 'Active' },
+  { key: 'PLANNED', label: 'Planned' },
+  { key: 'COMPLETED', label: 'Completed' },
+]
+
 export default async function SprintsPage() {
   await requireAdmin()
 
   const sprints = await prisma.sprint.findMany({
     include: { _count: { select: { tickets: true } } },
-    orderBy: [{ status: 'asc' }, { startDate: 'desc' }],
+    orderBy: { startDate: 'desc' },
   })
   const ids = sprints.map((s) => s.id)
   const doneGroups = ids.length
@@ -28,6 +35,54 @@ export default async function SprintsPage() {
       })
     : []
   const doneBy = new Map(doneGroups.map((g) => [g.sprintId, g._count._all]))
+
+  const grouped: Record<SprintStatus, typeof sprints> = {
+    ACTIVE: sprints.filter((s) => s.status === 'ACTIVE'),
+    // Planned: soonest first so the next sprint sits at the top of its row.
+    PLANNED: sprints.filter((s) => s.status === 'PLANNED').sort((a, b) => +new Date(a.startDate) - +new Date(b.startDate)),
+    COMPLETED: sprints.filter((s) => s.status === 'COMPLETED'),
+  }
+
+  const card = (s: (typeof sprints)[number]) => {
+    const total = s._count.tickets
+    const done = doneBy.get(s.id) ?? 0
+    const pct = sprintProgress(done, total)
+    const meta = SPRINT_STATUS_META[s.status as SprintStatus]
+    return (
+      <div key={s.id} className="group bg-bg-elev border border-line rounded-xl p-4 shadow-card hover:border-ink/30 transition-colors">
+        <div className="flex items-center justify-between gap-2">
+          <Badge variant={meta.badge as any}>{meta.label}</Badge>
+          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">
+            {fmt(s.startDate)} – {fmt(s.endDate)}
+          </span>
+        </div>
+        <Link href={`/admin/sprints/${s.id}`} className="block mt-2">
+          <h3 className="font-medium text-ink leading-snug hover:text-accent transition-colors line-clamp-1">{s.name}</h3>
+        </Link>
+        {s.goal && <p className="mt-1 text-xs text-ink-mute line-clamp-2 leading-relaxed">{s.goal}</p>}
+
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-ink-mute mb-1">
+            <span>{done}/{total} done</span>
+            <span>{pct}%</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-bg-sunken overflow-hidden">
+            <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-line-soft text-xs">
+          <Link href={`/admin/sprints/${s.id}`} className="inline-flex items-center gap-1 text-ink-soft hover:text-accent transition-colors">
+            Open <ArrowRight className="w-3 h-3" />
+          </Link>
+          <SprintEdit id={s.id} name={s.name} goal={s.goal} startDate={s.startDate} endDate={s.endDate} compact />
+          <Link href={`/admin/sprints/${s.id}/report`} className="inline-flex items-center gap-1 text-ink-mute hover:text-ink transition-colors ml-auto">
+            <BarChart3 className="w-3 h-3" /> Report
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -51,47 +106,19 @@ export default async function SprintsPage() {
           <p className="text-xs text-ink-mute">Create one above, then pull tickets from the backlog.</p>
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {sprints.map((s) => {
-            const total = s._count.tickets
-            const done = doneBy.get(s.id) ?? 0
-            const pct = sprintProgress(done, total)
-            const meta = SPRINT_STATUS_META[s.status as SprintStatus]
-            return (
-              <div key={s.id} className="group bg-bg-elev border border-line rounded-xl p-4 shadow-card hover:border-ink/30 transition-colors">
-                <div className="flex items-center justify-between gap-2">
-                  <Badge variant={meta.badge as any}>{meta.label}</Badge>
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">
-                    {fmt(s.startDate)} – {fmt(s.endDate)}
-                  </span>
-                </div>
-                <Link href={`/admin/sprints/${s.id}`} className="block mt-2">
-                  <h3 className="font-medium text-ink leading-snug hover:text-accent transition-colors line-clamp-1">{s.name}</h3>
-                </Link>
-                {s.goal && <p className="mt-1 text-xs text-ink-mute line-clamp-2 leading-relaxed">{s.goal}</p>}
-
-                <div className="mt-3">
-                  <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-ink-mute mb-1">
-                    <span>{done}/{total} done</span>
-                    <span>{pct}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-bg-sunken overflow-hidden">
-                    <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 mt-3 pt-3 border-t border-line-soft text-xs">
-                  <Link href={`/admin/sprints/${s.id}`} className="inline-flex items-center gap-1 text-ink-soft hover:text-accent transition-colors">
-                    Open <ArrowRight className="w-3 h-3" />
-                  </Link>
-                  <SprintEdit id={s.id} name={s.name} goal={s.goal} startDate={s.startDate} endDate={s.endDate} compact />
-                  <Link href={`/admin/sprints/${s.id}/report`} className="inline-flex items-center gap-1 text-ink-mute hover:text-ink transition-colors ml-auto">
-                    <BarChart3 className="w-3 h-3" /> Report
-                  </Link>
-                </div>
+        <div className="space-y-7">
+          {SECTIONS.filter((sec) => grouped[sec.key].length > 0).map((sec) => (
+            <section key={sec.key} className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${SPRINT_STATUS_META[sec.key].dot}`} />
+                <h2 className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">{sec.label}</h2>
+                <span className="font-mono text-xs text-ink-mute tabular-nums">{grouped[sec.key].length}</span>
               </div>
-            )
-          })}
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {grouped[sec.key].map(card)}
+              </div>
+            </section>
+          ))}
         </div>
       )}
     </div>
