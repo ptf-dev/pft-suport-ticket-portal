@@ -20,7 +20,8 @@ export function SprintActions({ id, status }: { id: string; status: SprintStatus
       }
       if (key === 'complete') {
         const j = await res.json().catch(() => ({}))
-        alert(`Sprint completed — ${j.archived ?? 0} archived, ${j.carried ?? 0} carried back to backlog.`)
+        const dest = j.movedToSprintName ? `moved to "${j.movedToSprintName}"` : 'returned to backlog (no next sprint)'
+        alert(`Sprint completed — ${j.archived ?? 0} archived, ${j.carried ?? 0} ${dest}.`)
       }
       if (key === 'delete') { router.push('/admin/sprints'); return }
       router.refresh()
@@ -50,7 +51,7 @@ export function SprintActions({ id, status }: { id: string; status: SprintStatus
           type="button"
           disabled={!!busy}
           onClick={() => {
-            if (!confirm('Complete this sprint? Resolved tickets get archived; unfinished ones go back to the backlog.')) return
+            if (!confirm('Complete this sprint? Resolved/closed tickets get archived; everything else moves to the next planned sprint (or backlog if none).')) return
             call(() => fetch(`/api/admin/sprints/${id}/complete`, { method: 'POST' }), 'complete')
           }}
           className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md bg-ok text-bg text-sm font-medium hover:opacity-90 transition disabled:opacity-50"

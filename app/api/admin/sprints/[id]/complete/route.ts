@@ -6,7 +6,9 @@ import { prisma } from '@/lib/prisma'
  * POST /api/admin/sprints/[id]/complete
  * Mark a sprint COMPLETED:
  *  - resolved/closed tickets are archived (archivedAt set, kept in the sprint for reports)
- *  - unfinished tickets are carried back to the backlog (sprintId = null)
+ *  - every other (unfinished) ticket is carried into the next sprint — the soonest
+ *    upcoming PLANNED sprint by start date. If none exists, they fall back to the
+ *    backlog (sprintId = null) and the response says so.
  */
 export async function POST(_request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -17,16 +19,23 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
 
     const now = new Date()
 
+    // The next sprint = soonest upcoming PLANNED sprint (other than this one).
+    const nextSprint = await prisma.sprint.findFirst({
+      where: { id: { not: params.id }, status: 'PLANNED', startDate: { gte: sprint.startDate } },
+      orderBy: { startDate: 'asc' },
+      select: { id: true, name: true },
+    })
+
     const [archived, carried] = await prisma.$transaction([
       // Archive delivered work — keep it linked to the sprint for the report.
       prisma.ticket.updateMany({
         where: { sprintId: params.id, status: { in: ['RESOLVED', 'CLOSED'] }, archivedAt: null },
         data: { archivedAt: now },
       }),
-      // Carry everything still open back to the backlog.
+      // Move everything still open into the next sprint (or backlog if there is none).
       prisma.ticket.updateMany({
         where: { sprintId: params.id, status: { notIn: ['RESOLVED', 'CLOSED'] } },
-        data: { sprintId: null },
+        data: { sprintId: nextSprint?.id ?? null },
       }),
     ])
 
@@ -35,7 +44,13 @@ export async function POST(_request: NextRequest, { params }: { params: { id: st
       data: { status: 'COMPLETED', completedAt: now },
     })
 
-    return NextResponse.json({ ok: true, archived: archived.count, carried: carried.count })
+    return NextResponse.json({
+      ok: true,
+      archived: archived.count,
+      carried: carried.count,
+      movedToSprintId: nextSprint?.id ?? null,
+      movedToSprintName: nextSprint?.name ?? null,
+    })
   } catch (error) {
     console.error('Failed to complete sprint', error)
     if (error instanceof Error && error.message.includes('Admin access required')) {
