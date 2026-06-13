@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
   LayoutDashboard, Ticket, Building2, Users, Settings, LogOut, Menu, X,
-  LifeBuoy, Rocket,
+  Rocket,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -59,7 +59,7 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
             </div>
             <div className="leading-tight">
               <div className="font-display text-lg text-ink tracking-tightest">PropFirmsTech</div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute">Ops console</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute">Ticket portal · Staging</div>
             </div>
           </Link>
         </div>
@@ -105,12 +105,8 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-pulse" />
             </span>
           </div>
-          <div className="flex items-center justify-between px-1">
+          <div className="px-1">
             <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">v2 · staging</span>
-            <span className="flex items-center gap-1 text-[11px] text-ink-mute">
-              <LifeBuoy className="w-3 h-3" strokeWidth={1.75} />
-              <span>Ops console</span>
-            </span>
           </div>
         </div>
       </aside>
