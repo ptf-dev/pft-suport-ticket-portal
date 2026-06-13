@@ -118,9 +118,9 @@ export function DatePicker({
         weekStartsOn={1}
         className="p-3 text-ink"
         classNames={{
-          month_caption: 'flex justify-center relative items-center pb-2 h-8',
+          month_caption: 'flex justify-center relative items-center pb-2 h-8 pointer-events-none',
           caption_label: 'font-display text-base tracking-tightest',
-          nav: 'flex items-center justify-between absolute inset-x-2 top-2',
+          nav: 'flex items-center justify-between absolute inset-x-2 top-2 z-10',
           button_previous: 'inline-flex items-center justify-center w-7 h-7 rounded-md hover:bg-mute text-ink-soft hover:text-ink transition-colors',
           button_next: 'inline-flex items-center justify-center w-7 h-7 rounded-md hover:bg-mute text-ink-soft hover:text-ink transition-colors',
           chevron: 'w-4 h-4 fill-current',
