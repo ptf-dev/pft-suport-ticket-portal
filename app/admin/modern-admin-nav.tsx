@@ -14,6 +14,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 
 interface ModernAdminNavProps {
   user: { name: string; email: string }
+  version: string
   children: React.ReactNode
 }
 
@@ -26,7 +27,7 @@ const NAV_ITEMS = [
   { href: '/admin/settings/smtp', label: 'SMTP', icon: Settings },
 ]
 
-export default function ModernAdminNav({ user, children }: ModernAdminNavProps) {
+export default function ModernAdminNav({ user, version, children }: ModernAdminNavProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
@@ -59,7 +60,7 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
             </div>
             <div className="leading-tight">
               <div className="font-display text-lg text-ink tracking-tightest">PropFirmsTech</div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute">Ticket portal · Staging</div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute">Ticket portal</div>
             </div>
           </Link>
         </div>
@@ -106,7 +107,7 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
             </span>
           </div>
           <div className="px-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">v2 · staging</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">v{version} · production</span>
           </div>
         </div>
       </aside>
