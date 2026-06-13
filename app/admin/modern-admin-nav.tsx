@@ -156,7 +156,7 @@ export default function ModernAdminNav({ user, children }: ModernAdminNavProps) 
         </header>
 
         <main className="flex-1 overflow-y-auto bg-bg p-4 md:p-8 bg-dots safe-pb safe-pr">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             {children}
           </div>
         </main>

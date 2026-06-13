@@ -383,21 +383,21 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
 
                       <div className={cn('pr-3 py-2.5', isAdmin ? 'pl-7' : 'pl-3')}>
                         <div className="flex items-center gap-2 mb-1.5">
-                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-faint">
+                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-faint shrink-0">
                             #{ticket.id.slice(0, 6)}
                           </span>
-                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">
+                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute truncate min-w-0">
                             {priorityLabel(ticket.priority)}
                           </span>
                           {isAdmin && sla && sla.state !== 'none' && sla.label && (
                             <span
                               className={cn(
-                                'ml-auto inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide',
+                                'ml-auto shrink-0 whitespace-nowrap inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide',
                                 SLA_PILL[sla.state],
                               )}
                               title={`Priority target: ${sla.targetHours}h`}
                             >
-                              <AlarmClock className="w-2.5 h-2.5" strokeWidth={2} />
+                              <AlarmClock className="w-2.5 h-2.5 shrink-0" strokeWidth={2} />
                               {sla.label}
                             </span>
                           )}
