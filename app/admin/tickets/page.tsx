@@ -9,13 +9,14 @@ import Link from 'next/link'
 import { TicketFilters } from './ticket-filters'
 import { InteractiveTicketBoard } from '@/app/portal/tickets/interactive-ticket-board'
 import { RestoreTicketButton } from './restore-ticket-button'
+import { TicketTable } from './ticket-table'
 import { ActivityQuickFilter } from '@/components/activity-quick-filter'
 import { BUCKET_ORDER, bucketToWhere, type ActivityBucket } from '@/lib/activity-buckets'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
 import { slaConditions } from '@/lib/sla'
 import { cn } from '@/lib/utils'
-import { LayoutGrid, Rows3, Plus, ExternalLink, TicketIcon, CalendarClock, Undo2 } from 'lucide-react'
+import { LayoutGrid, Rows3, Plus, ExternalLink, TicketIcon, CalendarClock, Undo2, Rocket, Archive } from 'lucide-react'
 
 const PAGE_SIZE = 20
 
@@ -254,6 +255,16 @@ export default async function AdminTicketsPage({
               </Button>
             </Link>
           </div>
+          <Link href="/admin/sprints">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Rocket className="w-4 h-4" />Sprints
+            </Button>
+          </Link>
+          <Link href="/admin/tickets?status=ARCHIVED">
+            <Button variant={showArchived ? 'default' : 'ghost'} size="sm" className="gap-2">
+              <Archive className="w-4 h-4" />Archived
+            </Button>
+          </Link>
           <Link href="/admin/tickets/new">
             <Button variant="accent" className="gap-2">
               <Plus className="w-4 h-4" />New ticket
@@ -304,162 +315,16 @@ export default async function AdminTicketsPage({
       {view === 'board' ? (
         <InteractiveTicketBoard tickets={tickets} basePath="/admin/tickets" />
       ) : (
-        <div className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-line-soft">
-              <thead className="bg-bg-sunken">
-                <tr>
-                  <SortableTh column="title"      label="Ticket"      currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                  <SortableTh column="company"    label="Company"     currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                  <SortableTh column="status"     label="Status"      currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                  <SortableTh column="priority"   label="Priority"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                  <SortableTh column="assignedTo" label="Assigned"    currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                  <SortableTh column="createdAt"  label="Created"     currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                  <SortableTh column="updatedAt"  label="Last active" currentSort={currentSort} currentOrder={currentOrder} multiSort={multiSort} />
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line-soft">
-                {tickets.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-20 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <TicketIcon className="w-10 h-10 text-ink-faint" strokeWidth={1.2} />
-                        <p className="font-display text-2xl tracking-tightest text-ink">Nothing here.</p>
-                        <p className="text-xs text-ink-mute">Try another activity window or clear your filters.</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  tickets.map((ticket) => {
-                    const ago = timeAgo(new Date(ticket.updatedAt))
-                    const bmrang = isBoomerang(ticket)
-                    const bm = bmrang ? boomerangMeta(ticket.reopenedByRole, ticket.bounceCount ?? 0) : null
-                    return (
-                      <tr
-                        key={ticket.id}
-                        className={cn(
-                          'group transition-colors',
-                          bmrang
-                            ? bm!.tone === 'danger'
-                              ? 'bg-danger-soft'
-                              : 'bg-warn-soft'
-                            : 'hover:bg-bg-sunken',
-                        )}
-                      >
-                        <td className="px-4 py-4">
-                          <div className="flex items-start gap-3">
-                            <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${priorityMeta(ticket.priority).dotClass}`} />
-                            <div className="min-w-0 flex-1">
-                              <Link href={`/admin/tickets/${ticket.id}`}
-                                className="font-medium text-ink hover:text-accent transition-colors line-clamp-1 block">
-                                {ticket.title}
-                              </Link>
-                              <div className="flex items-center gap-2 mt-1 text-[11px] font-mono text-ink-mute">
-                                {bmrang && (
-                                  <span
-                                    className={cn(
-                                      'inline-flex items-center gap-0.5 rounded px-1 py-0.5 font-semibold not-italic',
-                                      bm!.tone === 'danger' ? 'bg-danger-soft text-danger' : 'bg-warn-soft text-warn',
-                                    )}
-                                    title="Bounced back from Waiting — client disagreed it was resolved"
-                                  >
-                                    <Undo2 className="w-3 h-3" strokeWidth={2} />
-                                    {bm!.label}{bm!.suffix}
-                                  </span>
-                                )}
-                                <span>#{ticket.id.slice(0, 8)}</span>
-                                {ticket._count.comments > 0 && <span>· {ticket._count.comments} msg</span>}
-                                {ticket._count.activities > 0 && <span>· {ticket._count.activities} events</span>}
-                                {ticket.scheduledDate && (
-                                  <span className="inline-flex items-center gap-1 text-accent">
-                                    <CalendarClock className="w-3 h-3" />
-                                    {new Date(ticket.scheduledDate).toLocaleDateString('en-US', { month:'short', day:'numeric' })}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm text-ink">{ticket.company.name}</div>
-                          <div className="text-xs text-ink-mute mt-0.5">{ticket.createdBy.name}</div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <Badge variant={
-                            ticket.status === 'OPEN' ? 'destructive' :
-                            ticket.status === 'BLOCKED' ? 'destructive' :
-                            ticket.status === 'IN_PROGRESS' ? 'info' :
-                            ticket.status === 'WAITING_CLIENT' ? 'warning' :
-                            ticket.status === 'RESOLVED' ? 'success' : 'secondary'
-                          }>
-                            {ticket.status === 'IN_PROGRESS' ? 'In prog' :
-                             ticket.status === 'WAITING_CLIENT' ? 'Waiting' :
-                             ticket.status.replace(/_/g, ' ').toLowerCase()}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-4">
-                          <Badge variant={priorityMeta(ticket.priority).badgeVariant}>
-                            {priorityLabel(ticket.priority)}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-4">
-                          {ticket.assignedTo ? (
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-ink text-bg flex items-center justify-center text-[10px] font-semibold">
-                                {ticket.assignedTo.name?.charAt(0).toUpperCase() ?? '?'}
-                              </div>
-                              <div className="text-sm text-ink">{ticket.assignedTo.name}</div>
-                            </div>
-                          ) : (
-                            <span className="text-xs text-ink-faint italic">Unassigned</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="text-sm text-ink tabular-nums">
-                            {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </div>
-                          <div className="text-[10px] text-ink-mute font-mono uppercase tracking-widest mt-0.5">
-                            {timeAgo(new Date(ticket.createdAt)).label} old
-                          </div>
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            {ago.fresh && (
-                              <span className="relative flex h-2 w-2">
-                                <span className="absolute inline-flex h-full w-full rounded-full bg-pulse opacity-75 animate-ping" />
-                                <span className="relative inline-flex h-2 w-2 rounded-full bg-pulse" />
-                              </span>
-                            )}
-                            <div>
-                              <div className={`text-sm font-medium tabular-nums ${ago.fresh ? 'text-pulse' : 'text-ink'}`}>
-                                {ago.label} ago
-                              </div>
-                              <div className="text-[10px] text-ink-mute font-mono uppercase tracking-widest">
-                                {new Date(ticket.updatedAt).toLocaleDateString('en-US', { month:'short', day:'numeric' })}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-3 py-4 text-right">
-                          {showDeleted ? (
-                            <RestoreTicketButton ticketId={ticket.id} />
-                          ) : (
-                            <Link href={`/admin/tickets/${ticket.id}`} target="_blank" rel="noopener noreferrer"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-ink-mute hover:text-ink">
-                              <ExternalLink className="w-4 h-4 inline" />
-                            </Link>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          <TablePagination total={total} page={page} pageSize={PAGE_SIZE} />
-        </div>
+        <TicketTable
+          tickets={tickets}
+          showDeleted={showDeleted}
+          currentSort={currentSort}
+          currentOrder={currentOrder}
+          multiSort={multiSort}
+          total={total}
+          page={page}
+          pageSize={PAGE_SIZE}
+        />
       )}
     </div>
   )

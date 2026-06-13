@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Bookmark, BookmarkPlus, X, Inbox, UserX, AlarmClock, Flame, Clock, Star } from 'lucide-react'
+import { Bookmark, BookmarkPlus, X, Inbox, UserX, AlarmClock, Flame, Clock, Star, Archive } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const STORAGE_KEY = 'pft.savedViews.v1'
@@ -33,6 +33,7 @@ const PRESETS: Preset[] = [
   { name: 'At risk',      query: 'sla=risk', icon: <Clock className="w-3 h-3" /> },
   { name: 'Urgent',       query: 'priority=URGENT&status=NOT_RESOLVED', icon: <Flame className="w-3 h-3" /> },
   { name: 'Stale 30d+',   query: 'activity=stale&status=NOT_RESOLVED', icon: <Clock className="w-3 h-3" /> },
+  { name: 'Archived',     query: 'status=ARCHIVED', icon: <Archive className="w-3 h-3" /> },
 ]
 
 /** Normalize a query string to its view-defining params, sorted — for active matching. */

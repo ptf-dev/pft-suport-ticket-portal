@@ -368,28 +368,29 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
                         )}
                         aria-hidden
                       />
-                      {isAdmin ? (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); toggleSelect(ticket.id) }}
-                          onMouseDown={(e) => e.stopPropagation()}
-                          className={cn(
-                            'absolute top-2 left-2 z-10 transition-opacity',
-                            isSelected ? 'opacity-100 text-accent' : 'opacity-0 group-hover:opacity-100 text-ink-mute hover:text-ink',
-                          )}
-                          aria-label={isSelected ? 'Deselect ticket' : 'Select ticket'}
-                        >
-                          {isSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                        </button>
-                      ) : (
+                      {!isAdmin && (
                         <GripVertical
                           className="absolute top-2 right-1.5 w-3.5 h-3.5 text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity"
                           aria-hidden
                         />
                       )}
 
-                      <div className={cn('pr-3 py-2.5', isAdmin ? 'pl-7' : 'pl-3')}>
+                      <div className="pl-3 pr-3 py-2.5">
                         <div className="flex items-center gap-2 mb-1.5">
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); toggleSelect(ticket.id) }}
+                              onMouseDown={(e) => e.stopPropagation()}
+                              className={cn(
+                                'shrink-0 transition-colors',
+                                isSelected ? 'text-accent' : 'text-ink-faint hover:text-ink',
+                              )}
+                              aria-label={isSelected ? 'Deselect ticket' : 'Select ticket'}
+                            >
+                              {isSelected ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                            </button>
+                          )}
                           <span className="font-mono text-[10px] uppercase tracking-widest text-ink-faint shrink-0">
                             #{ticket.id.slice(0, 6)}
                           </span>
