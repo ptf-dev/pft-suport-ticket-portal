@@ -188,7 +188,7 @@ export default async function AdminDashboard() {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
           <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
             <h2 className="font-display text-2xl tracking-tightest text-ink">Status mix</h2>

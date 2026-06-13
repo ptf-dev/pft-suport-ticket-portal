@@ -1,0 +1,15 @@
+#!/bin/sh
+# Auto-bump the patch version on every commit so package.json — and the portal
+# footer that reads it (see next.config.mjs, which also appends the git SHA) —
+# tracks each change instead of sitting at one number.
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+#
+# Skip with:  SKIP_VERSION_BUMP=1 git commit ...
+
+[ "$SKIP_VERSION_BUMP" = "1" ] && exit 0
+command -v npm >/dev/null 2>&1 || exit 0
+
+npm version patch --no-git-tag-version >/dev/null 2>&1 || exit 0
+git add package.json package-lock.json >/dev/null 2>&1 || true
+exit 0
