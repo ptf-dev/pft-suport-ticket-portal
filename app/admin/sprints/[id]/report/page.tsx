@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { buildSprintReport, formatHours, SPRINT_STATUS_META } from '@/lib/sprints'
 import type { SprintStatus } from '@prisma/client'
 
@@ -72,8 +72,13 @@ export default async function SprintReportPage({ params }: { params: { id: strin
                 <tr><td colSpan={7} className="px-4 py-12 text-center text-xs text-ink-mute">No tickets in this sprint yet.</td></tr>
               ) : (
                 report.rows.map((r) => (
-                  <tr key={r.companyId} className="hover:bg-bg-sunken transition-colors">
-                    <td className="px-4 py-3 text-ink font-medium">{r.companyName}</td>
+                  <tr key={r.companyId} className="group hover:bg-bg-sunken transition-colors">
+                    <td className="px-4 py-3">
+                      <Link href={`/admin/sprints/${sprint.id}/report/${r.companyId}`} className="inline-flex items-center gap-1.5 text-ink font-medium hover:text-accent transition-colors">
+                        {r.companyName}
+                        <ArrowRight className="w-3.5 h-3.5 text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </Link>
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums text-ink">{r.total}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-ok">{r.done}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-info">{r.inProgress}</td>
