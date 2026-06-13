@@ -189,37 +189,76 @@ export default async function AdminDashboard() {
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-2 bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
-          <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
-            <h2 className="font-display text-2xl tracking-tightest text-ink">Status mix</h2>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Live distribution</span>
-          </div>
-          <div className="rule mx-6" />
-          <div className="px-6 py-5 space-y-4">
-            <div className="flex h-3 rounded-full overflow-hidden bg-bg-sunken">
-              {(Object.keys(STATUS_META) as TicketStatus[]).map((s) => {
-                const c = statusCounts[s]
-                if (c === 0 || totalTickets === 0) return null
-                const pct = (c / totalTickets) * 100
-                return (
-                  <span
-                    key={s}
-                    title={`${STATUS_META[s].label}: ${c}`}
-                    className={`${STATUS_META[s].accent} transition-all`}
-                    style={{ width: `${pct}%` }}
-                  />
-                )
-              })}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+            <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
+              <h2 className="font-display text-2xl tracking-tightest text-ink">Status mix</h2>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Live distribution</span>
             </div>
-            <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
-              {(Object.keys(STATUS_META) as TicketStatus[]).map((s) => (
-                <li key={s} className="flex items-center gap-2 group">
-                  <span className={`h-2 w-2 rounded-full ${STATUS_META[s].accent}`} />
-                  <span className="text-sm text-ink-soft flex-1">{STATUS_META[s].label}</span>
-                  <span className="font-mono tabular-nums text-sm text-ink">{statusCounts[s]}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="rule mx-6" />
+            <div className="px-6 py-5 space-y-4">
+              <div className="flex h-3 rounded-full overflow-hidden bg-bg-sunken">
+                {(Object.keys(STATUS_META) as TicketStatus[]).map((s) => {
+                  const c = statusCounts[s]
+                  if (c === 0 || totalTickets === 0) return null
+                  const pct = (c / totalTickets) * 100
+                  return (
+                    <span
+                      key={s}
+                      title={`${STATUS_META[s].label}: ${c}`}
+                      className={`${STATUS_META[s].accent} transition-all`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  )
+                })}
+              </div>
+              <ul className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+                {(Object.keys(STATUS_META) as TicketStatus[]).map((s) => (
+                  <li key={s} className="flex items-center gap-2 group">
+                    <span className={`h-2 w-2 rounded-full ${STATUS_META[s].accent}`} />
+                    <span className="text-sm text-ink-soft flex-1">{STATUS_META[s].label}</span>
+                    <span className="font-mono tabular-nums text-sm text-ink">{statusCounts[s]}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <div className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+            <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
+              <div>
+                <h2 className="font-display text-2xl tracking-tightest text-ink">Today at a glance</h2>
+                <p className="text-xs text-ink-mute mt-1">Every move across every ticket, oldest last.</p>
+              </div>
+              <Link href="/admin/tickets?activity=today" className="text-xs font-mono uppercase tracking-widest text-ink-mute hover:text-ink inline-flex items-center gap-1">
+                See tickets <ArrowUpRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="rule mx-6" />
+            <div className="px-6 py-5">
+              {todayFeed.length === 0 ? (
+                <div className="py-8 text-center text-sm text-ink-mute">Quiet so far today.</div>
+              ) : (
+                <ul className="space-y-3">
+                  {todayFeed.map((a) => (
+                    <li key={a.id} className="flex items-center gap-3 text-sm group">
+                      <span className="font-mono tabular-nums text-[10px] uppercase tracking-widest text-ink-faint w-16 shrink-0">
+                        {new Date(a.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                      </span>
+                      <span className="text-ink-soft flex-1 truncate">
+                        <strong className="text-ink">{a.actor?.name ?? 'System'}</strong>{' '}
+                        <span className="font-mono text-[11px] uppercase tracking-wider text-accent">{a.type.replace(/_/g, ' ').toLowerCase()}</span>{' '}
+                        on{' '}
+                        <Link href={`/admin/tickets/${a.ticketId}`} className="text-ink hover:text-accent font-medium">
+                          {a.ticket?.title}
+                        </Link>
+                        <span className="text-ink-mute"> · {a.ticket?.company.name}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
 
@@ -236,43 +275,6 @@ export default async function AdminDashboard() {
             <QuickLink href="/admin/tickets?status=WAITING_CLIENT" label="Waiting on client" value={waitingCount} />
             <QuickLink href="/admin/tickets?scheduleFilter=today" label="Scheduled today" value={0} icon={<CalendarClock className="w-3.5 h-3.5" />} />
           </div>
-        </div>
-      </section>
-
-      <section className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
-        <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
-          <div>
-            <h2 className="font-display text-2xl tracking-tightest text-ink">Today at a glance</h2>
-            <p className="text-xs text-ink-mute mt-1">Every move across every ticket, oldest last.</p>
-          </div>
-          <Link href="/admin/tickets?activity=today" className="text-xs font-mono uppercase tracking-widest text-ink-mute hover:text-ink inline-flex items-center gap-1">
-            See tickets <ArrowUpRight className="w-3 h-3" />
-          </Link>
-        </div>
-        <div className="rule mx-6" />
-        <div className="px-6 py-5">
-          {todayFeed.length === 0 ? (
-            <div className="py-8 text-center text-sm text-ink-mute">Quiet so far today.</div>
-          ) : (
-            <ul className="space-y-3">
-              {todayFeed.map((a) => (
-                <li key={a.id} className="flex items-center gap-3 text-sm group">
-                  <span className="font-mono tabular-nums text-[10px] uppercase tracking-widest text-ink-faint w-16 shrink-0">
-                    {new Date(a.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                  </span>
-                  <span className="text-ink-soft flex-1 truncate">
-                    <strong className="text-ink">{a.actor?.name ?? 'System'}</strong>{' '}
-                    <span className="font-mono text-[11px] uppercase tracking-wider text-accent">{a.type.replace(/_/g, ' ').toLowerCase()}</span>{' '}
-                    on{' '}
-                    <Link href={`/admin/tickets/${a.ticketId}`} className="text-ink hover:text-accent font-medium">
-                      {a.ticket?.title}
-                    </Link>
-                    <span className="text-ink-mute"> · {a.ticket?.company.name}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       </section>
     </div>
