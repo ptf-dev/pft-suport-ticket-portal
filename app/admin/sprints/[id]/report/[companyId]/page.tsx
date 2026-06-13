@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, CheckCircle2, CircleDot, ExternalLink } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, CircleDot, ExternalLink, Clock } from 'lucide-react'
 import { priorityLabel, priorityMeta } from '@/lib/priorities'
 import { isDone, SPRINT_STATUS_META } from '@/lib/sprints'
 import type { SprintStatus, TicketStatus } from '@prisma/client'
@@ -49,7 +49,9 @@ export default async function FirmSprintReportPage({ params }: { params: { id: s
   })
 
   const delivered = tickets.filter((t) => isDone(t))
-  const inProgress = tickets.filter((t) => !isDone(t))
+  // Waiting on the client = done on our side, ball in their court — not "in progress".
+  const awaiting = tickets.filter((t) => !isDone(t) && t.status === 'WAITING_CLIENT')
+  const inProgress = tickets.filter((t) => !isDone(t) && t.status !== 'WAITING_CLIENT')
   const meta = SPRINT_STATUS_META[sprint.status as SprintStatus]
 
   // Client-facing ticket URL on the firm's tenant subdomain.
@@ -57,18 +59,21 @@ export default async function FirmSprintReportPage({ params }: { params: { id: s
   const clientUrl = (id: string) => (clientBase ? `${clientBase}/portal/tickets/${id}` : `#${id.slice(0, 8)}`)
 
   // Plain-text summary for copy / email.
-  const line = (t: { id: string; title: string; status: TicketStatus }) =>
-    `- ${t.title} — ${STATUS_LABEL[t.status]}${clientBase ? `\n  ${clientUrl(t.id)}` : ` (#${t.id.slice(0, 8)})`}`
+  const line = (t: { id: string; title: string }, statusText: string) =>
+    `- ${t.title} — ${statusText}${clientBase ? `\n  ${clientUrl(t.id)}` : ` (#${t.id.slice(0, 8)})`}`
   const subject = `${company.name} — ${sprint.name} update`
   const summary = [
     subject,
     `${fmt(sprint.startDate)} – ${fmt(sprint.endDate)}`,
     '',
     `Delivered (${delivered.length}):`,
-    ...(delivered.length ? delivered.map(line) : ['- (none yet)']),
+    ...(delivered.length ? delivered.map((t) => line(t, STATUS_LABEL[t.status])) : ['- (none yet)']),
+    '',
+    `Awaiting your reply (${awaiting.length}):`,
+    ...(awaiting.length ? awaiting.map((t) => line(t, 'Done — awaiting your reply')) : ['- (none)']),
     '',
     `In progress (${inProgress.length}):`,
-    ...(inProgress.length ? inProgress.map(line) : ['- (none)']),
+    ...(inProgress.length ? inProgress.map((t) => line(t, STATUS_LABEL[t.status])) : ['- (none)']),
   ].join('\n')
 
   const Section = ({ title, icon, list, accent }: { title: string; icon: React.ReactNode; list: typeof tickets; accent: string }) => (
@@ -123,13 +128,14 @@ export default async function FirmSprintReportPage({ params }: { params: { id: s
             {company.name} — <em className="italic text-accent">{sprint.name}</em>
           </h1>
           <p className="mt-1 text-xs text-ink-mute">
-            {delivered.length} delivered · {inProgress.length} in progress · {tickets.length} total this sprint
+            {delivered.length} delivered · {awaiting.length} awaiting your reply · {inProgress.length} in progress · {tickets.length} total this sprint
           </p>
         </div>
         <FirmReportActions summary={summary} email={company.contactEmail} subject={subject} />
       </header>
 
       <Section title="Delivered" icon={<CheckCircle2 className="w-4 h-4" />} list={delivered} accent="text-ok" />
+      <Section title="Awaiting your reply" icon={<Clock className="w-4 h-4" />} list={awaiting} accent="text-warn" />
       <Section title="In progress" icon={<CircleDot className="w-4 h-4" />} list={inProgress} accent="text-info" />
     </div>
   )
