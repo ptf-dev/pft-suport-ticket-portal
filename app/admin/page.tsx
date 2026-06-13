@@ -4,9 +4,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TicketStatus } from '@prisma/client'
 import Link from 'next/link'
-import { ArrowUpRight, CalendarClock, Flame, TrendingUp, Undo2 } from 'lucide-react'
+import { ArrowUpRight, CalendarClock, Flame, TrendingUp, Undo2, Rocket } from 'lucide-react'
 import { ActivityTimeline } from '@/components/activity-timeline'
 import { bucketToWhere } from '@/lib/activity-buckets'
+import { sprintProgress } from '@/lib/sprints'
 
 const STATUS_META: Record<TicketStatus, { label: string; tone: string; accent: string }> = {
   OPEN:           { label: 'Open',           tone: 'text-danger', accent: 'bg-danger' },
@@ -30,6 +31,7 @@ export default async function AdminDashboard() {
     urgentCount, unassignedOpenCount,
     bouncedCount, hotBouncedCount, bouncedThisWeek,
     todayFeed,
+    activeSprint, plannedSprintCount,
   ] = await Promise.all([
     prisma.ticket.count({ where: { status: TicketStatus.OPEN, isDeleted: false } }),
     prisma.ticket.count({ where: { status: TicketStatus.IN_PROGRESS, isDeleted: false } }),
@@ -56,7 +58,24 @@ export default async function AdminDashboard() {
         ticket: { select: { id: true, title: true, company: { select: { name: true } } } },
       },
     }),
+    prisma.sprint.findFirst({ where: { status: 'ACTIVE' }, orderBy: { startDate: 'desc' } }),
+    prisma.sprint.count({ where: { status: 'PLANNED' } }),
   ])
+
+  // Active sprint progress.
+  let sprintTotal = 0
+  let sprintDone = 0
+  if (activeSprint) {
+    ;[sprintTotal, sprintDone] = await Promise.all([
+      prisma.ticket.count({ where: { sprintId: activeSprint.id, isDeleted: false } }),
+      prisma.ticket.count({
+        where: { sprintId: activeSprint.id, isDeleted: false, OR: [{ status: { in: ['RESOLVED', 'CLOSED'] } }, { archivedAt: { not: null } }] },
+      }),
+    ])
+  }
+  const sprintPct = sprintProgress(sprintDone, sprintTotal)
+  const sprintDaysLeft = activeSprint ? Math.max(0, Math.ceil((new Date(activeSprint.endDate).getTime() - Date.now()) / 86_400_000)) : 0
+  const fmtSprint = (d: Date) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
   const statusCounts = {
     OPEN: openCount, IN_PROGRESS: inProgressCount, BLOCKED: blockedCount,
@@ -110,6 +129,63 @@ export default async function AdminDashboard() {
           sub={hotBouncedCount > 0 ? `${hotBouncedCount} reopened 2×+ now` : `${bouncedCount} active total`}
           tone={bouncedThisWeek > 0 || hotBouncedCount > 0 ? 'text-danger' : 'text-ink'}
         />
+      </section>
+
+      <section className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+        <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
+          <h2 className="font-display text-2xl tracking-tightest text-ink">Current sprint</h2>
+          <Link href="/admin/sprints" className="text-xs font-mono uppercase tracking-widest text-ink-mute hover:text-ink inline-flex items-center gap-1">
+            All sprints <ArrowUpRight className="w-3 h-3" />
+          </Link>
+        </div>
+        <div className="rule mx-6" />
+        <div className="px-6 py-5">
+          {activeSprint ? (
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <Badge variant="info">Active</Badge>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">
+                    {fmtSprint(activeSprint.startDate)} – {fmtSprint(activeSprint.endDate)} · {sprintDaysLeft}d left
+                  </span>
+                </div>
+                <Link href={`/admin/sprints/${activeSprint.id}`} className="block mt-1.5 font-display text-xl tracking-tightest text-ink hover:text-accent transition-colors">
+                  {activeSprint.name}
+                </Link>
+                {activeSprint.goal && <p className="text-xs text-ink-mute mt-0.5 line-clamp-1">{activeSprint.goal}</p>}
+              </div>
+              <div className="sm:w-72 shrink-0">
+                <div className="flex justify-between font-mono text-[10px] uppercase tracking-widest text-ink-mute mb-1">
+                  <span>{sprintDone}/{sprintTotal} done</span>
+                  <span>{sprintPct}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-bg-sunken overflow-hidden">
+                  <div className="h-full bg-accent rounded-full transition-all" style={{ width: `${sprintPct}%` }} />
+                </div>
+                {plannedSprintCount > 0 && (
+                  <p className="mt-2 text-xs text-ink-mute">{plannedSprintCount} planned next</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <Rocket className="w-5 h-5 text-ink-faint shrink-0" strokeWidth={1.5} />
+                <div>
+                  <p className="text-sm text-ink">No active sprint.</p>
+                  <p className="text-xs text-ink-mute">
+                    {plannedSprintCount > 0 ? `${plannedSprintCount} planned — start one to begin shipping.` : 'Plan a sprint to start shipping in cycles.'}
+                  </p>
+                </div>
+              </div>
+              <Link href="/admin/sprints">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Rocket className="w-4 h-4" /> Go to sprints
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
