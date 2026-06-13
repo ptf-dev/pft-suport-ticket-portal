@@ -26,7 +26,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <ModernAdminNav user={session.user} version={pkg.version}>
+    <ModernAdminNav user={session.user} version={process.env.NEXT_PUBLIC_APP_VERSION ?? pkg.version}>
       {children}
     </ModernAdminNav>
   )
