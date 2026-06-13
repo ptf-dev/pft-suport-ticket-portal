@@ -13,6 +13,7 @@ import { ActivityQuickFilter } from '@/components/activity-quick-filter'
 import { BUCKET_ORDER, bucketToWhere, type ActivityBucket } from '@/lib/activity-buckets'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
+import { slaConditions } from '@/lib/sla'
 import { cn } from '@/lib/utils'
 import { LayoutGrid, Rows3, Plus, ExternalLink, TicketIcon, CalendarClock, Undo2 } from 'lucide-react'
 
@@ -72,6 +73,7 @@ export default async function AdminTicketsPage({
     endDate?: string
     scheduleFilter?: string
     scheduleDate?: string
+    sla?: string
   }
 }) {
   await requireAdmin()
@@ -148,6 +150,10 @@ export default async function AdminTicketsPage({
   } else if (searchParams.scheduleDate) {
     const d = new Date(searchParams.scheduleDate); d.setHours(0,0,0,0); const n = new Date(d); n.setDate(n.getDate()+1)
     where.scheduledDate = { gte: d, lt: n }
+  }
+
+  if (searchParams.sla === 'breach' || searchParams.sla === 'risk') {
+    where.AND = [...(where.AND ?? []), ...slaConditions(searchParams.sla)]
   }
 
   let orderBy: any
@@ -282,6 +288,7 @@ export default async function AdminTicketsPage({
           endDate: searchParams.endDate,
           scheduleFilter: searchParams.scheduleFilter,
           scheduleDate: searchParams.scheduleDate,
+          sla: searchParams.sla,
         }}
       />
 

@@ -2,10 +2,11 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { Search, X, ChevronDown, Pin, Forward, CalendarDays, HelpCircle } from 'lucide-react'
+import { Search, X, ChevronDown, Pin, Forward, CalendarDays, HelpCircle, AlarmClock, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DatePicker } from '@/components/ui/date-picker'
 import { PRIORITY_ORDER, priorityLabel } from '@/lib/priorities'
+import { SavedViews } from './saved-views'
 
 interface TicketFiltersProps {
   companies: { id: string; name: string }[]
@@ -20,6 +21,7 @@ interface TicketFiltersProps {
     endDate?: string
     scheduleFilter?: string
     scheduleDate?: string
+    sla?: string
   }
 }
 
@@ -151,6 +153,14 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     router.push(`/admin/tickets?${params.toString()}`)
   }
 
+  const toggleSla = (mode: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (mode === currentFilters.sla) params.delete('sla')
+    else params.set('sla', mode)
+    params.set('page', '1')
+    router.push(`/admin/tickets?${params.toString()}`)
+  }
+
   const toggleScheduleFilter = (filter: string) => {
     const params = new URLSearchParams(searchParams.toString())
     params.delete('scheduleDate')
@@ -183,6 +193,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
       'endDate',
       'scheduleFilter',
       'scheduleDate',
+      'sla',
     ].forEach((k) => params.delete(k))
     params.set('page', '1')
     setSearchInput('')
@@ -198,10 +209,12 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
     currentFilters.search,
     currentFilters.scheduleFilter,
     currentFilters.scheduleDate,
+    currentFilters.sla,
   ].filter(Boolean).length
 
   return (
     <div className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+      <SavedViews />
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-line-soft">
         <Search className="w-4 h-4 text-ink-mute shrink-0" />
         <input
@@ -323,6 +336,26 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
           }}
           placeholder="Pick date"
         />
+
+        <div className="h-5 w-px bg-line mx-1" />
+
+        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute self-center">
+          SLA
+        </span>
+        <Chip
+          active={currentFilters.sla === 'breach'}
+          onClick={() => toggleSla('breach')}
+          icon={<AlarmClock className="w-3 h-3" />}
+        >
+          Overdue
+        </Chip>
+        <Chip
+          active={currentFilters.sla === 'risk'}
+          onClick={() => toggleSla('risk')}
+          icon={<Clock className="w-3 h-3" />}
+        >
+          At risk
+        </Chip>
 
         {activeCount > 0 && (
           <div className="ml-auto flex items-center gap-2">
