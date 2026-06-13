@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Rocket, BarChart3, ArrowRight } from 'lucide-react'
 import { SPRINT_STATUS_META, sprintProgress } from '@/lib/sprints'
 import { SprintCreateForm } from './sprint-create-form'
+import { SprintEdit } from './[id]/sprint-edit'
 import type { SprintStatus } from '@prisma/client'
 
 function fmt(d: Date) {
@@ -83,6 +84,7 @@ export default async function SprintsPage() {
                   <Link href={`/admin/sprints/${s.id}`} className="inline-flex items-center gap-1 text-ink-soft hover:text-accent transition-colors">
                     Open <ArrowRight className="w-3 h-3" />
                   </Link>
+                  <SprintEdit id={s.id} name={s.name} goal={s.goal} startDate={s.startDate} endDate={s.endDate} compact />
                   <Link href={`/admin/sprints/${s.id}/report`} className="inline-flex items-center gap-1 text-ink-mute hover:text-ink transition-colors ml-auto">
                     <BarChart3 className="w-3 h-3" /> Report
                   </Link>

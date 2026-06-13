@@ -15,12 +15,14 @@ export function SprintEdit({
   goal: goal0,
   startDate: start0,
   endDate: end0,
+  compact = false,
 }: {
   id: string
   name: string
   goal: string | null
   startDate: Date | string
   endDate: Date | string
+  compact?: boolean
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -63,13 +65,24 @@ export function SprintEdit({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openForm}
-        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-line bg-bg-elev text-ink-soft hover:text-ink hover:border-ink/40 text-sm font-medium transition"
-      >
-        <Pencil className="w-4 h-4" /> Edit
-      </button>
+      {compact ? (
+        <button
+          type="button"
+          onClick={openForm}
+          title="Edit sprint"
+          className="inline-flex items-center gap-1 text-ink-mute hover:text-ink transition-colors"
+        >
+          <Pencil className="w-3 h-3" /> Edit
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={openForm}
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-line bg-bg-elev text-ink-soft hover:text-ink hover:border-ink/40 text-sm font-medium transition"
+        >
+          <Pencil className="w-4 h-4" /> Edit
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={() => !busy && setOpen(false)}>
