@@ -5,6 +5,7 @@ import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TablePagination } from '@/components/ui/table-pagination'
 import Link from 'next/link'
 import { UsersTable } from './users-table'
+import { Plus, Users, ShieldCheck, UserRound } from 'lucide-react'
 
 const PAGE_SIZE = 20
 
@@ -44,7 +45,6 @@ export default async function UsersPage({
     }),
   ])
 
-  // Stats always use full count
   const [totalCount, adminCount, clientCount] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { role: 'ADMIN' } }),
@@ -54,56 +54,60 @@ export default async function UsersPage({
   const currentSort = searchParams.sort ?? 'createdAt'
   const currentOrder = (searchParams.order === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc'
 
+  const stats = [
+    { label: 'Total users', value: totalCount,  icon: Users },
+    { label: 'Admins',      value: adminCount,  icon: ShieldCheck },
+    { label: 'Clients',     value: clientCount, icon: UserRound },
+  ]
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Users</h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Manage user accounts and access permissions</p>
+    <div className="space-y-6">
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="font-display text-2xl tracking-tightest text-ink leading-none">
+            Everyone with <em className="italic text-accent">a key.</em>
+          </h1>
+          <span className="hidden md:inline font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute truncate">
+            Operations · Users
+          </span>
         </div>
         <Link href="/admin/users/new">
-          <Button className="shadow-md hover:shadow-lg transition-shadow">
-            <span className="mr-2">➕</span>Create User
+          <Button variant="accent" className="gap-2">
+            <Plus className="w-4 h-4" />Create user
           </Button>
         </Link>
-      </div>
+      </header>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { label: 'Total Users', value: totalCount, icon: '👥', gradient: 'from-blue-500 to-indigo-500' },
-          { label: 'Admins', value: adminCount, icon: '👑', gradient: 'from-purple-500 to-pink-500' },
-          { label: 'Clients', value: clientCount, icon: '🧑‍💼', gradient: 'from-green-500 to-emerald-500' },
-        ].map(({ label, value, icon, gradient }) => (
-          <div key={label} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-md">
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 bg-gradient-to-br ${gradient} rounded-xl flex items-center justify-center shadow-md`}>
-                <span className="text-2xl">{icon}</span>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {stats.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="bg-bg-elev border border-line rounded-xl shadow-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-mute flex items-center justify-center text-ink-soft shrink-0">
+                <Icon className="w-5 h-5" strokeWidth={1.75} />
               </div>
               <div>
-                <div className="text-3xl font-bold text-gray-900 dark:text-white">{value}</div>
-                <div className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</div>
+                <div className="font-display text-2xl text-ink tracking-tightest tabular-nums leading-none">{value}</div>
+                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute">{label}</div>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden">
+      <div className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+          <table className="min-w-full divide-y divide-line-soft">
+            <thead className="bg-bg-sunken">
               <tr>
                 <SortableTh column="name"      label="User"    currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="email"     label="Email"   currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="role"      label="Role"    currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="company"   label="Company" currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="createdAt" label="Created" currentSort={currentSort} currentOrder={currentOrder} />
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-right font-mono text-[10px] uppercase tracking-[0.15em] text-ink-mute">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-line-soft">
               <UsersTable users={users} />
             </tbody>
           </table>

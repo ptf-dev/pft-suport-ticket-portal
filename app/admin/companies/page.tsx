@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TablePagination } from '@/components/ui/table-pagination'
 import Link from 'next/link'
+import { Plus, Building2, Users, Ticket, ArrowRight } from 'lucide-react'
 
 const PAGE_SIZE = 20
 
@@ -43,7 +44,6 @@ export default async function CompaniesPage({
     }),
   ])
 
-  // Stats from full dataset
   const allCompanies = await prisma.company.findMany({
     select: { _count: { select: { users: true, tickets: true } } },
   })
@@ -53,109 +53,98 @@ export default async function CompaniesPage({
   const currentSort  = searchParams.sort ?? 'createdAt'
   const currentOrder = (searchParams.order === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc'
 
+  const stats = [
+    { label: 'Companies', value: total,        icon: Building2 },
+    { label: 'Users',     value: totalUsers,   icon: Users },
+    { label: 'Tickets',   value: totalTickets, icon: Ticket },
+  ]
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Companies</h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Manage prop firm clients and their information</p>
+    <div className="space-y-6">
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="font-display text-2xl tracking-tightest text-ink leading-none">
+            Client roster, <em className="italic text-accent">at a glance.</em>
+          </h1>
+          <span className="hidden md:inline font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute truncate">
+            Operations · Companies
+          </span>
         </div>
         <Link href="/admin/companies/new">
-          <Button className="shadow-md hover:shadow-lg transition-shadow">
-            <span className="mr-2">➕</span>Create Company
+          <Button variant="accent" className="gap-2">
+            <Plus className="w-4 h-4" />Create company
           </Button>
         </Link>
-      </div>
+      </header>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { label: 'Total Companies', value: total,        icon: '🏢', gradient: 'from-blue-500 to-indigo-500' },
-          { label: 'Total Users',     value: totalUsers,   icon: '👥', gradient: 'from-green-500 to-emerald-500' },
-          { label: 'Total Tickets',   value: totalTickets, icon: '🎫', gradient: 'from-purple-500 to-pink-500' },
-        ].map(({ label, value, icon, gradient }) => (
-          <div key={label} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-md">
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 bg-gradient-to-br ${gradient} rounded-xl flex items-center justify-center shadow-md`}>
-                <span className="text-2xl">{icon}</span>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {stats.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="bg-bg-elev border border-line rounded-xl shadow-card p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-mute flex items-center justify-center text-ink-soft shrink-0">
+                <Icon className="w-5 h-5" strokeWidth={1.75} />
               </div>
               <div>
-                <div className="text-3xl font-bold text-gray-900 dark:text-white">{value}</div>
-                <div className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</div>
+                <div className="font-display text-2xl text-ink tracking-tightest tabular-nums leading-none">{value}</div>
+                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute">{label}</div>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden">
+      <div className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
+          <table className="min-w-full divide-y divide-line-soft">
+            <thead className="bg-bg-sunken">
               <tr>
                 <SortableTh column="name"         label="Company" currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="contactEmail" label="Contact" currentSort={currentSort} currentOrder={currentOrder} />
                 <SortableTh column="users"        label="Users"   currentSort={currentSort} currentOrder={currentOrder} align="center" />
                 <SortableTh column="tickets"      label="Tickets" currentSort={currentSort} currentOrder={currentOrder} align="center" />
                 <SortableTh column="createdAt"    label="Created" currentSort={currentSort} currentOrder={currentOrder} />
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-right font-mono text-[10px] uppercase tracking-[0.15em] text-ink-mute">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
+            <tbody className="divide-y divide-line-soft">
               {companies.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                        <span className="text-3xl">🏢</span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No companies found</p>
+                      <Building2 className="w-10 h-10 text-ink-faint" strokeWidth={1.2} />
+                      <p className="font-display text-2xl tracking-tightest text-ink">No companies yet.</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 companies.map((company) => (
-                  <tr key={company.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <td className="px-6 py-4">
+                  <tr key={company.id} className="group hover:bg-bg-sunken transition-colors">
+                    <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-lg flex items-center justify-center">
-                          <span className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                            {company.name.charAt(0).toUpperCase()}
-                          </span>
+                        <div className="w-9 h-9 rounded-lg bg-ink text-bg flex items-center justify-center font-display text-sm shrink-0">
+                          {company.name.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                          <div className="text-sm font-semibold text-gray-900 dark:text-white">{company.name}</div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-ink truncate">{company.name}</div>
                           {company.subdomain && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                              {company.subdomain}.propfirmstech.com
-                            </div>
+                            <div className="font-mono text-[11px] text-ink-mute truncate">{company.subdomain}.propfirmstech.com</div>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-white">{company.contactEmail}</div>
+                    <td className="px-4 py-3.5 text-sm text-ink-soft">{company.contactEmail}</td>
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="inline-flex items-center justify-center min-w-[1.75rem] h-6 px-2 rounded-md bg-mute font-mono text-xs tabular-nums text-ink-soft">{company._count.users}</span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="inline-flex items-center justify-center w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg">
-                        <span className="text-sm font-bold text-green-700 dark:text-green-300">{company._count.users}</span>
-                      </div>
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="inline-flex items-center justify-center min-w-[1.75rem] h-6 px-2 rounded-md bg-mute font-mono text-xs tabular-nums text-ink-soft">{company._count.tickets}</span>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="inline-flex items-center justify-center w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                        <span className="text-sm font-bold text-purple-700 dark:text-purple-300">{company._count.tickets}</span>
-                      </div>
+                    <td className="px-4 py-3.5 text-sm text-ink-soft tabular-nums">
+                      {new Date(company.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-white font-medium">
-                        {new Date(company.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Link href={`/admin/companies/${company.id}`}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm transition-colors">
-                        Edit →
+                    <td className="px-4 py-3.5 text-right">
+                      <Link href={`/admin/companies/${company.id}`} className="inline-flex items-center gap-1 text-ink-mute group-hover:text-accent text-sm font-medium transition-colors">
+                        Edit <ArrowRight className="w-3 h-3" />
                       </Link>
                     </td>
                   </tr>

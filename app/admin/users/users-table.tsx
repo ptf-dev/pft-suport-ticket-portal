@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Mail, KeyRound, UserRound } from 'lucide-react'
 import { ResetPasswordModal } from './reset-password-modal'
 import { EditEmailModal } from './edit-email-modal'
 
@@ -24,11 +25,9 @@ export function UsersTable({ users }: { users: User[] }) {
       <tr>
         <td colSpan={6} className="px-6 py-16 text-center">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-              <span className="text-3xl">👥</span>
-            </div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No users found</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500">Create your first user to get started</p>
+            <UserRound className="w-10 h-10 text-ink-faint" strokeWidth={1.2} />
+            <p className="font-display text-2xl tracking-tightest text-ink">No users yet.</p>
+            <p className="text-xs text-ink-mute">Create your first user to get started.</p>
           </div>
         </td>
       </tr>
@@ -53,56 +52,30 @@ export function UsersTable({ users }: { users: User[] }) {
         />
       )}
       {users.map((user) => (
-        <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-          <td className="px-6 py-4">
+        <tr key={user.id} className="group hover:bg-bg-sunken transition-colors">
+          <td className="px-4 py-3.5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 rounded-lg flex items-center justify-center">
-                <span className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                  {user.name.charAt(0).toUpperCase()}
-                </span>
+              <div className="w-9 h-9 rounded-lg bg-ink text-bg flex items-center justify-center font-display text-sm shrink-0">
+                {user.name.charAt(0).toUpperCase()}
               </div>
-              <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                {user.name}
-              </div>
+              <div className="text-sm font-medium text-ink truncate">{user.name}</div>
             </div>
           </td>
-          <td className="px-6 py-4">
-            <div className="text-sm text-gray-900 dark:text-white">{user.email}</div>
+          <td className="px-4 py-3.5 text-sm text-ink-soft">{user.email}</td>
+          <td className="px-4 py-3.5">
+            <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'}>{user.role}</Badge>
           </td>
-          <td className="px-6 py-4">
-            <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'} className="font-medium">
-              {user.role}
-            </Badge>
+          <td className="px-4 py-3.5 text-sm text-ink-soft">{user.company?.name || <span className="text-ink-faint">—</span>}</td>
+          <td className="px-4 py-3.5 text-sm text-ink-soft tabular-nums">
+            {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </td>
-          <td className="px-6 py-4">
-            <div className="text-sm text-gray-900 dark:text-white font-medium">
-              {user.company?.name || '-'}
-            </div>
-          </td>
-          <td className="px-6 py-4">
-            <div className="text-sm text-gray-900 dark:text-white font-medium">
-              {new Date(user.createdAt).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </div>
-          </td>
-          <td className="px-6 py-4 text-right">
+          <td className="px-4 py-3.5 text-right">
             <div className="flex gap-2 justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditingEmail({ id: user.id, name: user.name, email: user.email })}
-              >
-                ✉️ Change Email
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditingEmail({ id: user.id, name: user.name, email: user.email })}>
+                <Mail className="w-3.5 h-3.5" /> Change email
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setResetting({ id: user.id, name: user.name })}
-              >
-                🔑 Reset Password
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setResetting({ id: user.id, name: user.name })}>
+                <KeyRound className="w-3.5 h-3.5" /> Reset password
               </Button>
             </div>
           </td>
