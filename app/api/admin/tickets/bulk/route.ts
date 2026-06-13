@@ -7,7 +7,7 @@ import { ActivityService } from '@/lib/services/activity'
 
 const MAX_IDS = 200
 
-type BulkAction = 'status' | 'priority' | 'assign' | 'delete'
+type BulkAction = 'status' | 'priority' | 'assign' | 'delete' | 'sprint' | 'archive' | 'unarchive'
 
 /**
  * POST /api/admin/tickets/bulk
@@ -141,6 +141,35 @@ export async function POST(request: NextRequest) {
           data: { isDeleted: true, deletedAt: now, deletedBy: actorId },
         })
         tickets.forEach((t) => ActivityService.deleted(t.id, actorId).catch(() => {}))
+        break
+      }
+
+      case 'sprint': {
+        const sprintId = value && value !== '' ? value : null
+        if (sprintId) {
+          const sprint = await prisma.sprint.findUnique({ where: { id: sprintId } })
+          if (!sprint) return NextResponse.json({ error: 'Sprint not found' }, { status: 400 })
+        }
+        await prisma.ticket.updateMany({
+          where: { id: { in: tickets.map((t) => t.id) } },
+          data: { sprintId },
+        })
+        break
+      }
+
+      case 'archive': {
+        await prisma.ticket.updateMany({
+          where: { id: { in: tickets.map((t) => t.id) } },
+          data: { archivedAt: new Date() },
+        })
+        break
+      }
+
+      case 'unarchive': {
+        await prisma.ticket.updateMany({
+          where: { id: { in: tickets.map((t) => t.id) } },
+          data: { archivedAt: null },
+        })
         break
       }
 

@@ -30,6 +30,7 @@ const PRIORITIES = PRIORITY_ORDER
 const VIRTUAL_STATUSES = [
   { value: 'NOT_RESOLVED', label: 'Not Resolved' },
   { value: 'ACTIVE_ONLY', label: 'Active (excl. Waiting & Resolved)' },
+  { value: 'ARCHIVED', label: 'Archived' },
   { value: 'DELETED', label: 'Deleted' },
 ]
 

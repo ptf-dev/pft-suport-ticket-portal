@@ -1,13 +1,18 @@
 'use client'
 
 import { TicketStatus, TicketPriority } from '@prisma/client'
-import { X, CheckSquare, Loader2, Trash2 } from 'lucide-react'
+import { X, CheckSquare, Loader2, Trash2, Archive } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PRIORITY_ORDER, priorityLabel } from '@/lib/priorities'
 
 export interface AdminUserLite {
   id: string
   name: string | null
+}
+
+export interface SprintLite {
+  id: string
+  name: string
 }
 
 const STATUS_OPTIONS: { value: TicketStatus; label: string }[] = [
@@ -24,6 +29,8 @@ export type BulkAction =
   | { action: 'priority'; value: TicketPriority }
   | { action: 'assign'; value: string | null }
   | { action: 'delete'; value: null }
+  | { action: 'sprint'; value: string | null }
+  | { action: 'archive'; value: null }
 
 function BarSelect({
   label,
@@ -59,12 +66,14 @@ function BarSelect({
 export function BoardBulkBar({
   count,
   adminUsers,
+  sprints = [],
   busy,
   onAction,
   onClear,
 }: {
   count: number
   adminUsers: AdminUserLite[]
+  sprints?: SprintLite[]
   busy: boolean
   onAction: (a: BulkAction) => void
   onClear: () => void
@@ -100,6 +109,25 @@ export function BoardBulkBar({
             <option key={u.id} value={u.id}>{u.name ?? 'Unknown'}</option>
           ))}
         </BarSelect>
+
+        {sprints.length > 0 && (
+          <BarSelect label="Sprint" disabled={busy} onPick={(v) => onAction({ action: 'sprint', value: v === '__backlog__' ? null : v })}>
+            <option value="__backlog__">Backlog (remove)</option>
+            {sprints.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </BarSelect>
+        )}
+
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onAction({ action: 'archive', value: null })}
+          className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-line text-ink-soft hover:text-ink hover:border-ink/40 text-xs font-medium transition disabled:opacity-50"
+          title="Archive selected"
+        >
+          <Archive className="w-3.5 h-3.5" />
+        </button>
 
         <button
           type="button"

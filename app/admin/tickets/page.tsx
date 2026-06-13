@@ -74,6 +74,7 @@ export default async function AdminTicketsPage({
     scheduleFilter?: string
     scheduleDate?: string
     sla?: string
+    sprint?: string
   }
 }) {
   await requireAdmin()
@@ -83,11 +84,19 @@ export default async function AdminTicketsPage({
   const sortKey = SORT_MAP[searchParams.sort ?? ''] ? (searchParams.sort ?? 'updatedAt') : 'updatedAt'
   const order = searchParams.order === 'asc' ? 'asc' : 'desc'
   const showDeleted = searchParams.status === 'DELETED'
+  const showArchived = searchParams.status === 'ARCHIVED'
   const multiSort = searchParams.multiSort
 
   const where: any = { isDeleted: showDeleted }
+  // Hide archived tickets from the normal board; show only them in the archive view.
+  if (showArchived) where.archivedAt = { not: null }
+  else if (!showDeleted) where.archivedAt = null
+
+  if (searchParams.sprint === 'none') where.sprintId = null
+  else if (searchParams.sprint) where.sprintId = searchParams.sprint
+
   if (searchParams.company) where.companyId = searchParams.company
-  if (searchParams.status && searchParams.status !== 'DELETED') {
+  if (searchParams.status && searchParams.status !== 'DELETED' && searchParams.status !== 'ARCHIVED') {
     if (searchParams.status === 'NOT_RESOLVED') {
       where.status = { in: ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'WAITING_CLIENT'] as TicketStatus[] }
     } else if (searchParams.status === 'ACTIVE_ONLY') {

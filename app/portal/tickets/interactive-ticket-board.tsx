@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { priorityMeta, priorityLabel, priorityRank } from '@/lib/priorities'
 import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
 import { ticketSla, slaSeverity, type SlaResult } from '@/lib/sla'
-import { BoardBulkBar, type AdminUserLite, type BulkAction } from '@/app/admin/tickets/board-bulk-bar'
+import { BoardBulkBar, type AdminUserLite, type SprintLite, type BulkAction } from '@/app/admin/tickets/board-bulk-bar'
 
 interface Ticket {
   id: string
@@ -85,6 +85,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
   const [sortMode, setSortMode] = useState<SortMode>(isAdmin ? 'sla' : 'updated')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [adminUsers, setAdminUsers] = useState<AdminUserLite[]>([])
+  const [sprints, setSprints] = useState<SprintLite[]>([])
   const [bulkBusy, setBulkBusy] = useState(false)
 
   useEffect(() => {
@@ -98,6 +99,12 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
       .then((r) => (r.ok ? r.json() : []))
       .then((users: { id: string; name: string | null; role: string; isActive: boolean }[]) =>
         setAdminUsers(users.filter((u) => u.role === 'ADMIN' && u.isActive).map((u) => ({ id: u.id, name: u.name }))),
+      )
+      .catch(() => {})
+    fetch('/api/admin/sprints')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: { id: string; name: string; status: string }[]) =>
+        setSprints(list.filter((s) => s.status !== 'COMPLETED').map((s) => ({ id: s.id, name: s.name }))),
       )
       .catch(() => {})
   }, [isAdmin])
@@ -215,7 +222,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
   const applyOptimistic = useCallback(
     (ids: Set<string>, a: BulkAction) => {
       setLocalTickets((prev) => {
-        if (a.action === 'delete') return prev.filter((t) => !ids.has(t.id))
+        if (a.action === 'delete' || a.action === 'archive') return prev.filter((t) => !ids.has(t.id))
         return prev.map((t) => {
           if (!ids.has(t.id)) return t
           if (a.action === 'status') return { ...t, status: a.value }
@@ -479,6 +486,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
         <BoardBulkBar
           count={selectionActive ? selected.size : 0}
           adminUsers={adminUsers}
+          sprints={sprints}
           busy={bulkBusy}
           onAction={runBulk}
           onClear={clearSelection}

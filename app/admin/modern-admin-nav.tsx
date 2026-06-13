@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import {
   LayoutDashboard, Ticket, Building2, Users, Settings, LogOut, Menu, X,
-  LifeBuoy,
+  LifeBuoy, Rocket,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -20,6 +20,7 @@ interface ModernAdminNavProps {
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
   { href: '/admin/tickets', label: 'Tickets', icon: Ticket },
+  { href: '/admin/sprints', label: 'Sprints', icon: Rocket },
   { href: '/admin/companies', label: 'Companies', icon: Building2 },
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/settings/smtp', label: 'SMTP', icon: Settings },
