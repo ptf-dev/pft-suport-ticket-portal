@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TicketPriority } from '@prisma/client'
 import { ActivityService } from '@/lib/services/activity'
+import { autoSprintIdForPriority } from '@/lib/auto-sprint'
 
 /**
  * PATCH /api/admin/tickets/[id]/priority
@@ -40,9 +41,16 @@ export async function PATCH(
       )
     }
 
+    // Bumping a backlog ticket to urgent pulls it into the active sprint.
+    const data: { priority: TicketPriority; sprintId?: string } = { priority }
+    if (!ticket.sprintId) {
+      const sprintId = await autoSprintIdForPriority(priority)
+      if (sprintId) data.sprintId = sprintId
+    }
+
     const updatedTicket = await prisma.ticket.update({
       where: { id: params.id },
-      data: { priority },
+      data,
     })
 
     if (ticket.priority !== priority) {

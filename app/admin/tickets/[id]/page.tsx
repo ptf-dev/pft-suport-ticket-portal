@@ -135,12 +135,12 @@ export default async function AdminTicketDetailPage({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute mb-2">
           <span>Ticket #{ticket.id.slice(0, 8)}</span>
-          <span>•</span>
+          <span>·</span>
           <span>{ticket.company.name}</span>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{ticket.title}</h1>
+        <h1 className="font-display text-3xl tracking-tightest text-ink leading-none">{ticket.title}</h1>
       </div>
 
       {/* Boomerang banner — client bounced this back from Waiting */}

@@ -1,11 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
+import { Pencil, Loader2, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface EditTicketFormProps {
   ticketId: string
@@ -23,31 +21,41 @@ export function EditTicketForm({
   apiBasePath = '/api/portal/tickets',
 }: EditTicketFormProps) {
   const router = useRouter()
-  const [isEditing, setIsEditing] = useState(false)
+  const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [title, setTitle] = useState(initialTitle)
   const [description, setDescription] = useState(initialDescription)
   const [category, setCategory] = useState(initialCategory || '')
   const [error, setError] = useState('')
 
+  const openModal = () => {
+    setTitle(initialTitle)
+    setDescription(initialDescription)
+    setCategory(initialCategory || '')
+    setError('')
+    setOpen(true)
+  }
+
+  const close = () => {
+    if (isLoading) return
+    setOpen(false)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
-
     try {
       const response = await fetch(`${apiBasePath}/${ticketId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description, category }),
       })
-
       if (!response.ok) {
-        const data = await response.json()
+        const data = await response.json().catch(() => ({}))
         throw new Error(data.error || 'Failed to update ticket')
       }
-
-      setIsEditing(false)
+      setOpen(false)
       router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -56,83 +64,80 @@ export function EditTicketForm({
     }
   }
 
-  if (!isEditing) {
-    return (
-      <Button
-        onClick={() => setIsEditing(true)}
-        variant="outline"
-        size="sm"
-      >
-        ✏️ Edit Ticket
-      </Button>
-    )
-  }
+  const inputCls = 'w-full h-9 px-3 text-sm rounded-md border border-line bg-bg-elev text-ink placeholder:text-ink-faint focus:outline-none focus:ring-1 focus:ring-ink disabled:opacity-50'
 
   return (
-    <Card className="mb-6">
-      <CardContent className="pt-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="title" className="dark:text-gray-300">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
+    <>
+      <button
+        type="button"
+        onClick={openModal}
+        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-line bg-bg-elev text-ink-soft hover:text-ink hover:border-ink/40 text-sm font-medium transition"
+      >
+        <Pencil className="w-4 h-4" /> Edit ticket
+      </button>
 
-          <div>
-            <Label htmlFor="description" className="dark:text-gray-300">Description</Label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              disabled={isLoading}
-              className="w-full min-h-[150px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="category" className="dark:text-gray-300">Category (Optional)</Label>
-            <Input
-              id="category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              disabled={isLoading}
-              placeholder="e.g., Technical Support, Billing"
-            />
-          </div>
-
-          {error && (
-            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md border border-red-200 dark:border-red-800">
-              {error}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={close}>
+          <div
+            className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-bg-elev border border-line rounded-xl shadow-lg p-5 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-2xl tracking-tightest text-ink">Edit ticket</h3>
+              <button type="button" onClick={close} className="text-ink-mute hover:text-ink transition-colors">
+                <X className="w-4 h-4" />
+              </button>
             </div>
-          )}
 
-          <div className="flex gap-2">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setIsEditing(false)
-                setTitle(initialTitle)
-                setDescription(initialDescription)
-                setCategory(initialCategory || '')
-                setError('')
-              }}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <label className="block space-y-1">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Title</span>
+                <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} required disabled={isLoading} />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="flex items-center justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Description</span>
+                  <span className="text-[10px] text-ink-faint">Markdown supported</span>
+                </span>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="w-full min-h-[220px] px-3 py-2 text-sm rounded-md border border-line bg-bg-elev text-ink placeholder:text-ink-faint focus:outline-none focus:ring-1 focus:ring-ink disabled:opacity-50 font-mono leading-relaxed"
+                />
+              </label>
+
+              <label className="block space-y-1">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Category (optional)</span>
+                <input className={inputCls} value={category} onChange={(e) => setCategory(e.target.value)} disabled={isLoading} placeholder="e.g., Technical Support, Billing" />
+              </label>
+
+              {error && <p className="text-xs text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">{error}</p>}
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={cn('inline-flex items-center gap-2 h-9 px-4 rounded-md bg-accent text-accent-ink font-medium text-sm hover:opacity-90 transition disabled:opacity-50')}
+                >
+                  {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {isLoading ? 'Saving…' : 'Save changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={close}
+                  disabled={isLoading}
+                  className="h-9 px-3 rounded-md border border-line text-ink-soft hover:text-ink hover:border-ink/40 text-sm font-medium transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </>
   )
 }
