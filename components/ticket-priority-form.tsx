@@ -202,7 +202,7 @@ export function TicketPriorityForm({ ticketId, currentPriority, isAdmin = false 
       )}
 
       <p className="text-xs text-gray-500 dark:text-gray-400">
-        💡 Set priority to help our team understand the urgency of your issue
+        💡 The turnaround shown for each priority is the resolution time the PFT team commits to.
       </p>
     </div>
   )

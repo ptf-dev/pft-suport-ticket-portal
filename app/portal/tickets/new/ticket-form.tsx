@@ -238,7 +238,7 @@ export function TicketForm() {
             </Select>
             <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
               <span>🎯</span>
-              <span>Choose the urgency level of your issue</span>
+              <span>The time in brackets is the resolution turnaround the PFT team commits to at that priority.</span>
             </p>
             {errors.priority && (
               <p className="text-sm text-red-600 flex items-center gap-1">

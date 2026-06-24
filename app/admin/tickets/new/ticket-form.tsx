@@ -209,6 +209,9 @@ export function AdminTicketForm({ companies }: Props) {
             <option key={p.value} value={p.value}>{p.label}</option>
           ))}
         </Select>
+        <p className="text-xs text-ink-mute">
+          The time in brackets is the resolution turnaround the PFT team commits to at that priority.
+        </p>
       </div>
 
       {/* Category */}
