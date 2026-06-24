@@ -5,6 +5,7 @@ import { NotificationService } from '@/lib/services/notification'
 import { ActivityService } from '@/lib/services/activity'
 import { z } from 'zod'
 import { PRIORITY_VALUES } from '@/lib/priorities'
+import { autoSprintIdForPriority } from '@/lib/auto-sprint'
 
 /**
  * Ticket Creation API Endpoint (Client Portal)
@@ -51,6 +52,8 @@ export async function POST(request: NextRequest) {
     const data = validationResult.data
 
     // Create ticket
+    const sprintId = await autoSprintIdForPriority(data.priority)
+
     const ticket = await prisma.ticket.create({
       data: {
         title: data.title,
@@ -60,6 +63,7 @@ export async function POST(request: NextRequest) {
         status: 'OPEN', // Default status
         companyId,
         createdById: userId,
+        sprintId,
       },
     })
 

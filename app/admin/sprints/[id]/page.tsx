@@ -22,6 +22,13 @@ export default async function SprintDetailPage({ params }: { params: { id: strin
   const sprint = await prisma.sprint.findUnique({ where: { id: params.id } })
   if (!sprint) notFound()
 
+  // The next planned sprint (soonest upcoming) — lets the backlog target "next".
+  const nextSprint = await prisma.sprint.findFirst({
+    where: { id: { not: sprint.id }, status: 'PLANNED', startDate: { gte: sprint.startDate } },
+    orderBy: { startDate: 'asc' },
+    select: { id: true, name: true },
+  })
+
   const [tickets, backlog] = await Promise.all([
     prisma.ticket.findMany({
       where: { sprintId: params.id, isDeleted: false },
@@ -81,6 +88,7 @@ export default async function SprintDetailPage({ params }: { params: { id: strin
 
       <SprintBacklog
         sprintId={sprint.id}
+        nextSprint={nextSprint}
         tickets={backlog.map((t) => ({
           id: t.id,
           title: t.title,

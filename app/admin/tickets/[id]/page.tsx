@@ -17,6 +17,7 @@ import { DeleteCommentImageButton } from '@/components/delete-comment-image-butt
 import { ScheduleTicketButton } from './schedule-ticket-button'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { TicketRelations } from './ticket-relations'
+import { TicketSprintForm } from '@/components/ticket-sprint-form'
 import { ActivityTimeline } from '@/components/activity-timeline'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
@@ -76,6 +77,9 @@ export default async function AdminTicketDetailPage({
       assignedTo: {
         select: { id: true, name: true, email: true },
       },
+      sprint: {
+        select: { id: true, name: true, status: true },
+      },
       comments: {
         orderBy: { createdAt: 'asc' },
         include: {
@@ -101,6 +105,13 @@ export default async function AdminTicketDetailPage({
   if (!ticket) {
     notFound()
   }
+
+  // Sprint options for the picker (active + planned).
+  const sprintOptions = await prisma.sprint.findMany({
+    where: { status: { in: ['ACTIVE', 'PLANNED'] } },
+    orderBy: [{ status: 'asc' }, { startDate: 'desc' }],
+    select: { id: true, name: true, status: true },
+  })
 
   // Get available users for mentions (all admins + users from ticket's company)
   const availableUsers = await prisma.user.findMany({
@@ -416,6 +427,17 @@ export default async function AdminTicketDetailPage({
               <div>
                 <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</div>
                 <div className="text-sm text-gray-900 dark:text-white">{ticket.category || 'N/A'}</div>
+              </div>
+              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Sprint
+                  {ticket.sprint && (
+                    <span className="ml-2 text-xs text-ink-mute font-normal">
+                      {ticket.sprint.name}{ticket.sprint.status === 'ACTIVE' ? ' · active' : ''}
+                    </span>
+                  )}
+                </div>
+                <TicketSprintForm ticketId={ticket.id} currentSprintId={ticket.sprintId} sprints={sprintOptions} />
               </div>
               <div>
                 <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Assigned To</div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { PRIORITY_VALUES } from '@/lib/priorities'
+import { autoSprintIdForPriority } from '@/lib/auto-sprint'
 
 /**
  * MCP API: Create Ticket
@@ -76,6 +77,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    const sprintId = await autoSprintIdForPriority(ticketPriority)
+
     // Create ticket
     const ticket = await prisma.ticket.create({
       data: {
@@ -86,6 +89,7 @@ export async function POST(request: NextRequest) {
         status: 'OPEN',
         companyId,
         createdById: mcpUser.id,
+        sprintId,
       },
       include: {
         company: {
