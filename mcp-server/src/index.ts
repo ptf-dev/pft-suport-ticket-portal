@@ -279,7 +279,7 @@ const TOOLS: Tool[] = [
         },
         relation_type: {
           type: "string",
-          enum: ["BLOCKS", "BLOCKED_BY", "RELATES_TO", "IS_IDEA_FOR", "WILL_IMPLEMENT_AFTER", "ADDED_TO_ROADMAP"],
+          enum: ["BLOCKS", "BLOCKED_BY", "RELATES_TO", "IS_IDEA_FOR", "WILL_IMPLEMENT_AFTER", "ADDED_TO_ROADMAP", "CLONES", "CLONED_BY", "DUPLICATES", "DUPLICATED_BY", "CAUSES", "CAUSED_BY", "TESTS", "TESTED_BY", "SPLIT_FROM", "SPLIT_TO"],
           description: "The type of relation. BLOCKS = source blocks target, BLOCKED_BY = source is blocked by target, RELATES_TO = general relation, IS_IDEA_FOR = source is an idea for target, WILL_IMPLEMENT_AFTER = source will be implemented after target, ADDED_TO_ROADMAP = marked as roadmap item",
         },
       },

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import Link from 'next/link'
+import { RELATION_LABEL } from '@/lib/relations'
 
 interface RelatedTicket {
   id: string
@@ -24,14 +25,7 @@ interface TicketRelation {
   createdAt: string
 }
 
-const RELATION_TYPE_LABELS: Record<string, string> = {
-  BLOCKS: 'Blocks',
-  BLOCKED_BY: 'Blocked by',
-  RELATES_TO: 'Relates to',
-  IS_IDEA_FOR: 'Is idea for',
-  WILL_IMPLEMENT_AFTER: 'Will implement after',
-  ADDED_TO_ROADMAP: 'Added to roadmap',
-}
+const RELATION_TYPE_LABELS: Record<string, string> = RELATION_LABEL as Record<string, string>
 
 const RELATION_TYPE_COLORS: Record<string, string> = {
   BLOCKS: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
@@ -40,6 +34,16 @@ const RELATION_TYPE_COLORS: Record<string, string> = {
   IS_IDEA_FOR: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
   WILL_IMPLEMENT_AFTER: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
   ADDED_TO_ROADMAP: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  CLONES: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400',
+  CLONED_BY: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400',
+  DUPLICATES: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+  DUPLICATED_BY: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
+  CAUSES: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+  CAUSED_BY: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+  TESTS: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  TESTED_BY: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  SPLIT_FROM: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  SPLIT_TO: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
 }
 
 const STATUS_COLORS: Record<string, string> = {

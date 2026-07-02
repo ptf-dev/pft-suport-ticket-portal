@@ -9,6 +9,7 @@ import {
 } from '@/lib/integrations/verify-dashboard-request'
 import { ActivityService } from '@/lib/services/activity'
 import { NotificationService } from '@/lib/services/notification'
+import { uniqueTicketKey } from '@/lib/ticket-key'
 
 const escalateSchema = z.object({
   projectId: z.string().min(1),
@@ -97,8 +98,10 @@ export async function POST(request: NextRequest) {
       ? data.subject
       : `[${data.dashboardTicketNumber}] ${data.subject}`
 
+    const key = await uniqueTicketKey()
     const ticket = await prisma.ticket.create({
       data: {
+        key,
         title,
         description: data.description,
         priority: mapPriority(data.priority),

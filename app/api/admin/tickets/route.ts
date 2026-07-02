@@ -6,6 +6,7 @@ import { NotificationService } from '@/lib/services/notification'
 import { ActivityService } from '@/lib/services/activity'
 import { PRIORITY_VALUES } from '@/lib/priorities'
 import { autoSprintIdForPriority } from '@/lib/auto-sprint'
+import { uniqueTicketKey } from '@/lib/ticket-key'
 
 const createTicketSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -70,9 +71,11 @@ export async function POST(request: NextRequest) {
     }
 
     const sprintId = await autoSprintIdForPriority(priority)
+    const key = await uniqueTicketKey()
 
     const ticket = await prisma.ticket.create({
       data: {
+        key,
         title,
         description,
         priority,

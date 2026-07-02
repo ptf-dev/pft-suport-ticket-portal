@@ -60,6 +60,16 @@ enum TicketRelationType {
   IS_IDEA_FOR
   WILL_IMPLEMENT_AFTER
   ADDED_TO_ROADMAP
+  CLONES
+  CLONED_BY
+  DUPLICATES
+  DUPLICATED_BY
+  CAUSES
+  CAUSED_BY
+  TESTS
+  TESTED_BY
+  SPLIT_FROM
+  SPLIT_TO
 }
 
 enum ActivityType {
@@ -140,6 +150,7 @@ model User {
 
 model Ticket {
   id           String         @id @default(cuid())
+  key          String?        @unique // Short 5-char human key for commit messages / GitHub search
   title        String
   description  String
   status       TicketStatus   @default(OPEN)

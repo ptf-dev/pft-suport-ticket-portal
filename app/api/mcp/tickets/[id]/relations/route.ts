@@ -1,18 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { TicketRelationType } from '@prisma/client'
-
-/**
- * Inverse relation mapping
- */
-const INVERSE_RELATIONS: Record<string, string> = {
-  BLOCKS: 'BLOCKED_BY',
-  BLOCKED_BY: 'BLOCKS',
-  RELATES_TO: 'RELATES_TO',
-  IS_IDEA_FOR: 'IS_IDEA_FOR',
-  WILL_IMPLEMENT_AFTER: 'WILL_IMPLEMENT_AFTER',
-  ADDED_TO_ROADMAP: 'ADDED_TO_ROADMAP',
-}
+import { RELATION_INVERSE, RELATION_TYPES } from '@/lib/relations'
 
 /**
  * MCP API: Get Ticket Relations
@@ -101,13 +90,9 @@ export async function POST(
       )
     }
 
-    const validTypes: TicketRelationType[] = [
-      'BLOCKS', 'BLOCKED_BY', 'RELATES_TO',
-      'IS_IDEA_FOR', 'WILL_IMPLEMENT_AFTER', 'ADDED_TO_ROADMAP'
-    ]
-    if (!relationType || !validTypes.includes(relationType)) {
+    if (!relationType || !RELATION_TYPES.includes(relationType)) {
       return NextResponse.json(
-        { error: `Invalid relationType. Must be one of: ${validTypes.join(', ')}` },
+        { error: `Invalid relationType. Must be one of: ${RELATION_TYPES.join(', ')}` },
         { status: 400 }
       )
     }
@@ -138,7 +123,7 @@ export async function POST(
       where: { email: 'mcp-bot@propfirmstech.com' },
     })
 
-    const inverseType = INVERSE_RELATIONS[relationType] as TicketRelationType
+    const inverseType = RELATION_INVERSE[relationType as TicketRelationType]
 
     // Create the relation and its inverse in a transaction
     const [relation] = await prisma.$transaction([

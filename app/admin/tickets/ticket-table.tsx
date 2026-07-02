@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 
 interface TableTicket {
   id: string
+  key?: string | null
   title: string
   status: TicketStatus
   priority: TicketPriority
@@ -198,7 +199,7 @@ export function TicketTable({ tickets, showDeleted, currentSort, currentOrder, m
                                 {bm!.label}{bm!.suffix}
                               </span>
                             )}
-                            <span>#{ticket.id.slice(0, 8)}</span>
+                            <span>{ticket.key ? ticket.key : `#${ticket.id.slice(0, 8)}`}</span>
                             {ticket._count.comments > 0 && <span>· {ticket._count.comments} msg</span>}
                             {ticket._count.activities > 0 && <span>· {ticket._count.activities} events</span>}
                             {ticket.scheduledDate && (

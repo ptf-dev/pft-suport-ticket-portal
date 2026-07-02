@@ -13,6 +13,7 @@ import { BoardBulkBar, type AdminUserLite, type SprintLite, type BulkAction } fr
 
 interface Ticket {
   id: string
+  key?: string | null
   title: string
   description: string
   status: TicketStatus
@@ -392,7 +393,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
                             </button>
                           )}
                           <span className="font-mono text-[10px] uppercase tracking-widest text-ink-faint shrink-0">
-                            #{ticket.id.slice(0, 6)}
+                            {ticket.key ? ticket.key : `#${ticket.id.slice(0, 6)}`}
                           </span>
                           <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute truncate min-w-0">
                             {priorityLabel(ticket.priority)}

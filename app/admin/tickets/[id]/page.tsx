@@ -22,7 +22,7 @@ import { ActivityTimeline } from '@/components/activity-timeline'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
 import { cn } from '@/lib/utils'
-import { Undo2 } from 'lucide-react'
+import { Undo2, GitCommit } from 'lucide-react'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -113,6 +113,12 @@ export default async function AdminTicketDetailPage({
     select: { id: true, name: true, status: true },
   })
 
+  const githubOrg = process.env.GITHUB_ORG?.trim()
+  const commitSearchUrl =
+    githubOrg && ticket.key
+      ? `https://github.com/search?q=${encodeURIComponent(`org:${githubOrg} ${ticket.key}`)}&type=commits`
+      : null
+
   // Get available users for mentions (all admins + users from ticket's company)
   const availableUsers = await prisma.user.findMany({
     where: {
@@ -136,7 +142,7 @@ export default async function AdminTicketDetailPage({
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute mb-2">
-          <span>Ticket #{ticket.id.slice(0, 8)}</span>
+          <span>Ticket {ticket.key ? ticket.key : `#${ticket.id.slice(0, 8)}`}</span>
           <span>·</span>
           <span>{ticket.company.name}</span>
         </div>
@@ -478,6 +484,33 @@ export default async function AdminTicketDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          {ticket.key && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Code</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Commit tag</div>
+                  <code className="font-mono text-sm bg-mute px-2 py-1 rounded text-ink">[{ticket.key}]</code>
+                  <p className="text-xs text-ink-mute mt-1.5">Prefix commit messages with this to tie the work to this ticket.</p>
+                </div>
+                {commitSearchUrl ? (
+                  <a
+                    href={commitSearchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
+                  >
+                    <GitCommit className="w-4 h-4" /> View commits on GitHub
+                  </a>
+                ) : (
+                  <p className="text-xs text-ink-faint">Set GITHUB_ORG to enable a direct commit-search link.</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <TicketRelations ticketId={ticket.id} />
 

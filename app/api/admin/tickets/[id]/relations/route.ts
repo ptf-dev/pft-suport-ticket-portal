@@ -3,19 +3,7 @@ import { requireAdmin, getSession } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { TicketRelationType } from '@prisma/client'
 import { ActivityService } from '@/lib/services/activity'
-
-/**
- * Inverse relation mapping:
- * When Ticket A "BLOCKS" Ticket B, Ticket B is "BLOCKED_BY" Ticket A
- */
-const INVERSE_RELATIONS: Record<string, string> = {
-  BLOCKS: 'BLOCKED_BY',
-  BLOCKED_BY: 'BLOCKS',
-  RELATES_TO: 'RELATES_TO',         // symmetric
-  IS_IDEA_FOR: 'IS_IDEA_FOR',       // no inverse needed, shown via direction
-  WILL_IMPLEMENT_AFTER: 'WILL_IMPLEMENT_AFTER',
-  ADDED_TO_ROADMAP: 'ADDED_TO_ROADMAP',
-}
+import { RELATION_INVERSE, RELATION_TYPES } from '@/lib/relations'
 
 /**
  * Admin API: Get Ticket Relations
@@ -77,13 +65,9 @@ export async function POST(
       )
     }
 
-    const validTypes: TicketRelationType[] = [
-      'BLOCKS', 'BLOCKED_BY', 'RELATES_TO',
-      'IS_IDEA_FOR', 'WILL_IMPLEMENT_AFTER', 'ADDED_TO_ROADMAP'
-    ]
-    if (!validTypes.includes(relationType)) {
+    if (!RELATION_TYPES.includes(relationType)) {
       return NextResponse.json(
-        { error: `Invalid relationType. Must be one of: ${validTypes.join(', ')}` },
+        { error: `Invalid relationType. Must be one of: ${RELATION_TYPES.join(', ')}` },
         { status: 400 }
       )
     }
@@ -109,7 +93,7 @@ export async function POST(
     }
 
     const createdById = (session as any).user?.id || null
-    const inverseType = INVERSE_RELATIONS[relationType] as TicketRelationType
+    const inverseType = RELATION_INVERSE[relationType as TicketRelationType]
 
     // Create both the relation and its inverse in a transaction
     const [relation] = await prisma.$transaction([
@@ -193,7 +177,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Relation not found' }, { status: 404 })
     }
 
-    const inverseType = INVERSE_RELATIONS[relation.relationType] as TicketRelationType
+    const inverseType = RELATION_INVERSE[relation.relationType as TicketRelationType]
 
     // Delete both the relation and its inverse in a transaction
     const session = await getSession().catch(() => null)
