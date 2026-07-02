@@ -151,7 +151,10 @@ export function CompanyFormFields({ initialData, companyId, mode }: CompanyFormF
               disabled={isSubmitting}
             />
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Must match the project ID in Super-Admin (dashboard backend PROJECT_ID). Used when issuing tickets from the dashboard.
+              The <code className="font-mono">projectId</code> the Dashboard Integration sends when escalating a ticket
+              (Super-Admin backend <code className="font-mono">PROJECT_ID</code>). Set it so those tickets attach to this
+              company. If it&apos;s blank or doesn&apos;t match, escalations spin up a duplicate company that this firm&apos;s
+              admins can&apos;t see.
             </p>
             {errors.projectId && (
               <p className="text-sm text-red-600 dark:text-red-400">{errors.projectId[0]}</p>
