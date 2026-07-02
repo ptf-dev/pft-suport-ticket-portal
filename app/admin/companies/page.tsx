@@ -5,6 +5,9 @@ import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TablePagination } from '@/components/ui/table-pagination'
 import Link from 'next/link'
 import { Plus, Building2, Users, Ticket, ArrowRight } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
+import { CompanyActiveToggle } from './company-active-toggle'
 
 const PAGE_SIZE = 20
 
@@ -125,7 +128,10 @@ export default async function CompaniesPage({
                           {company.name.charAt(0).toUpperCase()}
                         </div>
                         <div className="min-w-0">
-                          <div className="text-sm font-medium text-ink truncate">{company.name}</div>
+                          <div className="flex items-center gap-2">
+                            <span className={cn('text-sm font-medium truncate', company.isActive ? 'text-ink' : 'text-ink-mute')}>{company.name}</span>
+                            {!company.isActive && <Badge variant="secondary">Inactive</Badge>}
+                          </div>
                           {company.subdomain && (
                             <div className="font-mono text-[11px] text-ink-mute truncate">{company.subdomain}.propfirmstech.com</div>
                           )}
@@ -142,10 +148,13 @@ export default async function CompaniesPage({
                     <td className="px-4 py-3.5 text-sm text-ink-soft tabular-nums">
                       {new Date(company.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <Link href={`/admin/companies/${company.id}`} className="inline-flex items-center gap-1 text-ink-mute group-hover:text-accent text-sm font-medium transition-colors">
-                        Edit <ArrowRight className="w-3 h-3" />
-                      </Link>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center justify-end gap-2">
+                        <CompanyActiveToggle companyId={company.id} active={company.isActive} usersCount={company._count.users} />
+                        <Link href={`/admin/companies/${company.id}`} className="inline-flex items-center gap-1 text-ink-mute group-hover:text-accent text-sm font-medium transition-colors">
+                          Edit <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))
