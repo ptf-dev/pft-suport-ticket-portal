@@ -126,26 +126,21 @@ export async function POST(
           },
         },
       }),
-      // Create inverse relation (skip if it's the same, e.g. RELATES_TO)
-      ...(inverseType !== relationType
-        ? [
-            prisma.ticketRelation.create({
-              data: {
-                sourceTicketId: targetTicketId,
-                targetTicketId: params.id,
-                relationType: inverseType,
-                createdById,
-              },
-            }),
-          ]
-        : []),
+      // Always create the reciprocal row so the relation is visible on BOTH
+      // tickets (symmetric types like RELATES_TO map to themselves).
+      prisma.ticketRelation.create({
+        data: {
+          sourceTicketId: targetTicketId,
+          targetTicketId: params.id,
+          relationType: inverseType,
+          createdById,
+        },
+      }),
     ])
 
     if (createdById) {
       ActivityService.relationAdded(params.id, createdById, relationType, targetTicketId).catch(() => {})
-      if (inverseType !== relationType) {
-        ActivityService.relationAdded(targetTicketId, createdById, inverseType, params.id).catch(() => {})
-      }
+      ActivityService.relationAdded(targetTicketId, createdById, inverseType, params.id).catch(() => {})
     }
 
     return NextResponse.json({

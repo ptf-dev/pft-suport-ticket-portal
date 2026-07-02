@@ -154,19 +154,16 @@ export async function POST(
           targetTicket: { select: { id: true, title: true } },
         },
       }),
-      // Create inverse relation (skip if symmetric, e.g. RELATES_TO)
-      ...(inverseType !== relationType
-        ? [
-            prisma.ticketRelation.create({
-              data: {
-                sourceTicketId: targetTicketId,
-                targetTicketId: params.id,
-                relationType: inverseType,
-                createdById: mcpUser?.id || null,
-              },
-            }),
-          ]
-        : []),
+      // Always create the reciprocal row so the relation shows on BOTH tickets
+      // (symmetric types like RELATES_TO map to themselves).
+      prisma.ticketRelation.create({
+        data: {
+          sourceTicketId: targetTicketId,
+          targetTicketId: params.id,
+          relationType: inverseType,
+          createdById: mcpUser?.id || null,
+        },
+      }),
     ])
 
     return NextResponse.json({
