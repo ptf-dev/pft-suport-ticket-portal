@@ -126,7 +126,7 @@ export async function PUT(
     return NextResponse.json(updatedCompany, { status: 200 })
   } catch (error) {
     console.error('Error updating company:', error)
-    
+
     // Handle authentication errors
     if (error instanceof Error && error.message.includes('Unauthorized')) {
       return NextResponse.json(
@@ -139,5 +139,73 @@ export async function PUT(
       { error: 'Internal server error' },
       { status: 500 }
     )
+  }
+}
+
+/**
+ * DELETE /api/admin/companies/[id]
+ * Delete a company. If it still has tickets or users, a `reassignTo` company id
+ * is required — its tickets, users, and notification logs are moved there first
+ * (per-company notification settings/email templates are dropped). Deleting a
+ * company with no tickets/users needs no reassignment.
+ * Body: { reassignTo?: string }
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    await requireAdmin()
+    const companyId = params.id
+
+    const company = await prisma.company.findUnique({
+      where: { id: companyId },
+      include: { _count: { select: { tickets: true, users: true } } },
+    })
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const reassignTo: string | undefined = typeof body?.reassignTo === 'string' ? body.reassignTo : undefined
+    const hasData = company._count.tickets > 0 || company._count.users > 0
+
+    if (hasData && !reassignTo) {
+      return NextResponse.json(
+        { error: `Company has ${company._count.tickets} ticket(s) and ${company._count.users} user(s). Choose a company to reassign them to before deleting.` },
+        { status: 400 }
+      )
+    }
+
+    if (reassignTo) {
+      if (reassignTo === companyId) {
+        return NextResponse.json({ error: 'Cannot reassign to the same company' }, { status: 400 })
+      }
+      const target = await prisma.company.findUnique({ where: { id: reassignTo }, select: { id: true } })
+      if (!target) {
+        return NextResponse.json({ error: 'Reassign target company not found' }, { status: 400 })
+      }
+    }
+
+    await prisma.$transaction([
+      ...(reassignTo
+        ? [
+            prisma.ticket.updateMany({ where: { companyId }, data: { companyId: reassignTo } }),
+            prisma.user.updateMany({ where: { companyId }, data: { companyId: reassignTo } }),
+            prisma.notificationLog.updateMany({ where: { companyId }, data: { companyId: reassignTo } }),
+          ]
+        : [prisma.notificationLog.deleteMany({ where: { companyId } })]),
+      prisma.notificationSettings.deleteMany({ where: { companyId } }),
+      prisma.emailTemplate.deleteMany({ where: { companyId } }),
+      prisma.company.delete({ where: { id: companyId } }),
+    ])
+
+    return NextResponse.json({ ok: true, reassignedTo: reassignTo ?? null })
+  } catch (error) {
+    console.error('Error deleting company:', error)
+    if (error instanceof Error && error.message.includes('Admin access required')) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+    return NextResponse.json({ error: 'Failed to delete company' }, { status: 500 })
   }
 }

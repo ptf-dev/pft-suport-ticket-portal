@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { CompanyFormFields } from '../company-form-fields'
+import { DeleteCompanyButton } from '../delete-company-button'
 
 /**
  * Company Edit Page
@@ -38,6 +39,12 @@ export default async function CompanyDetailPage({
     notFound()
   }
 
+  const otherCompanies = await prisma.company.findMany({
+    where: { id: { not: params.id } },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  })
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -48,9 +55,18 @@ export default async function CompanyDetailPage({
             Update company information and settings
           </p>
         </div>
-        <Link href="/admin/companies">
-          <Button variant="outline">Back to Companies</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <DeleteCompanyButton
+            companyId={company.id}
+            companyName={company.name}
+            ticketCount={company._count.tickets}
+            userCount={company._count.users}
+            companies={otherCompanies}
+          />
+          <Link href="/admin/companies">
+            <Button variant="outline">Back to Companies</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Company Statistics */}
