@@ -9,7 +9,7 @@ import { PRIORITY_ORDER, priorityLabel } from '@/lib/priorities'
 import { SavedViews } from './saved-views'
 
 interface TicketFiltersProps {
-  companies: { id: string; name: string }[]
+  companies: { id: string; name: string; isActive?: boolean }[]
   currentFilters: {
     company?: string
     status?: string
@@ -254,7 +254,7 @@ export function TicketFilters({ companies, currentFilters }: TicketFiltersProps)
           active={!!currentFilters.company}
         >
           {companies.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>{c.name}{c.isActive === false ? ' · deactivated' : ''}</option>
           ))}
         </FilterSelect>
 

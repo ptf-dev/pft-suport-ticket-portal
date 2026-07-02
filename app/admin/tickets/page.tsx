@@ -203,7 +203,7 @@ export default async function AdminTicketsPage({
         _count: { select: { comments: true, images: true, activities: true } },
       },
     }),
-    prisma.company.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+    prisma.company.findMany({ select: { id: true, name: true, isActive: true }, orderBy: [{ isActive: 'desc' }, { name: 'asc' }] }),
     prisma.ticket.count({ where: bucketCountsWhere }),
     Promise.all(BUCKET_ORDER.map(async (k) => ({
       key: k,
