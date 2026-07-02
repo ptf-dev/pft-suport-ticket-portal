@@ -10,6 +10,11 @@ function slugifyProjectId(projectId: string): string {
     .replace(/^-|-$/g, '')
 }
 
+/** Collapse a name to comparable form: lowercase, alphanumeric only. */
+function normalizeName(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
 async function uniqueSubdomain(base: string): Promise<string> {
   let candidate = base || 'brand'
   let suffix = 0
@@ -53,6 +58,25 @@ export async function resolveCompanyForProject(params: {
       throw new Error(`Support portal company for project "${projectId}" is inactive`)
     }
     return company
+  }
+
+  // No projectId/subdomain hit. Before creating, adopt an existing unlinked
+  // company whose name matches this project/brand — avoids spawning duplicates
+  // (e.g. "Next Stage Funded" for projectId "nextstagefunded").
+  const targets = new Set(
+    [projectId, params.brandName, params.projectName]
+      .filter((v): v is string => Boolean(v && v.trim()))
+      .map(normalizeName),
+  )
+  if (targets.size > 0) {
+    const unlinked = await prisma.company.findMany({ where: { projectId: null } })
+    const match = unlinked.find((c) => targets.has(normalizeName(c.name)))
+    if (match) {
+      if (!match.isActive) {
+        throw new Error(`Support portal company "${match.name}" is inactive`)
+      }
+      return prisma.company.update({ where: { id: match.id }, data: { projectId } })
+    }
   }
 
   const name = params.brandName?.trim() || params.projectName?.trim() || projectId
