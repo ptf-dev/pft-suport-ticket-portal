@@ -246,7 +246,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: "add_ticket_comment",
-    description: "Add a new comment to a ticket. Use this to provide solutions, ask for clarification, or update the ticket with findings.",
+    description: "Add a new comment to a ticket. Use this to provide solutions, ask for clarification, or update the ticket with findings. Set internal=true for an admin-only note not visible to the client.",
     inputSchema: {
       type: "object",
       properties: {
@@ -257,6 +257,10 @@ const TOOLS: Tool[] = [
         content: {
           type: "string",
           description: "The comment text content",
+        },
+        internal: {
+          type: "boolean",
+          description: "If true, create an internal note only visible to admins. Defaults to false (public comment).",
         },
       },
       required: ["ticket_id", "content"],
@@ -451,9 +455,10 @@ function createMCPServer() {
         }
 
         case "add_ticket_comment": {
-          const { ticket_id, content } = args as { ticket_id: string; content: string };
+          const { ticket_id, content, internal } = args as { ticket_id: string; content: string; internal?: boolean };
           const response = await api.post(`/api/mcp/tickets/${ticket_id}/comments`, {
             content,
+            internal: internal === true,
           });
           return {
             content: [
