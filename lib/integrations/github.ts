@@ -27,7 +27,7 @@ export async function searchCommitsByKey(
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       },
-      next: { revalidate: 60 },
+      cache: 'no-store',
     },
   )
 
@@ -39,6 +39,7 @@ export async function searchCommitsByKey(
   }
 
   const data = await res.json()
+  console.log(`[github] search query="${query}" total_count=${data.total_count} incomplete_results=${data.incomplete_results} items=${(data.items ?? []).length}`)
 
   const commits: GitHubCommitResult[] = (data.items ?? []).map((item: any) => ({
     sha: item.sha,
