@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       ? data.subject
       : `[${data.dashboardTicketNumber}] ${data.subject}`
 
-    const key = await uniqueTicketKey()
+    const key = await uniqueTicketKey(company.id)
     const ticket = await prisma.ticket.create({
       data: {
         key,

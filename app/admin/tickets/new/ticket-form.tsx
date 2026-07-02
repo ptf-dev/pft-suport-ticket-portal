@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { PRIORITY_OPTIONS } from '@/lib/priorities'
+import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT } from '@/lib/attachments'
 import Link from 'next/link'
 
 interface Company {
@@ -59,13 +60,13 @@ export function AdminTicketForm({ companies }: Props) {
   }
 
   const addFiles = (files: File[]) => {
-    const imageFiles = files.filter(f => f.type.startsWith('image/'))
-    if (imageFiles.length + selectedFiles.length > 5) {
-      setError('Maximum 5 images allowed')
+    const validFiles = files.filter(f => ALLOWED_ATTACHMENT_TYPES.includes(f.type))
+    if (validFiles.length + selectedFiles.length > 5) {
+      setError('Maximum 5 attachments allowed')
       return
     }
-    setSelectedFiles(prev => [...prev, ...imageFiles])
-    if (error === 'Maximum 5 images allowed') setError('')
+    setSelectedFiles(prev => [...prev, ...validFiles])
+    if (error === 'Maximum 5 attachments allowed') setError('')
   }
 
   const removeFile = (index: number) => {
@@ -259,7 +260,7 @@ export function AdminTicketForm({ companies }: Props) {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept={ATTACHMENT_ACCEPT}
             multiple
             onChange={handleFileChange}
             disabled={isSubmitting}
@@ -274,9 +275,9 @@ export function AdminTicketForm({ companies }: Props) {
             <svg className="w-10 h-10 mx-auto text-gray-400 dark:text-gray-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            Click to upload images
+            Click to upload attachments
             <span className="block text-xs text-gray-400 dark:text-gray-500 mt-1">
-              PNG, JPG, GIF, WebP up to 10MB (max 5 files)
+              PNG, JPG, GIF, WebP, PDF up to 10MB (max 5 files)
             </span>
           </button>
         </div>

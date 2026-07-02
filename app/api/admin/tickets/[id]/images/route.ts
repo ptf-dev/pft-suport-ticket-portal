@@ -5,9 +5,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { ActivityService } from '@/lib/services/activity'
-
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+import { ALLOWED_ATTACHMENT_TYPES as ALLOWED_TYPES, MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE } from '@/lib/attachments'
 
 export async function POST(
   request: NextRequest,

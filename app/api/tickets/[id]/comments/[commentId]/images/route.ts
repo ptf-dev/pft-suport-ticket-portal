@@ -4,19 +4,17 @@ import { prisma } from '@/lib/prisma'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { ALLOWED_ATTACHMENT_TYPES as ALLOWED_TYPES, MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE } from '@/lib/attachments'
 
 /**
  * Comment Image Upload API Endpoint
- * 
+ *
  * POST /api/tickets/[id]/comments/[commentId]/images
  * - Authentication required
- * - Validates file types (JPEG, PNG, GIF, WebP)
+ * - Validates file types (JPEG, PNG, GIF, WebP, PDF)
  * - Validates file size (max 10MB)
  * - Stores images and creates CommentImage records
  */
-
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 export async function POST(
   request: NextRequest,
@@ -69,7 +67,7 @@ export async function POST(
     for (const file of files) {
       if (!ALLOWED_TYPES.includes(file.type)) {
         return NextResponse.json(
-          { message: `Invalid file type: ${file.type}. Allowed types: JPEG, PNG, GIF, WebP` },
+          { message: `Invalid file type: ${file.type}. Allowed types: JPEG, PNG, GIF, WebP, PDF` },
           { status: 400 }
         )
       }

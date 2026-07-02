@@ -17,12 +17,14 @@ import { DeleteCommentImageButton } from '@/components/delete-comment-image-butt
 import { ScheduleTicketButton } from './schedule-ticket-button'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { TicketRelations } from './ticket-relations'
+import { TicketCommits } from './ticket-commits'
 import { TicketSprintForm } from '@/components/ticket-sprint-form'
 import { ActivityTimeline } from '@/components/activity-timeline'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
 import { cn } from '@/lib/utils'
-import { Undo2, GitCommit } from 'lucide-react'
+import { Undo2, FileText } from 'lucide-react'
+import { isImageMime } from '@/lib/attachments'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -224,11 +226,11 @@ export default async function AdminTicketDetailPage({
             </CardContent>
           </Card>
 
-          {/* Attached Images */}
+          {/* Attachments */}
           {ticket.images.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Attached Images ({ticket.images.length})</CardTitle>
+                <CardTitle>Attachments ({ticket.images.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -239,22 +241,36 @@ export default async function AdminTicketDetailPage({
                         imageId={image.id}
                         apiBasePath="/api/admin/tickets"
                       />
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={image.url}
-                        alt={image.filename}
-                        className="w-full h-32 object-cover rounded-lg border border-gray-200"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center">
+                      {isImageMime(image.mimeType) ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={image.url}
+                            alt={image.filename}
+                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center">
+                            <a
+                              href={image.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium"
+                            >
+                              View Full Size
+                            </a>
+                          </div>
+                        </>
+                      ) : (
                         <a
                           href={image.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium"
+                          className="w-full h-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-1.5 hover:border-primary-400 transition-colors"
                         >
-                          View Full Size
+                          <FileText className="w-8 h-8 text-gray-400" />
+                          <span className="text-xs text-primary-600 dark:text-primary-400">Open PDF</span>
                         </a>
-                      </div>
+                      )}
                       <div className="mt-1 text-xs text-gray-500 truncate">
                         {image.filename}
                       </div>
@@ -328,22 +344,36 @@ export default async function AdminTicketDetailPage({
                                 commentId={comment.id}
                                 imageId={image.id}
                               />
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={image.url}
-                                alt={image.filename}
-                                className="w-full h-24 object-cover rounded border border-gray-300 dark:border-gray-600"
-                              />
-                              <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity rounded flex items-center justify-center">
+                              {isImageMime(image.mimeType) ? (
+                                <>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={image.url}
+                                    alt={image.filename}
+                                    className="w-full h-24 object-cover rounded border border-gray-300 dark:border-gray-600"
+                                  />
+                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity rounded flex items-center justify-center">
+                                    <a
+                                      href={image.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-white text-xs opacity-0 group-hover:opacity-100"
+                                    >
+                                      View
+                                    </a>
+                                  </div>
+                                </>
+                              ) : (
                                 <a
                                   href={image.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-white text-xs opacity-0 group-hover:opacity-100"
+                                  className="w-full h-24 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-1 hover:border-primary-400 transition-colors"
                                 >
-                                  View
+                                  <FileText className="w-5 h-5 text-gray-400" />
+                                  <span className="text-[10px] text-primary-600 dark:text-primary-400">Open PDF</span>
                                 </a>
-                              </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -486,30 +516,7 @@ export default async function AdminTicketDetailPage({
           </Card>
 
           {ticket.key && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Code</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Commit tag</div>
-                  <code className="font-mono text-sm bg-mute px-2 py-1 rounded text-ink">[{ticket.key}]</code>
-                  <p className="text-xs text-ink-mute mt-1.5">Prefix commit messages with this to tie the work to this ticket.</p>
-                </div>
-                {commitSearchUrl ? (
-                  <a
-                    href={commitSearchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm text-accent hover:underline"
-                  >
-                    <GitCommit className="w-4 h-4" /> View commits on GitHub
-                  </a>
-                ) : (
-                  <p className="text-xs text-ink-faint">Set GITHUB_ORG to enable a direct commit-search link.</p>
-                )}
-              </CardContent>
-            </Card>
+            <TicketCommits ticketKey={ticket.key} commitSearchUrl={commitSearchUrl} />
           )}
 
           <TicketRelations ticketId={ticket.id} />

@@ -150,7 +150,7 @@ model User {
 
 model Ticket {
   id           String         @id @default(cuid())
-  key          String?        @unique // Short 5-char human key for commit messages / GitHub search
+  key          String?        @unique // Human key for commit messages / GitHub search, e.g. FTM-042
   title        String
   description  String
   status       TicketStatus   @default(OPEN)

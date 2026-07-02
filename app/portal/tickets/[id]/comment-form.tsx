@@ -4,7 +4,8 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { X, Image as ImageIcon, AtSign } from 'lucide-react'
+import { X, Image as ImageIcon, AtSign, FileText } from 'lucide-react'
+import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT, MAX_ATTACHMENT_SIZE, isImageMime } from '@/lib/attachments'
 
 interface CommentFormProps {
   ticketId: string
@@ -26,8 +27,8 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const validFiles = files.filter(file => {
-      const isValidType = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)
-      const isValidSize = file.size <= 10 * 1024 * 1024 // 10MB
+      const isValidType = ALLOWED_ATTACHMENT_TYPES.includes(file.type)
+      const isValidSize = file.size <= MAX_ATTACHMENT_SIZE
       return isValidType && isValidSize
     })
     setSelectedImages(prev => [...prev, ...validFiles])
@@ -171,11 +172,19 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
         <div className="flex flex-wrap gap-2">
           {selectedImages.map((file, index) => (
             <div key={index} className="relative group">
-              <img
-                src={URL.createObjectURL(file)}
-                alt={`Preview ${index + 1}`}
-                className="h-20 w-20 object-cover rounded-md border border-gray-300 dark:border-gray-600"
-              />
+              {isImageMime(file.type) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt={`Preview ${index + 1}`}
+                  className="h-20 w-20 object-cover rounded-md border border-gray-300 dark:border-gray-600"
+                />
+              ) : (
+                <div className="h-20 w-20 flex flex-col items-center justify-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 px-1">
+                  <FileText className="h-6 w-6 text-gray-400" />
+                  <span className="text-[9px] text-gray-500 truncate w-full text-center">{file.name}</span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => removeImage(index)}
@@ -193,12 +202,12 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
+          accept={ATTACHMENT_ACCEPT}
           multiple
           onChange={handleImageSelect}
           className="hidden"
         />
-        
+
         <Button
           type="button"
           variant="outline"
@@ -207,7 +216,7 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
           disabled={isSubmitting}
         >
           <ImageIcon className="h-4 w-4 mr-1" />
-          Add Images
+          Attach Files
         </Button>
 
         {availableUsers.length > 0 && (

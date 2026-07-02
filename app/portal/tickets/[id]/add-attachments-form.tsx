@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
+import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT, MAX_ATTACHMENT_SIZE } from '@/lib/attachments'
 
 interface AddAttachmentsFormProps {
   ticketId: string
@@ -27,17 +28,15 @@ export function AddAttachmentsForm({
       const files = Array.from(e.target.files)
       
       // Validate file types
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-      const invalidFiles = files.filter(f => !allowedTypes.includes(f.type))
-      
+      const invalidFiles = files.filter(f => !ALLOWED_ATTACHMENT_TYPES.includes(f.type))
+
       if (invalidFiles.length > 0) {
-        setError('Only JPEG, PNG, GIF, and WebP images are allowed')
+        setError('Only JPEG, PNG, GIF, WebP images and PDFs are allowed')
         return
       }
 
       // Validate file sizes (10MB max)
-      const maxSize = 10 * 1024 * 1024
-      const oversizedFiles = files.filter(f => f.size > maxSize)
+      const oversizedFiles = files.filter(f => f.size > MAX_ATTACHMENT_SIZE)
       
       if (oversizedFiles.length > 0) {
         setError('Files must be smaller than 10MB')
@@ -108,18 +107,18 @@ export function AddAttachmentsForm({
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label htmlFor="images">Select Images</Label>
+          <Label htmlFor="images">Select Files</Label>
           <input
             id="images"
             type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
+            accept={ATTACHMENT_ACCEPT}
             multiple
             onChange={handleFileChange}
             disabled={isUploading}
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Accepted formats: JPEG, PNG, GIF, WebP (max 10MB each)
+            Accepted formats: JPEG, PNG, GIF, WebP, PDF (max 10MB each)
           </p>
         </div>
 

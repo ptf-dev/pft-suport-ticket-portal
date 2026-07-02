@@ -1,24 +1,54 @@
 import { prisma } from '@/lib/prisma'
 
-// 5-char keys from an unambiguous alphabet (no I, L, O, 0, 1).
-const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
-const KEY_LENGTH = 5
+/** Derive a 3-letter prefix from a company name, e.g. "Prime Trading Group" -> "PTG". */
+export function companyPrefix(companyName: string): string {
+  const words = companyName
+    .replace(/[^a-zA-Z0-9\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
 
-export function generateTicketKey(): string {
-  let k = ''
-  for (let i = 0; i < KEY_LENGTH; i++) {
-    k += ALPHABET[Math.floor(Math.random() * ALPHABET.length)]
+  let letters = words.map((w) => w[0]).join('').toUpperCase()
+
+  if (letters.length < 3) {
+    // Not enough words — pad out using the remaining letters of the first word.
+    const filler = (words[0] ?? '').slice(1).toUpperCase()
+    letters += filler
   }
-  return k
+
+  letters = letters.replace(/[^A-Z0-9]/g, '')
+  letters = (letters + 'XXX').slice(0, 3)
+  return letters
 }
 
-/** Generate a ticket key not already used (retries on the rare collision). */
-export async function uniqueTicketKey(): Promise<string> {
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const k = generateTicketKey()
-    const existing = await prisma.ticket.findUnique({ where: { key: k }, select: { id: true } })
-    if (!existing) return k
+/** Generate a unique ticket key: 3-letter company prefix + dash + 3-digit sequence, e.g. FTM-042. */
+export async function uniqueTicketKey(companyId: string): Promise<string> {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { name: true },
+  })
+
+  const prefix = companyPrefix(company?.name ?? 'GEN')
+
+  const last = await prisma.ticket.findFirst({
+    where: { key: { startsWith: `${prefix}-` } },
+    orderBy: { key: 'desc' },
+    select: { key: true },
+  })
+
+  let next = 1
+  if (last?.key) {
+    const match = last.key.match(/-(\d+)$/)
+    if (match) next = parseInt(match[1], 10) + 1
   }
-  // Extremely unlikely; fall back to a longer key to guarantee uniqueness.
-  return generateTicketKey() + generateTicketKey().slice(0, 2)
+
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const candidate = `${prefix}-${String(next).padStart(3, '0')}`
+    const existing = await prisma.ticket.findUnique({ where: { key: candidate }, select: { id: true } })
+    if (!existing) return candidate
+    next++
+  }
+
+  // Extremely unlikely fallback to guarantee uniqueness.
+  return `${prefix}-${Date.now().toString().slice(-6)}`
 }

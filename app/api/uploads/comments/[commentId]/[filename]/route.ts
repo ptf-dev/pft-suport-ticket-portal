@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { ATTACHMENT_EXT_CONTENT_TYPE } from '@/lib/attachments'
 
 /**
  * Comment Image Serving Endpoint
@@ -36,14 +37,7 @@ export async function GET(
     
     // Determine content type from filename
     const ext = params.filename.split('.').pop()?.toLowerCase()
-    const contentTypeMap: Record<string, string> = {
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      png: 'image/png',
-      gif: 'image/gif',
-      webp: 'image/webp',
-    }
-    const contentType = contentTypeMap[ext || ''] || 'application/octet-stream'
+    const contentType = ATTACHMENT_EXT_CONTENT_TYPE[ext || ''] || 'application/octet-stream'
 
     return new NextResponse(fileBuffer, {
       headers: {

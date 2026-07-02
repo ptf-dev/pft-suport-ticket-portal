@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { PRIORITY_OPTIONS } from '@/lib/priorities'
+import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT } from '@/lib/attachments'
 import Link from 'next/link'
 
 interface FormErrors {
@@ -49,21 +50,20 @@ export function TicketForm() {
   }
 
   const addFiles = (files: File[]) => {
-    // Filter for image files only
-    const imageFiles = files.filter(file => file.type.startsWith('image/'))
-    
+    const validFiles = files.filter(file => ALLOWED_ATTACHMENT_TYPES.includes(file.type))
+
     // Limit to 5 files total
-    if (imageFiles.length + selectedFiles.length > 5) {
-      setErrors({ general: 'Maximum 5 images allowed' })
+    if (validFiles.length + selectedFiles.length > 5) {
+      setErrors({ general: 'Maximum 5 attachments allowed' })
       return
     }
-    
+
     // Clear any previous errors
     if (errors.general) {
       setErrors({})
     }
-    
-    setSelectedFiles([...selectedFiles, ...imageFiles])
+
+    setSelectedFiles([...selectedFiles, ...validFiles])
   }
 
   const handlePasteFromClipboard = async () => {
@@ -320,7 +320,7 @@ Please include:
               <input
                 type="file"
                 id="images"
-                accept="image/*"
+                accept={ATTACHMENT_ACCEPT}
                 multiple
                 onChange={handleFileChange}
                 disabled={isSubmitting}
@@ -344,10 +344,10 @@ Please include:
                   />
                 </svg>
                 <span className="text-base text-gray-700 dark:text-gray-300 font-medium mb-1">
-                  Click to upload images or drag and drop
+                  Click to upload attachments or drag and drop
                 </span>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  PNG, JPG, GIF up to 10MB (max 5 files)
+                  PNG, JPG, GIF, WebP, PDF up to 10MB (max 5 files)
                 </span>
               </label>
               <div className="mt-4">
@@ -379,7 +379,7 @@ Please include:
                     className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <span className="text-2xl">🖼️</span>
+                      <span className="text-2xl">{file.type === 'application/pdf' ? '📄' : '🖼️'}</span>
                       <span className="text-sm text-gray-700 dark:text-gray-300 truncate font-medium">
                         {file.name}
                       </span>

@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
     // Create ticket
     const sprintId = await autoSprintIdForPriority(data.priority)
-    const key = await uniqueTicketKey()
+    const key = await uniqueTicketKey(companyId)
 
     const ticket = await prisma.ticket.create({
       data: {

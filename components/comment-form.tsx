@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { X, Image as ImageIcon, AtSign, Lock, Send } from 'lucide-react'
+import { X, Image as ImageIcon, AtSign, Lock, Send, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT, MAX_ATTACHMENT_SIZE, isImageMime } from '@/lib/attachments'
 
 interface CommentFormProps {
   ticketId: string
@@ -117,8 +118,8 @@ export default function CommentForm({
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const valid = files.filter((f) => {
-      const okType = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(f.type)
-      const okSize = f.size <= 10 * 1024 * 1024
+      const okType = ALLOWED_ATTACHMENT_TYPES.includes(f.type)
+      const okSize = f.size <= MAX_ATTACHMENT_SIZE
       return okType && okSize
     })
     setSelectedImages((prev) => [...prev, ...valid])
@@ -295,12 +296,19 @@ export default function CommentForm({
         <div className="flex flex-wrap gap-2">
           {selectedImages.map((file, index) => (
             <div key={index} className="relative group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={URL.createObjectURL(file)}
-                alt={`Preview ${index + 1}`}
-                className="h-16 w-16 object-cover rounded-md border border-line"
-              />
+              {isImageMime(file.type) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt={`Preview ${index + 1}`}
+                  className="h-16 w-16 object-cover rounded-md border border-line"
+                />
+              ) : (
+                <div className="h-16 w-16 flex flex-col items-center justify-center gap-1 rounded-md border border-line bg-bg-sunken px-1">
+                  <FileText className="h-5 w-5 text-ink-mute" />
+                  <span className="text-[9px] text-ink-mute truncate w-full text-center">{file.name}</span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => removeImage(index)}
@@ -318,7 +326,7 @@ export default function CommentForm({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
+            accept={ATTACHMENT_ACCEPT}
             multiple
             onChange={handleImageSelect}
             className="hidden"
@@ -331,7 +339,7 @@ export default function CommentForm({
             disabled={isSubmitting}
           >
             <ImageIcon className="w-3.5 h-3.5" />
-            Images
+            Attach
           </Button>
 
           {isAdmin && (

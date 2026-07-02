@@ -14,6 +14,8 @@ import { DeleteImageButton } from '@/components/delete-image-button'
 import { DeleteCommentImageButton } from '@/components/delete-comment-image-button'
 import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
+import { isImageMime } from '@/lib/attachments'
+import { FileText } from 'lucide-react'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -185,22 +187,36 @@ export default async function ClientTicketDetailPage({
                         ticketId={ticket.id}
                         imageId={image.id}
                       />
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={image.url}
-                        alt={image.filename}
-                        className="w-full h-32 object-cover rounded-lg border border-gray-200"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center">
+                      {isImageMime(image.mimeType) ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={image.url}
+                            alt={image.filename}
+                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center">
+                            <a
+                              href={image.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium"
+                            >
+                              View Full Size
+                            </a>
+                          </div>
+                        </>
+                      ) : (
                         <a
                           href={image.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium"
+                          className="w-full h-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-1.5 hover:border-primary-400 transition-colors"
                         >
-                          View Full Size
+                          <FileText className="w-8 h-8 text-gray-400" />
+                          <span className="text-xs text-primary-600 dark:text-primary-400">Open PDF</span>
                         </a>
-                      </div>
+                      )}
                       <div className="mt-1 text-xs text-gray-500 truncate">
                         {image.filename}
                       </div>
@@ -257,22 +273,36 @@ export default async function ClientTicketDetailPage({
                               commentId={comment.id}
                               imageId={image.id}
                             />
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={image.url}
-                              alt={image.filename}
-                              className="w-full h-24 object-cover rounded border border-gray-300 dark:border-gray-600"
-                            />
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity rounded flex items-center justify-center">
+                            {isImageMime(image.mimeType) ? (
+                              <>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={image.url}
+                                  alt={image.filename}
+                                  className="w-full h-24 object-cover rounded border border-gray-300 dark:border-gray-600"
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity rounded flex items-center justify-center">
+                                  <a
+                                    href={image.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-white text-xs opacity-0 group-hover:opacity-100"
+                                  >
+                                    View
+                                  </a>
+                                </div>
+                              </>
+                            ) : (
                               <a
                                 href={image.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-white text-xs opacity-0 group-hover:opacity-100"
+                                className="w-full h-24 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-1 hover:border-primary-400 transition-colors"
                               >
-                                View
+                                <FileText className="w-5 h-5 text-gray-400" />
+                                <span className="text-[10px] text-primary-600 dark:text-primary-400">Open PDF</span>
                               </a>
-                            </div>
+                            )}
                           </div>
                         ))}
                       </div>

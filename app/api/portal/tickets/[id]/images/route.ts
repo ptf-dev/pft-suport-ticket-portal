@@ -4,20 +4,18 @@ import { prisma } from '@/lib/prisma'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
+import { ALLOWED_ATTACHMENT_TYPES as ALLOWED_TYPES, MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE } from '@/lib/attachments'
 
 /**
  * Image Upload API Endpoint
  * Requirements: 5.4, 5.5, 9.1, 9.2, 9.3
- * 
+ *
  * POST /api/portal/tickets/[id]/images
  * - Client authentication required
- * - Validates file types (JPEG, PNG, GIF, WebP)
+ * - Validates file types (JPEG, PNG, GIF, WebP, PDF)
  * - Validates file size (max 10MB)
  * - Stores images and creates TicketImage records
  */
-
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 export async function POST(
   request: NextRequest,
@@ -62,7 +60,7 @@ export async function POST(
     for (const file of files) {
       if (!ALLOWED_TYPES.includes(file.type)) {
         return NextResponse.json(
-          { error: `Invalid file type: ${file.type}. Allowed types: JPEG, PNG, GIF, WebP` },
+          { error: `Invalid file type: ${file.type}. Allowed types: JPEG, PNG, GIF, WebP, PDF` },
           { status: 400 }
         )
       }
