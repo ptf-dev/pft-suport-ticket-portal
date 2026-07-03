@@ -118,58 +118,52 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
           {mapped.length === 0 ? (
             <p className="text-sm text-ink-mute">No groups mapped yet.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700 text-left text-ink-mute">
-                    <th className="py-2 pr-3">Group</th>
-                    <th className="py-2 pr-3">Company</th>
-                    <th className="py-2 pr-3">Enabled</th>
-                    <th className="py-2 pr-3">Auto-ticket</th>
-                    <th className="py-2 pr-3">Auto-reply</th>
-                    <th className="py-2 pr-3">Notify</th>
-                    <th className="py-2 pr-3"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mapped.map((g) => (
-                    <tr key={g.id} className="border-b border-gray-100 dark:border-gray-800">
-                      <td className="py-2 pr-3">
-                        <div className="font-medium">{g.name}</div>
-                        <div className="text-xs text-ink-mute font-mono">{g.groupJid}</div>
-                      </td>
-                      <td className="py-2 pr-3">
-                        <Select
-                          value={g.company.id}
-                          onChange={(e) => patch(g.id, { companyId: e.target.value } as any)}
-                          className="text-sm"
-                        >
-                          {companies.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                          ))}
-                        </Select>
-                      </td>
-                      <td className="py-2 pr-3">
+            <div className="space-y-3">
+              {mapped.map((g) => (
+                <div key={g.id} className="p-3 rounded-md border border-gray-200 dark:border-gray-700 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{g.name}</div>
+                      <div className="text-xs text-ink-mute font-mono truncate">{g.groupJid.replace('@g.us', '')}</div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => remove(g.id)} className="text-red-600 shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <label className="flex flex-col text-xs text-ink-mute gap-1 md:w-64">
+                      <span>Company</span>
+                      <Select
+                        value={g.company.id}
+                        onChange={(e) => patch(g.id, { companyId: e.target.value } as any)}
+                        className="text-sm"
+                      >
+                        {companies.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </Select>
+                    </label>
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <label className="flex items-center gap-2">
                         <input type="checkbox" checked={g.enabled} onChange={(e) => patch(g.id, { enabled: e.target.checked })} />
-                      </td>
-                      <td className="py-2 pr-3">
+                        <span>Enabled</span>
+                      </label>
+                      <label className="flex items-center gap-2">
                         <input type="checkbox" checked={g.autoTicket} onChange={(e) => patch(g.id, { autoTicket: e.target.checked })} />
-                      </td>
-                      <td className="py-2 pr-3">
+                        <span>Auto-ticket</span>
+                      </label>
+                      <label className="flex items-center gap-2">
                         <input type="checkbox" checked={g.autoReply} onChange={(e) => patch(g.id, { autoReply: e.target.checked })} />
-                      </td>
-                      <td className="py-2 pr-3">
+                        <span>Auto-reply</span>
+                      </label>
+                      <label className="flex items-center gap-2">
                         <input type="checkbox" checked={g.notifyOnStatusChange} onChange={(e) => patch(g.id, { notifyOnStatusChange: e.target.checked })} />
-                      </td>
-                      <td className="py-2 pr-3">
-                        <Button variant="ghost" size="sm" onClick={() => remove(g.id)} className="text-red-600">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <span>Notify on status change</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -183,24 +177,28 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
           ) : unmapped.length === 0 ? (
             <p className="text-sm text-ink-mute">All discovered groups are already mapped.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {unmapped.map((g) => (
-                <div key={g.id} className="flex items-center gap-3 p-3 rounded-md border border-gray-200 dark:border-gray-700">
+                <div key={g.id} className="p-3 rounded-md border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row md:items-center gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{g.name}</div>
-                    <div className="text-xs text-ink-mute font-mono">{g.id} · {g.participants} members</div>
+                    <div className="font-medium truncate">{g.name || '(no name)'}</div>
+                    <div className="text-xs text-ink-mute font-mono truncate">
+                      {g.id.replace('@g.us', '')} · {g.participants} members
+                    </div>
                   </div>
-                  <Select
-                    value={selectedCompanies[g.id] ?? ''}
-                    onChange={(e) => setSelectedCompanies((prev) => ({ ...prev, [g.id]: e.target.value }))}
-                    className="text-sm min-w-[180px]"
-                  >
-                    <option value="">Select company…</option>
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </Select>
-                  <Button size="sm" onClick={() => mapGroup(g)} disabled={!selectedCompanies[g.id]}>Map</Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Select
+                      value={selectedCompanies[g.id] ?? ''}
+                      onChange={(e) => setSelectedCompanies((prev) => ({ ...prev, [g.id]: e.target.value }))}
+                      className="text-sm w-full md:w-56"
+                    >
+                      <option value="">Select company…</option>
+                      {companies.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </Select>
+                    <Button size="sm" onClick={() => mapGroup(g)} disabled={!selectedCompanies[g.id]}>Map</Button>
+                  </div>
                 </div>
               ))}
             </div>
