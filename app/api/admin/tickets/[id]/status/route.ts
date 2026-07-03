@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { TicketStatus } from '@prisma/client'
 import { NotificationService } from '@/lib/services/notification'
 import { ActivityService } from '@/lib/services/activity'
+import { notifyTicketStatusChanged } from '@/lib/services/whatsapp-notify'
 
 /**
  * PATCH /api/admin/tickets/[id]/status
@@ -56,6 +57,10 @@ export async function PATCH(
     }
 
     NotificationService.notifyClientStatusChanged(params.id, ticket.status, status).catch(() => {})
+
+    if (ticket.status !== status) {
+      notifyTicketStatusChanged(params.id, ticket.status, status).catch(() => {})
+    }
 
     return NextResponse.json(updatedTicket)
   } catch (error) {

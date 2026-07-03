@@ -118,6 +118,7 @@ model Company {
   notificationSettings NotificationSettings?
   emailTemplates       EmailTemplate[]
   notificationLogs     NotificationLog[]
+  whatsappGroups       WhatsappGroup[]
 
   @@map("companies")
 }
@@ -381,4 +382,42 @@ model TicketActivity {
   @@index([createdAt])
   @@index([type])
   @@map("ticket_activities")
+}
+
+model WhatsappGroup {
+  id          String   @id @default(cuid())
+  groupJid    String   @unique
+  name        String
+  companyId   String
+  enabled     Boolean  @default(true)
+  autoTicket  Boolean  @default(true)
+  autoReply   Boolean  @default(true)
+  notifyOnStatusChange Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company  Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  messages WhatsappMessage[]
+
+  @@index([companyId])
+  @@map("whatsapp_groups")
+}
+
+model WhatsappMessage {
+  id          String   @id @default(cuid())
+  waMessageId String   @unique
+  groupJid    String
+  senderJid   String
+  senderName  String?
+  body        String
+  ticketId    String?
+  processed   Boolean  @default(false)
+  agentAction String?
+  createdAt   DateTime @default(now())
+
+  group  WhatsappGroup @relation(fields: [groupJid], references: [groupJid], onDelete: Cascade)
+
+  @@index([groupJid, createdAt])
+  @@index([ticketId])
+  @@map("whatsapp_messages")
 }
