@@ -40,13 +40,17 @@ export interface WahaGroup {
 }
 
 export async function listGroups(): Promise<WahaGroup[]> {
-  const res = await wahaFetch(`/api/${WAHA_SESSION}/groups`)
+  const res = await wahaFetch(`/api/${WAHA_SESSION}/groups?limit=200`)
   if (!res.ok) return []
-  const data: any = await res.json().catch(() => [])
-  return (Array.isArray(data) ? data : []).map((g: any) => ({
-    id: g.id?._serialized ?? g.id ?? '',
-    name: g.subject ?? g.name ?? g.id ?? '',
-    participants: Array.isArray(g.participants) ? g.participants.length : (g.groupMetadata?.participants?.length ?? 0),
+  const data: any = await res.json().catch(() => null)
+  if (!data) return []
+  const rows: any[] = Array.isArray(data) ? data : Object.values(data)
+  return rows.map((g: any) => ({
+    id: typeof g.id === 'string' ? g.id : (g.id?._serialized ?? ''),
+    name: g.subject ?? g.name ?? (typeof g.id === 'string' ? g.id : g.id?._serialized ?? ''),
+    participants: typeof g.size === 'number'
+      ? g.size
+      : Array.isArray(g.participants) ? g.participants.length : (g.groupMetadata?.participants?.length ?? 0),
   })).filter((g) => g.id.endsWith('@g.us'))
 }
 
