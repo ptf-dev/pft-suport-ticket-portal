@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { verifyWebhookSignature, sendGroupText } from '@/lib/integrations/waha'
+import { verifyWebhookSignature, sendGroupText, getBotIdentity } from '@/lib/integrations/waha'
 import { runWhatsappAgent } from '@/lib/agents/whatsapp-agent'
 
 export const dynamic = 'force-dynamic'
@@ -37,15 +37,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignored: 'not a group message' })
   }
 
-  const fromMe = Boolean(msg?.fromMe)
-  if (fromMe) {
-    return NextResponse.json({ ok: true, ignored: 'own message' })
-  }
-
   const body: string = msg?.body ?? msg?.text ?? ''
   const waMessageId: string = msg?.id ?? `${groupJid}-${Date.now()}`
   const senderJid: string = msg?.participant ?? msg?.author ?? msg?.from ?? ''
   const senderName: string | null = msg?.notifyName ?? msg?._data?.notifyName ?? null
+  const fromMe = Boolean(msg?.fromMe)
 
   if (!body || body.trim().length < 3) {
     return NextResponse.json({ ok: true, ignored: 'empty or too short' })
@@ -58,6 +54,27 @@ export async function POST(request: NextRequest) {
 
   if (!group || !group.enabled) {
     return NextResponse.json({ ok: true, ignored: 'group not mapped or disabled' })
+  }
+
+  const bot = await getBotIdentity().catch(() => null)
+  const mentionedIds: string[] = Array.isArray(msg?.mentionedIds)
+    ? msg.mentionedIds
+    : Array.isArray(msg?._data?.contextInfo?.mentionedJid)
+    ? msg._data.contextInfo.mentionedJid
+    : []
+  const mentionsBot = bot ? (
+    mentionedIds.some((m: string) => m.startsWith(`${bot.phone}@`) || (bot.lid && m.startsWith(`${bot.lid}@`)))
+    || (bot.phone && body.includes(`@${bot.phone}`))
+    || (bot.lid && body.includes(`@${bot.lid}`))
+  ) : false
+
+  const isBotOwnReply = fromMe && !mentionsBot
+  if (isBotOwnReply) {
+    return NextResponse.json({ ok: true, ignored: 'bot reply echo' })
+  }
+
+  if (group.mentionOnly && !mentionsBot) {
+    return NextResponse.json({ ok: true, ignored: 'mention-only mode, bot not tagged' })
   }
 
   const existing = await prisma.whatsappMessage.findUnique({ where: { waMessageId } })

@@ -15,6 +15,7 @@ interface MappedGroup {
   enabled: boolean
   autoTicket: boolean
   autoReply: boolean
+  mentionOnly: boolean
   notifyOnStatusChange: boolean
   company: { id: string; name: string }
 }
@@ -155,6 +156,10 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                       <label className="flex items-center gap-2">
                         <input type="checkbox" checked={g.autoReply} onChange={(e) => patch(g.id, { autoReply: e.target.checked })} />
                         <span>Auto-reply</span>
+                      </label>
+                      <label className="flex items-center gap-2" title="Bot only fires when @-mentioned. Recommended.">
+                        <input type="checkbox" checked={g.mentionOnly} onChange={(e) => patch(g.id, { mentionOnly: e.target.checked })} />
+                        <span>Mention-only</span>
                       </label>
                       <label className="flex items-center gap-2">
                         <input type="checkbox" checked={g.notifyOnStatusChange} onChange={(e) => patch(g.id, { notifyOnStatusChange: e.target.checked })} />

@@ -392,6 +392,7 @@ model WhatsappGroup {
   enabled     Boolean  @default(true)
   autoTicket  Boolean  @default(true)
   autoReply   Boolean  @default(true)
+  mentionOnly Boolean  @default(true)
   notifyOnStatusChange Boolean @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

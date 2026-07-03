@@ -11,6 +11,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (typeof body.enabled === 'boolean') data.enabled = body.enabled
   if (typeof body.autoTicket === 'boolean') data.autoTicket = body.autoTicket
   if (typeof body.autoReply === 'boolean') data.autoReply = body.autoReply
+  if (typeof body.mentionOnly === 'boolean') data.mentionOnly = body.mentionOnly
   if (typeof body.notifyOnStatusChange === 'boolean') data.notifyOnStatusChange = body.notifyOnStatusChange
   if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim()
   if (typeof body.companyId === 'string' && body.companyId.trim()) data.companyId = body.companyId

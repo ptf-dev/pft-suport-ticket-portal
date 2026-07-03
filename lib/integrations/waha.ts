@@ -67,6 +67,22 @@ export async function getSessionStatus(): Promise<WahaSessionStatus | null> {
   return { status: data.status ?? 'UNKNOWN' }
 }
 
+let _botIdCache: { id: string; phone: string; lid: string } | null = null
+
+export async function getBotIdentity(): Promise<{ id: string; phone: string; lid: string } | null> {
+  if (_botIdCache) return _botIdCache
+  const res = await wahaFetch(`/api/sessions/${WAHA_SESSION}`)
+  if (!res.ok) return null
+  const data: any = await res.json().catch(() => null)
+  const me = data?.me
+  if (!me) return null
+  const rawId: string = me.id ?? ''
+  const phone = rawId.split('@')[0].replace(/^\+/, '')
+  const lid = (me.lid ?? '').split('@')[0]
+  _botIdCache = { id: rawId, phone, lid }
+  return _botIdCache
+}
+
 export async function getSessionQr(): Promise<string | null> {
   const res = await wahaFetch(`/api/${WAHA_SESSION}/auth/qr?format=image`)
   if (!res.ok) return null
