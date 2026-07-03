@@ -8,6 +8,11 @@ const LLM_API_KEY = process.env.WHATSAPP_LLM_API_KEY?.trim() || process.env.DEEP
 const LLM_BASE_URL = process.env.WHATSAPP_LLM_BASE_URL?.trim() || 'https://api.deepseek.com'
 const LLM_MODEL = process.env.WHATSAPP_LLM_MODEL?.trim() || 'deepseek-chat'
 const AGENT_BOT_EMAIL = 'whatsapp-bot@propfirmstech.com'
+const PORTAL_URL = (process.env.PORTAL_PUBLIC_URL?.trim() || process.env.NEXTAUTH_URL?.trim() || '').replace(/\/$/, '')
+
+function ticketLink(ticketId: string): string {
+  return PORTAL_URL ? `${PORTAL_URL}/portal/tickets/${ticketId}` : ''
+}
 
 const SYSTEM_PROMPT_PASSIVE = `You are the PFT Support Bot, an AI agent lurking in a WhatsApp group for clients of {companyName}.
 
@@ -306,9 +311,11 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
         category: call.input.category ? String(call.input.category) : undefined,
       }, input.senderName)
       const keyLabel = ticket.key ?? ticket.id.slice(0, 8)
-      const confirmation = call.input.replyText
+      const link = ticketLink(ticket.id)
+      const body = call.input.replyText
         ? `${String(call.input.replyText).slice(0, 300)} (${keyLabel})`
         : `Opened ticket ${keyLabel}.`
+      const confirmation = link ? `${body}\n${link}` : body
       return { action: 'create_ticket', reply: confirmation, ticketId: ticket.id }
     }
     case 'comment_on_ticket': {
@@ -319,7 +326,9 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
         input.senderName,
       )
       if (!ticketId) return { action: 'ignore' }
-      return { action: 'comment_on_ticket', reply: String(call.input.replyText ?? '').slice(0, 300), ticketId }
+      const link = ticketLink(ticketId)
+      const body = String(call.input.replyText ?? '').slice(0, 300)
+      return { action: 'comment_on_ticket', reply: link ? `${body}\n${link}` : body, ticketId }
     }
     default:
       return { action: 'ignore' }

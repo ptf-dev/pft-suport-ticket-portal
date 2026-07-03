@@ -2,8 +2,14 @@ import { prisma } from '@/lib/prisma'
 import { isWahaConfigured, sendGroupText } from '@/lib/integrations/waha'
 import type { TicketStatus } from '@prisma/client'
 
+const PORTAL_URL = (process.env.PORTAL_PUBLIC_URL?.trim() || process.env.NEXTAUTH_URL?.trim() || '').replace(/\/$/, '')
+
 function humanStatus(s: TicketStatus): string {
   return s.replace(/_/g, ' ').toLowerCase()
+}
+
+function ticketLink(ticketId: string): string {
+  return PORTAL_URL ? `\n${PORTAL_URL}/portal/tickets/${ticketId}` : ''
 }
 
 export async function notifyTicketStatusChanged(
@@ -16,7 +22,7 @@ export async function notifyTicketStatusChanged(
 
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    select: { key: true, title: true, companyId: true },
+    select: { id: true, key: true, title: true, companyId: true },
   })
   if (!ticket) return
 
@@ -26,7 +32,7 @@ export async function notifyTicketStatusChanged(
   })
   if (!groups.length) return
 
-  const text = `Ticket ${ticket.key} — "${ticket.title}"\nStatus: ${humanStatus(oldStatus)} → *${humanStatus(newStatus)}*`
+  const text = `Ticket ${ticket.key} — "${ticket.title}"\nStatus: ${humanStatus(oldStatus)} → *${humanStatus(newStatus)}*${ticketLink(ticket.id)}`
 
   await Promise.allSettled(
     groups.map((g) => sendGroupText(g.groupJid, text).catch((err) => {
@@ -39,7 +45,7 @@ export async function notifyTicketCreated(ticketId: string): Promise<void> {
   if (!isWahaConfigured()) return
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
-    select: { key: true, title: true, priority: true, companyId: true },
+    select: { id: true, key: true, title: true, priority: true, companyId: true },
   })
   if (!ticket) return
 
@@ -49,7 +55,7 @@ export async function notifyTicketCreated(ticketId: string): Promise<void> {
   })
   if (!groups.length) return
 
-  const text = `New ticket opened: ${ticket.key} — "${ticket.title}" (${ticket.priority})`
+  const text = `New ticket opened: ${ticket.key} — "${ticket.title}" (${ticket.priority})${ticketLink(ticket.id)}`
   await Promise.allSettled(
     groups.map((g) => sendGroupText(g.groupJid, text).catch(() => {})),
   )
