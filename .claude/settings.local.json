@@ -6,7 +6,23 @@
       "Bash(curl:*)",
       "Bash(openssl dgst:*)",
       "Bash(openssl base64:*)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(npx prisma *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"---exit:$?---\")",
+      "Bash(rg -n \"priority\" --glob '!node_modules' --glob '!.next' app/admin/tickets/[id]/page.tsx app/portal/page.tsx app/portal/tickets/[id]/page.tsx app/portal/tickets/page.tsx app/admin/tickets/page.tsx app/api/mcp/tickets/route.ts app/api/mcp/tickets/[id]/route.ts lib/services/activity.ts lib/services/notification.ts components/activity-timeline.tsx app/admin/tickets/[id]/ticket-relations.tsx)",
+      "Bash(sed -n '175,186p' app/portal/tickets/interactive-ticket-board.tsx)",
+      "Bash(sed -n '150,170p' app/og/tickets/[id]/opengraph-image.tsx)",
+      "Bash(npx jest *)",
+      "Bash(git rev-list *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git fetch *)",
+      "Bash(git rebase *)",
+      "Bash(git stash *)",
+      "Bash(gh run *)",
+      "Bash(npx next *)"
     ]
   }
 }

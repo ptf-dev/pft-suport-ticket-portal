@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     : Array.isArray(msg?._data?.contextInfo?.mentionedJid)
     ? msg._data.contextInfo.mentionedJid
     : []
-  const mentionsBot = bot ? (
+  const mentionsBot: boolean = bot ? Boolean(
     mentionedIds.some((m: string) => m.startsWith(`${bot.phone}@`) || (bot.lid && m.startsWith(`${bot.lid}@`)))
     || (bot.phone && body.includes(`@${bot.phone}`))
     || (bot.lid && body.includes(`@${bot.lid}`))
@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
       senderName,
       body,
       waMessageId,
+      wasMentioned: mentionsBot,
     })
 
     if (result.reply && group.autoReply) {
