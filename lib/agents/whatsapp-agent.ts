@@ -200,9 +200,8 @@ async function callAnthropic(prompt: string): Promise<{ name: string; input: any
   return { name: toolUse.name, input: toolUse.input ?? {} }
 }
 
-async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: any } | null> {
-  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
-  const res = await fetch(`${LLM_BASE_URL.replace(/\/$/, '')}/v1/chat/completions`, {
+async function callOpenAiCompatOnce(prompt: string): Promise<Response> {
+  return fetch(`${LLM_BASE_URL.replace(/\/$/, '')}/v1/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${LLM_API_KEY}`,
@@ -217,11 +216,32 @@ async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: 
       messages: [{ role: 'user', content: prompt }],
     }),
   })
-  if (!res.ok) throw new Error(`LLM API error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`)
-  const data = await res.json()
+}
+
+async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: any } | null> {
+  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
+  let res!: Response
+  let lastErr = ''
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await callOpenAiCompatOnce(prompt)
+    if (res.ok) break
+    if (res.status !== 429 && res.status !== 503) {
+      lastErr = (await res.text().catch(() => '')).slice(0, 300)
+      throw new Error(`LLM API error ${res.status}: ${lastErr}`)
+    }
+    lastErr = (await res.text().catch(() => '')).slice(0, 200)
+    const wait = 800 * (attempt + 1)
+    console.warn(`[whatsapp-agent] LLM ${res.status}, retry ${attempt + 1}/3 in ${wait}ms:`, lastErr)
+    await new Promise((r) => setTimeout(r, wait))
+  }
+  if (!res.ok) throw new Error(`LLM API error ${res.status} after retries: ${lastErr}`)
+  const data = await res.json().catch(() => null)
   const message = data?.choices?.[0]?.message
   const call = message?.tool_calls?.[0]
-  if (!call) return null
+  if (!call) {
+    console.warn('[whatsapp-agent] no tool_call in LLM response:', JSON.stringify(data).slice(0, 400))
+    return null
+  }
   let parsed: any = {}
   try {
     parsed = typeof call.function?.arguments === 'string' ? JSON.parse(call.function.arguments) : (call.function?.arguments ?? {})

@@ -119,6 +119,7 @@ export default async function AdminTicketsPage({
 
   if (searchParams.search) {
     where.OR = [
+      { key: { contains: searchParams.search, mode: 'insensitive' } },
       { title: { contains: searchParams.search, mode: 'insensitive' } },
       { description: { contains: searchParams.search, mode: 'insensitive' } },
       { id: { contains: searchParams.search, mode: 'insensitive' } },
