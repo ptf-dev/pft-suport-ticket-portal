@@ -30,6 +30,9 @@ Company: {companyName} (companyId: {companyId})
 Open tickets in this company (last 10):
 {recentTickets}
 
+Referenced tickets (details for any ticket key mentioned in this message):
+{referencedTickets}
+
 Recent messages (oldest→newest):
 {recentMessages}
 
@@ -67,10 +70,21 @@ WHEN YOU DO create_ticket:
 - Priority: default MEDIUM. HIGH/URGENT only if the reporter clearly indicates blocking/outage/money/security.
 - replyText: short "Got it, opened X" (bot code appends the ticket key + link).
 
+TICKET LOOKUPS (this is important):
+- If the user references any ticket by key (e.g. "PFT-045", "NSF-015", "the login one"), full details for referenced keys are pre-loaded below (status, priority, last 3 public comments).
+- Use those details to answer status questions accurately. Never invent status.
+- If the user reports a NEW piece of info on an existing referenced ticket → comment_on_ticket with their input as the comment.
+- If the user just asks status → reply_only with the ticket's current status + a short summary of the latest public comment.
+- If a referenced key came back as "no matching tickets found" → tell the user that key doesn't exist, don't pretend it does.
+- Recognize soft references too: "the withdrawal bug", "that outage" — scan Open tickets list for a title match; if unsure, ask which ticket they mean.
+
 Current group: {groupName}
 Company: {companyName} (companyId: {companyId})
 Open tickets in this company (last 10):
 {recentTickets}
+
+Referenced tickets (details for any ticket key mentioned in this message):
+{referencedTickets}
 
 Recent messages (oldest→newest):
 {recentMessages}
@@ -158,8 +172,34 @@ async function getBotUserId(): Promise<string> {
   return created.id
 }
 
-async function loadContext(group: WhatsappGroup): Promise<{ recentTickets: string; recentMessages: string }> {
-  const [tickets, messages] = await Promise.all([
+const TICKET_KEY_RE = /\b[A-Z]{2,5}-\d{1,6}\b/g
+
+async function loadReferencedTickets(companyId: string, body: string): Promise<string> {
+  const keys = Array.from(new Set((body.toUpperCase().match(TICKET_KEY_RE) ?? []))).slice(0, 5)
+  if (!keys.length) return '(none referenced)'
+  const tickets = await prisma.ticket.findMany({
+    where: { companyId, key: { in: keys } },
+    select: {
+      key: true, title: true, status: true, priority: true, updatedAt: true, resolvedAt: true,
+      comments: {
+        where: { internal: false },
+        orderBy: { createdAt: 'desc' },
+        take: 3,
+        select: { author: { select: { name: true } }, message: true, createdAt: true },
+      },
+    },
+  })
+  if (!tickets.length) return `(no matching tickets found for keys: ${keys.join(', ')})`
+  return tickets.map((t) => {
+    const commentSummary = t.comments.length
+      ? t.comments.reverse().map((c) => `    ${c.author.name}: ${c.message.slice(0, 200)}`).join('\n')
+      : '    (no public comments)'
+    return `- ${t.key} [${t.status} · ${t.priority}] ${t.title}\n  updated: ${t.updatedAt.toISOString()}${t.resolvedAt ? ` · resolved: ${t.resolvedAt.toISOString()}` : ''}\n  Last public comments:\n${commentSummary}`
+  }).join('\n')
+}
+
+async function loadContext(group: WhatsappGroup, body: string): Promise<{ recentTickets: string; recentMessages: string; referencedTickets: string }> {
+  const [tickets, messages, referencedTickets] = await Promise.all([
     prisma.ticket.findMany({
       where: { companyId: group.companyId, status: { in: ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'WAITING_CLIENT'] } },
       orderBy: { createdAt: 'desc' },
@@ -172,6 +212,7 @@ async function loadContext(group: WhatsappGroup): Promise<{ recentTickets: strin
       take: 10,
       select: { senderName: true, body: true, agentAction: true },
     }),
+    loadReferencedTickets(group.companyId, body),
   ])
   return {
     recentTickets: tickets.length
@@ -180,6 +221,7 @@ async function loadContext(group: WhatsappGroup): Promise<{ recentTickets: strin
     recentMessages: messages.length
       ? messages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
       : '(none)',
+    referencedTickets,
   }
 }
 
@@ -321,13 +363,14 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
     return { action: 'ignore' }
   }
 
-  const ctx = await loadContext(input.group)
+  const ctx = await loadContext(input.group, input.body)
   const template = input.wasMentioned ? SYSTEM_PROMPT_MENTIONED : SYSTEM_PROMPT_PASSIVE
   const prompt = template
     .replace(/\{companyName\}/g, input.group.company.name)
     .replace('{groupName}', input.group.name)
     .replace('{companyId}', input.group.companyId)
     .replace('{recentTickets}', ctx.recentTickets)
+    .replace('{referencedTickets}', ctx.referencedTickets)
     .replace('{recentMessages}', ctx.recentMessages)
     .replace('{senderName}', input.senderName ?? 'unknown')
     .replace('{messageText}', input.body)
