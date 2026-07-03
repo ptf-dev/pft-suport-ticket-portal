@@ -3,8 +3,10 @@ import { uniqueTicketKey } from '@/lib/ticket-key'
 import { autoSprintIdForPriority } from '@/lib/auto-sprint'
 import type { WhatsappGroup } from '@prisma/client'
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY?.trim()
-const AGENT_MODEL = process.env.WHATSAPP_AGENT_MODEL?.trim() || 'claude-sonnet-4-5'
+const LLM_PROVIDER = (process.env.WHATSAPP_LLM_PROVIDER?.trim() || 'deepseek') as 'anthropic' | 'openai-compat'
+const LLM_API_KEY = process.env.WHATSAPP_LLM_API_KEY?.trim() || process.env.DEEPSEEK_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || process.env.ANTHROPIC_API_KEY?.trim()
+const LLM_BASE_URL = process.env.WHATSAPP_LLM_BASE_URL?.trim() || 'https://api.deepseek.com'
+const LLM_MODEL = process.env.WHATSAPP_LLM_MODEL?.trim() || 'deepseek-chat'
 const AGENT_BOT_EMAIL = 'whatsapp-bot@propfirmstech.com'
 
 const SYSTEM_PROMPT = `You are the PFT Support Bot, a helpful AI agent in a WhatsApp group for clients of {companyName}.
@@ -135,37 +137,73 @@ async function loadContext(group: WhatsappGroup): Promise<{ recentTickets: strin
   }
 }
 
-async function callClaude(prompt: string): Promise<any> {
-  if (!ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY not configured')
+function toOpenAiTools() {
+  return TOOLS.map((t) => ({
+    type: 'function' as const,
+    function: { name: t.name, description: t.description, parameters: t.input_schema },
+  }))
+}
+
+async function callAnthropic(prompt: string): Promise<{ name: string; input: any } | null> {
+  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
+      'x-api-key': LLM_API_KEY,
       'anthropic-version': '2023-06-01',
       'content-type': 'application/json',
     },
     cache: 'no-store',
     body: JSON.stringify({
-      model: AGENT_MODEL,
+      model: LLM_MODEL,
       max_tokens: 1024,
       tools: TOOLS,
       tool_choice: { type: 'any' },
       messages: [{ role: 'user', content: prompt }],
     }),
   })
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`Claude API error ${res.status}: ${body.slice(0, 300)}`)
-  }
-  return res.json()
-}
-
-function extractToolCall(claudeResp: any): { name: string; input: any } | null {
-  const content = claudeResp?.content
+  if (!res.ok) throw new Error(`Anthropic API error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`)
+  const data = await res.json()
+  const content = data?.content
   if (!Array.isArray(content)) return null
   const toolUse = content.find((c: any) => c.type === 'tool_use')
   if (!toolUse) return null
   return { name: toolUse.name, input: toolUse.input ?? {} }
+}
+
+async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: any } | null> {
+  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
+  const res = await fetch(`${LLM_BASE_URL.replace(/\/$/, '')}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${LLM_API_KEY}`,
+      'content-type': 'application/json',
+    },
+    cache: 'no-store',
+    body: JSON.stringify({
+      model: LLM_MODEL,
+      max_tokens: 1024,
+      tools: toOpenAiTools(),
+      tool_choice: 'required',
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+  if (!res.ok) throw new Error(`LLM API error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`)
+  const data = await res.json()
+  const message = data?.choices?.[0]?.message
+  const call = message?.tool_calls?.[0]
+  if (!call) return null
+  let parsed: any = {}
+  try {
+    parsed = typeof call.function?.arguments === 'string' ? JSON.parse(call.function.arguments) : (call.function?.arguments ?? {})
+  } catch {
+    parsed = {}
+  }
+  return { name: call.function?.name ?? '', input: parsed }
+}
+
+async function callAgent(prompt: string): Promise<{ name: string; input: any } | null> {
+  return LLM_PROVIDER === 'anthropic' ? callAnthropic(prompt) : callOpenAiCompat(prompt)
 }
 
 async function createTicketFromAgent(
@@ -213,7 +251,7 @@ async function commentOnTicket(ticketKey: string, comment: string, companyId: st
 }
 
 export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> {
-  if (!ANTHROPIC_API_KEY) {
+  if (!LLM_API_KEY) {
     return { action: 'ignore' }
   }
 
@@ -227,8 +265,7 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
     .replace('{senderName}', input.senderName ?? 'unknown')
     .replace('{messageText}', input.body)
 
-  const resp = await callClaude(prompt)
-  const call = extractToolCall(resp)
+  const call = await callAgent(prompt)
   if (!call) return { action: 'ignore' }
 
   switch (call.name) {
