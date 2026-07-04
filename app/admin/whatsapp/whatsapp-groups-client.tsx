@@ -260,7 +260,7 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
         <CardHeader><CardTitle>Direct-message users ({users.length})</CardTitle></CardHeader>
         <CardContent>
           {users.length === 0 ? (
-            <p className="text-sm text-ink-mute">No one has DM'd the bot yet. When they do, they'll appear here — leave unmapped for free chat, or assign a company to route as single-person support.</p>
+            <p className="text-sm text-ink-mute">No one has DM&apos;d the bot yet. When they do, they&apos;ll appear here — leave unmapped for free chat, or assign a company to route as single-person support.</p>
           ) : (
             <div className="space-y-3">
               {users.map((u) => (
