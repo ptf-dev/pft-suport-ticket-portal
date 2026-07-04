@@ -398,27 +398,27 @@ model WhatsappGroup {
   updatedAt   DateTime @updatedAt
 
   company  Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  messages WhatsappMessage[]
 
   @@index([companyId])
   @@map("whatsapp_groups")
 }
 
 model WhatsappMessage {
-  id          String   @id @default(cuid())
-  waMessageId String   @unique
-  groupJid    String
-  senderJid   String
-  senderName  String?
-  body        String
-  ticketId    String?
-  processed   Boolean  @default(false)
-  agentAction String?
-  createdAt   DateTime @default(now())
-
-  group  WhatsappGroup @relation(fields: [groupJid], references: [groupJid], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  waMessageId  String   @unique
+  groupJid     String
+  senderJid    String
+  senderName   String?
+  body         String
+  ticketId     String?
+  processed    Boolean  @default(false)
+  agentAction  String?
+  filterReason String?
+  wasMentioned Boolean  @default(false)
+  createdAt    DateTime @default(now())
 
   @@index([groupJid, createdAt])
   @@index([ticketId])
+  @@index([filterReason])
   @@map("whatsapp_messages")
 }
