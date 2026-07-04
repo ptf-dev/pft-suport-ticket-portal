@@ -37,13 +37,17 @@ New message from {senderName}: {messageText}
 
 Reply naturally in one short message.`
 
+export type FreeChatResult =
+  | { ok: true; text: string }
+  | { ok: false; reason: 'rate_limit' | 'no_key' | 'error' }
+
 export async function runFreeChatStandalone(input: {
   groupName: string
   senderName: string | null
   body: string
   recentMessages: string
-}): Promise<string | null> {
-  if (!LLM_API_KEY) return null
+}): Promise<FreeChatResult> {
+  if (!LLM_API_KEY) return { ok: false, reason: 'no_key' }
   const prompt = FREE_CHAT_STANDALONE_PROMPT
     .replace(/\{groupName\}/g, input.groupName || 'the group')
     .replace('{recentMessages}', input.recentMessages || '(no context)')
@@ -51,10 +55,15 @@ export async function runFreeChatStandalone(input: {
     .replace('{messageText}', input.body)
   try {
     const res = await callChatText(prompt)
-    return res || null
+    if (!res) return { ok: false, reason: 'error' }
+    return { ok: true, text: res }
   } catch (err) {
+    if (err instanceof RateLimitError) {
+      console.warn('[whatsapp-agent] free-chat rate limited')
+      return { ok: false, reason: 'rate_limit' }
+    }
     console.error('[whatsapp-agent] free-chat standalone failed', err)
-    return null
+    return { ok: false, reason: 'error' }
   }
 }
 
@@ -74,13 +83,19 @@ async function callChatTextOnce(prompt: string): Promise<Response> {
   })
 }
 
+export class RateLimitError extends Error {
+  constructor(msg = 'LLM rate limited') { super(msg); this.name = 'RateLimitError' }
+}
+
 async function callChatText(prompt: string): Promise<string> {
   if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
   let res!: Response
   let lastErr = ''
+  let lastStatus = 0
   for (let attempt = 0; attempt < 3; attempt++) {
     res = await callChatTextOnce(prompt)
     if (res.ok) break
+    lastStatus = res.status
     if (res.status !== 429 && res.status !== 503) {
       lastErr = (await res.text().catch(() => '')).slice(0, 300)
       throw new Error(`LLM text API error ${res.status}: ${lastErr}`)
@@ -90,7 +105,10 @@ async function callChatText(prompt: string): Promise<string> {
     console.warn(`[whatsapp-agent] chat-text ${res.status}, retry ${attempt + 1}/3 in ${wait}ms`)
     await new Promise((r) => setTimeout(r, wait))
   }
-  if (!res.ok) throw new Error(`LLM text API error ${res.status} after retries: ${lastErr}`)
+  if (!res.ok) {
+    if (lastStatus === 429 || lastStatus === 503) throw new RateLimitError(`LLM ${lastStatus} after retries`)
+    throw new Error(`LLM text API error ${lastStatus} after retries: ${lastErr}`)
+  }
   const data = await res.json()
   const content = data?.choices?.[0]?.message?.content
   if (typeof content === 'string') return content.trim()
@@ -411,9 +429,11 @@ async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: 
   if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
   let res!: Response
   let lastErr = ''
+  let lastStatus = 0
   for (let attempt = 0; attempt < 3; attempt++) {
     res = await callOpenAiCompatOnce(prompt)
     if (res.ok) break
+    lastStatus = res.status
     if (res.status !== 429 && res.status !== 503) {
       lastErr = (await res.text().catch(() => '')).slice(0, 300)
       throw new Error(`LLM API error ${res.status}: ${lastErr}`)
@@ -423,7 +443,10 @@ async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: 
     console.warn(`[whatsapp-agent] LLM ${res.status}, retry ${attempt + 1}/3 in ${wait}ms:`, lastErr)
     await new Promise((r) => setTimeout(r, wait))
   }
-  if (!res.ok) throw new Error(`LLM API error ${res.status} after retries: ${lastErr}`)
+  if (!res.ok) {
+    if (lastStatus === 429 || lastStatus === 503) throw new RateLimitError(`LLM ${lastStatus} after retries`)
+    throw new Error(`LLM API error ${lastStatus} after retries: ${lastErr}`)
+  }
   const data = await res.json().catch(() => null)
   const message = data?.choices?.[0]?.message
   const call = message?.tool_calls?.[0]

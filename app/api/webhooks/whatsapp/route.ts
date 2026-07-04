@@ -4,7 +4,9 @@ import { existsSync } from 'fs'
 import { join } from 'path'
 import { prisma } from '@/lib/prisma'
 import { verifyWebhookSignature, sendGroupText, getBotIdentity, downloadWahaMedia } from '@/lib/integrations/waha'
-import { runWhatsappAgent, runFreeChatStandalone } from '@/lib/agents/whatsapp-agent'
+import { runWhatsappAgent, runFreeChatStandalone, RateLimitError } from '@/lib/agents/whatsapp-agent'
+
+const RATE_LIMIT_REPLY = "⚠️ LLM rate limit reached — try again in a minute."
 import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE } from '@/lib/attachments'
 
 export const dynamic = 'force-dynamic'
@@ -161,26 +163,26 @@ async function handleDirectMessage(input: {
   await recordMessage({ ...baseRow, filterReason: null, processed: false })
 
   if (!user.company) {
-    let reply: string | null = null
-    try {
-      reply = await runFreeChatStandalone({
-        groupName: `DM with ${senderName ?? chatId}`,
-        senderName,
-        body,
-        recentMessages: context,
-      })
-    } catch (err) {
-      console.error('[whatsapp-webhook] DM free-chat failed', err)
+    const result = await runFreeChatStandalone({
+      groupName: `DM with ${senderName ?? chatId}`,
+      senderName,
+      body,
+      recentMessages: context,
+    })
+    let outgoing: string | null = null
+    let action = 'dm_free_chat_failed'
+    if (result.ok) {
+      outgoing = result.text
+      action = 'dm_free_chat'
+    } else if (result.reason === 'rate_limit') {
+      outgoing = RATE_LIMIT_REPLY
+      action = 'rate_limited'
     }
-    if (reply && user.autoReply) {
-      try {
-        await sendGroupText(chatId, reply)
-      } catch (err) {
-        console.error('[whatsapp-webhook] DM reply send failed', err)
-      }
+    if (outgoing && user.autoReply) {
+      try { await sendGroupText(chatId, outgoing) } catch (err) { console.error('[whatsapp-webhook] DM reply send failed', err) }
     }
-    await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: reply ? 'dm_free_chat' : 'dm_free_chat_failed' })
-    return NextResponse.json({ ok: true, action: reply ? 'dm_free_chat' : 'dm_free_chat_failed' })
+    await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: action })
+    return NextResponse.json({ ok: true, action })
   }
 
   try {
@@ -234,6 +236,11 @@ async function handleDirectMessage(input: {
     })
     return NextResponse.json({ ok: true, action: `dm_${result.action}`, ticketId: result.ticketId })
   } catch (err) {
+    if (err instanceof RateLimitError) {
+      if (user.autoReply) { try { await sendGroupText(chatId, RATE_LIMIT_REPLY) } catch {} }
+      await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'rate_limited' })
+      return NextResponse.json({ ok: true, action: 'rate_limited' })
+    }
     console.error('[whatsapp-webhook] DM agent failed', err)
     await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'error' })
     return NextResponse.json({ ok: false, error: 'DM agent failure' }, { status: 500 })
@@ -328,30 +335,32 @@ export async function POST(request: NextRequest) {
         ? recentMessages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
         : '(no context)'
       const groupName = msg?._data?.chat?.name ?? msg?.chat?.name ?? groupJid.replace('@g.us', '')
-      let reply: string | null = null
-      try {
-        reply = await runFreeChatStandalone({
-          groupName,
-          senderName,
-          body,
-          recentMessages: context,
-        })
-      } catch (err) {
-        console.error('[whatsapp-webhook] unmapped-group free-chat failed', err)
+      const result = await runFreeChatStandalone({
+        groupName,
+        senderName,
+        body,
+        recentMessages: context,
+      })
+      let outgoing: string
+      let action: string
+      if (result.ok) {
+        outgoing = result.text
+        action = 'unmapped_free_chat'
+      } else if (result.reason === 'rate_limit') {
+        outgoing = RATE_LIMIT_REPLY
+        action = 'rate_limited'
+      } else {
+        outgoing = UNMAPPED_FALLBACK_REPLY
+        action = 'unmapped_fallback_reply'
       }
-      const finalReply = reply || UNMAPPED_FALLBACK_REPLY
-      try {
-        await sendGroupText(groupJid, finalReply)
-      } catch (err) {
-        console.error('[whatsapp-webhook] unmapped-group reply send failed', err)
-      }
+      try { await sendGroupText(groupJid, outgoing) } catch (err) { console.error('[whatsapp-webhook] unmapped-group reply send failed', err) }
       await recordMessage({
         ...baseRow,
         filterReason: reason,
         processed: true,
-        agentAction: reply ? 'unmapped_free_chat' : 'unmapped_fallback_reply',
+        agentAction: action,
       })
-      return NextResponse.json({ ok: true, action: reply ? 'unmapped_free_chat' : 'unmapped_fallback_reply' })
+      return NextResponse.json({ ok: true, action })
     }
     await recordMessage({ ...baseRow, filterReason: reason, processed: true })
     return NextResponse.json({ ok: true, ignored: reason })
@@ -405,6 +414,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, action: result.action, ticketId: result.ticketId })
   } catch (err) {
+    if (err instanceof RateLimitError) {
+      if (group.autoReply) { try { await sendGroupText(groupJid, RATE_LIMIT_REPLY) } catch {} }
+      await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'rate_limited' })
+      return NextResponse.json({ ok: true, action: 'rate_limited' })
+    }
     console.error('[whatsapp-webhook] agent failed', err)
     await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'error' })
     return NextResponse.json({ ok: false, error: 'Agent failure' }, { status: 500 })
