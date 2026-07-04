@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { Role } from '@prisma/client'
 import { NotificationService } from '@/lib/services/notification'
 import { ActivityService } from '@/lib/services/activity'
+import { notifyTicketNewComment } from '@/lib/services/whatsapp-notify'
 
 /**
  * Comment Creation API
@@ -85,6 +86,13 @@ export async function POST(
     } else if (session.user.role === Role.CLIENT) {
       // Client commented - notify admins
       await NotificationService.notifyAdminNewComment(params.id, comment.id)
+    }
+
+    // WhatsApp notification for public comments
+    if (!isInternal) {
+      notifyTicketNewComment(params.id, comment.id).catch((err) => {
+        console.error('[tickets/comments] whatsapp notify failed', err)
+      })
     }
 
     // Send email notifications to mentioned users

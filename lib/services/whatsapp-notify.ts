@@ -41,6 +41,49 @@ export async function notifyTicketStatusChanged(
   )
 }
 
+const WA_BOT_EMAIL = 'whatsapp-bot@propfirmstech.com'
+
+export async function notifyTicketNewComment(ticketId: string, commentId: string): Promise<void> {
+  if (!isWahaConfigured()) return
+
+  const comment = await prisma.ticketComment.findUnique({
+    where: { id: commentId },
+    select: {
+      id: true, message: true, internal: true, createdAt: true,
+      author: { select: { name: true, email: true, role: true } },
+      ticket: { select: { id: true, key: true, title: true, companyId: true } },
+    },
+  })
+  if (!comment) return
+  if (comment.internal) return
+  if (comment.author.email === WA_BOT_EMAIL) return
+
+  const preview = comment.message.replace(/\s+/g, ' ').slice(0, 400)
+  const text = `New comment on ${comment.ticket.key} — "${comment.ticket.title}"\n${comment.author.name}: ${preview}${ticketLink(comment.ticket.id)}`
+
+  const [groups, dmUsers] = await Promise.all([
+    prisma.whatsappGroup.findMany({
+      where: { companyId: comment.ticket.companyId, enabled: true, notifyOnStatusChange: true },
+      select: { groupJid: true },
+    }),
+    prisma.whatsappUser.findMany({
+      where: { companyId: comment.ticket.companyId, enabled: true },
+      select: { waJid: true },
+    }),
+  ])
+  const targets = new Set<string>([
+    ...groups.map((g) => g.groupJid),
+    ...dmUsers.map((u) => u.waJid),
+  ])
+  if (targets.size === 0) return
+
+  await Promise.allSettled(
+    Array.from(targets).map((jid) => sendGroupText(jid, text).catch((err) => {
+      console.error('[whatsapp-notify] comment send failed', jid, err)
+    })),
+  )
+}
+
 export async function notifyTicketCreated(ticketId: string): Promise<void> {
   if (!isWahaConfigured()) return
   const ticket = await prisma.ticket.findUnique({

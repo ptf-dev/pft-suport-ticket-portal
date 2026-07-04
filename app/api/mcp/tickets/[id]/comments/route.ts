@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { ActivityService } from '@/lib/services/activity'
+import { notifyTicketNewComment } from '@/lib/services/whatsapp-notify'
 
 /**
  * MCP API: Get Ticket Comments
@@ -165,6 +166,12 @@ export async function POST(
     })
 
     ActivityService.commented(params.id, mcpUser.id, comment.id, isInternal, content).catch(() => {})
+
+    if (!isInternal) {
+      notifyTicketNewComment(params.id, comment.id).catch((err) => {
+        console.error('[mcp/comments] whatsapp notify failed', err)
+      })
+    }
 
     return NextResponse.json({
       success: true,
