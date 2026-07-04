@@ -58,9 +58,8 @@ export async function runFreeChatStandalone(input: {
   }
 }
 
-async function callChatText(prompt: string): Promise<string> {
-  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
-  const res = await fetch(`${LLM_BASE_URL.replace(/\/$/, '')}/v1/chat/completions`, {
+async function callChatTextOnce(prompt: string): Promise<Response> {
+  return fetch(`${LLM_BASE_URL.replace(/\/$/, '')}/v1/chat/completions`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${LLM_API_KEY}`,
@@ -73,7 +72,25 @@ async function callChatText(prompt: string): Promise<string> {
       messages: [{ role: 'user', content: prompt }],
     }),
   })
-  if (!res.ok) throw new Error(`LLM text API error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
+}
+
+async function callChatText(prompt: string): Promise<string> {
+  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
+  let res!: Response
+  let lastErr = ''
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await callChatTextOnce(prompt)
+    if (res.ok) break
+    if (res.status !== 429 && res.status !== 503) {
+      lastErr = (await res.text().catch(() => '')).slice(0, 300)
+      throw new Error(`LLM text API error ${res.status}: ${lastErr}`)
+    }
+    lastErr = (await res.text().catch(() => '')).slice(0, 200)
+    const wait = 1200 * (attempt + 1)
+    console.warn(`[whatsapp-agent] chat-text ${res.status}, retry ${attempt + 1}/3 in ${wait}ms`)
+    await new Promise((r) => setTimeout(r, wait))
+  }
+  if (!res.ok) throw new Error(`LLM text API error ${res.status} after retries: ${lastErr}`)
   const data = await res.json()
   const content = data?.choices?.[0]?.message?.content
   if (typeof content === 'string') return content.trim()
