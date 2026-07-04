@@ -205,6 +205,12 @@ enum SprintStatus {
   COMPLETED
 }
 
+enum WhatsappAgentMode {
+  SUPPORT
+  HYBRID
+  FREE_CHAT
+}
+
 model Sprint {
   id          String       @id @default(cuid())
   name        String
@@ -393,6 +399,7 @@ model WhatsappGroup {
   autoTicket  Boolean  @default(true)
   autoReply   Boolean  @default(true)
   mentionOnly Boolean  @default(true)
+  agentMode   WhatsappAgentMode @default(HYBRID)
   notifyOnStatusChange Boolean @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

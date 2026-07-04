@@ -13,6 +13,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (typeof body.autoReply === 'boolean') data.autoReply = body.autoReply
   if (typeof body.mentionOnly === 'boolean') data.mentionOnly = body.mentionOnly
   if (typeof body.notifyOnStatusChange === 'boolean') data.notifyOnStatusChange = body.notifyOnStatusChange
+  if (typeof body.agentMode === 'string' && ['SUPPORT', 'HYBRID', 'FREE_CHAT'].includes(body.agentMode)) data.agentMode = body.agentMode
   if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim()
   if (typeof body.companyId === 'string' && body.companyId.trim()) data.companyId = body.companyId
 

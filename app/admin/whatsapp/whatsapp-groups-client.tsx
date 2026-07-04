@@ -8,6 +8,8 @@ import { Select } from '@/components/ui/select'
 import { RefreshCw, Trash2, MessageCircle, QrCode } from 'lucide-react'
 
 interface Company { id: string; name: string }
+type AgentMode = 'SUPPORT' | 'HYBRID' | 'FREE_CHAT'
+
 interface MappedGroup {
   id: string
   groupJid: string
@@ -16,6 +18,7 @@ interface MappedGroup {
   autoTicket: boolean
   autoReply: boolean
   mentionOnly: boolean
+  agentMode: AgentMode
   notifyOnStatusChange: boolean
   company: { id: string; name: string }
 }
@@ -142,6 +145,18 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                         {companies.map((c) => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
+                      </Select>
+                    </label>
+                    <label className="flex flex-col text-xs text-ink-mute gap-1 md:w-48" title="SUPPORT = strict tickets. HYBRID = support + chat. FREE_CHAT = casual companion, no tickets.">
+                      <span>Mode</span>
+                      <Select
+                        value={g.agentMode}
+                        onChange={(e) => patch(g.id, { agentMode: e.target.value as AgentMode } as any)}
+                        className="text-sm"
+                      >
+                        <option value="SUPPORT">Support (strict)</option>
+                        <option value="HYBRID">Hybrid (default)</option>
+                        <option value="FREE_CHAT">Free chat (no tickets)</option>
                       </Select>
                     </label>
                     <div className="flex flex-wrap gap-4 text-sm">

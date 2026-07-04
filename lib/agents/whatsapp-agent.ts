@@ -14,6 +14,37 @@ function ticketLink(ticketId: string): string {
   return PORTAL_URL ? `${PORTAL_URL}/portal/tickets/${ticketId}` : ''
 }
 
+const LANGUAGE_RULE = `LANGUAGE:
+- Detect the language of the incoming message and REPLY IN THAT LANGUAGE.
+- Common languages in these groups: English, Albanian (Shqip), German (Deutsch), Portuguese (BR), Spanish, Italian.
+- Albanian examples: "përshëndetje" → hello. Reply in fluent Albanian if user writes Albanian.
+- German examples: "hallo, geht's dir gut?" → reply in fluent German.
+- If user mixes languages, follow their dominant language.
+- Never explain that you translated. Just reply in their language.`
+
+const SYSTEM_PROMPT_FREE_CHAT = `You are Bob, a friendly WhatsApp companion for {groupName}.
+
+This group runs you in FREE-CHAT mode. You are NOT here as a support agent.
+No tickets. No support. Just a chatty AI friend.
+
+RULES:
+- Always reply when tagged. Be warm, casual, playful. Match the group's energy.
+- Have opinions. Have a sense of humor. Emojis fine when they fit.
+- Never say "As an AI" — just be Bob.
+- Keep replies SHORT (1-3 sentences). This is a WhatsApp chat.
+- Never call create_ticket. Never call comment_on_ticket. Only reply_only or ignore_message.
+- When not tagged: ignore_message.
+
+${LANGUAGE_RULE}
+
+Current group: {groupName}
+Recent messages (oldest→newest):
+{recentMessages}
+
+New message from {senderName}: {messageText}
+
+Decide the next action using exactly ONE tool call (reply_only or ignore_message).`
+
 const SYSTEM_PROMPT_PASSIVE = `You are the PFT Support Bot, an AI agent lurking in a WhatsApp group for clients of {companyName}.
 
 You are in PASSIVE mode — no one tagged you. Only act on clear support signals.
@@ -24,6 +55,8 @@ RULES:
 - When creating a ticket: confirm in the group with the ticket key (e.g., "Opened FTM-042").
 - Keep replies short.
 - Share only public ticket status, never internal notes.
+
+${LANGUAGE_RULE}
 
 Current group: {groupName}
 Company: {companyName} (companyId: {companyId})
@@ -48,8 +81,9 @@ GENERAL RULES:
 - Reply helpfully to whatever they ask — questions, chit-chat, opinions, jokes, technical help, product questions.
 - Keep replies SHORT and conversational — WhatsApp chat, not email.
 - Share only public ticket status, never internal notes.
-- Match the language the user wrote in.
 - Never say "As an AI" or disclaim being a bot. Be direct.
+
+${LANGUAGE_RULE}
 
 TICKET-CREATION RULES (this is the important one — you WILL get spammed):
 - DO NOT open tickets carelessly. Skepticism is the default.
@@ -364,10 +398,19 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
   }
 
   const ctx = await loadContext(input.group, input.body)
-  const template = input.wasMentioned ? SYSTEM_PROMPT_MENTIONED : SYSTEM_PROMPT_PASSIVE
+  const mode = input.group.agentMode
+  let template: string
+  if (mode === 'FREE_CHAT') {
+    if (!input.wasMentioned) return { action: 'ignore' }
+    template = SYSTEM_PROMPT_FREE_CHAT
+  } else if (mode === 'SUPPORT') {
+    template = input.wasMentioned ? SYSTEM_PROMPT_MENTIONED : SYSTEM_PROMPT_PASSIVE
+  } else {
+    template = input.wasMentioned ? SYSTEM_PROMPT_MENTIONED : SYSTEM_PROMPT_PASSIVE
+  }
   const prompt = template
     .replace(/\{companyName\}/g, input.group.company.name)
-    .replace('{groupName}', input.group.name)
+    .replace(/\{groupName\}/g, input.group.name)
     .replace('{companyId}', input.group.companyId)
     .replace('{recentTickets}', ctx.recentTickets)
     .replace('{referencedTickets}', ctx.referencedTickets)
@@ -377,6 +420,10 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
 
   const call = await callAgent(prompt)
   if (!call) return { action: 'ignore' }
+
+  if (mode === 'FREE_CHAT' && (call.name === 'create_ticket' || call.name === 'comment_on_ticket')) {
+    return { action: 'reply', reply: '👋' }
+  }
 
   switch (call.name) {
     case 'ignore_message':
