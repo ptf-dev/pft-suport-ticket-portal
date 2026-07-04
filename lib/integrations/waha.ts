@@ -90,6 +90,60 @@ export async function getSessionQr(): Promise<string | null> {
   return `data:image/png;base64,${Buffer.from(buf).toString('base64')}`
 }
 
+export interface WahaMediaBytes {
+  buffer: Buffer
+  mimeType: string
+  filename: string
+}
+
+export async function downloadWahaMedia(input: {
+  messageId: string
+  mediaUrl?: string
+  mimetype?: string
+  filename?: string
+}): Promise<WahaMediaBytes | null> {
+  if (!WAHA_URL || !WAHA_API_KEY) return null
+
+  const attempts: string[] = []
+  if (input.mediaUrl) attempts.push(input.mediaUrl)
+  attempts.push(`${WAHA_URL}/api/${WAHA_SESSION}/messages/${encodeURIComponent(input.messageId)}/download`)
+  attempts.push(`${WAHA_URL}/api/messages/${encodeURIComponent(input.messageId)}/download`)
+
+  for (const url of attempts) {
+    try {
+      const res = await fetch(url, {
+        headers: { 'X-Api-Key': WAHA_API_KEY, Accept: 'application/octet-stream, application/json;q=0.5' },
+        cache: 'no-store',
+      })
+      if (!res.ok) continue
+      const contentType = res.headers.get('content-type') || ''
+      if (contentType.includes('application/json')) {
+        const data: any = await res.json().catch(() => null)
+        const b64 = data?.data ?? data?.base64 ?? data?.body
+        if (typeof b64 === 'string' && b64.length > 0) {
+          return {
+            buffer: Buffer.from(b64, 'base64'),
+            mimeType: data?.mimetype ?? input.mimetype ?? 'application/octet-stream',
+            filename: data?.filename ?? input.filename ?? `waha-${input.messageId}`,
+          }
+        }
+        continue
+      }
+      const arr = await res.arrayBuffer()
+      const buffer = Buffer.from(arr)
+      if (buffer.length === 0) continue
+      return {
+        buffer,
+        mimeType: input.mimetype ?? contentType.split(';')[0].trim() ?? 'application/octet-stream',
+        filename: input.filename ?? `waha-${input.messageId}`,
+      }
+    } catch (err) {
+      console.warn('[waha] downloadWahaMedia attempt failed', url, err)
+    }
+  }
+  return null
+}
+
 export function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
   if (!WAHA_WEBHOOK_SECRET) return true
   if (!signature) return false

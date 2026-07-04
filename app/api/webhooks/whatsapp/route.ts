@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { writeFile, mkdir } from 'fs/promises'
+import { existsSync } from 'fs'
+import { join } from 'path'
 import { prisma } from '@/lib/prisma'
-import { verifyWebhookSignature, sendGroupText, getBotIdentity } from '@/lib/integrations/waha'
+import { verifyWebhookSignature, sendGroupText, getBotIdentity, downloadWahaMedia } from '@/lib/integrations/waha'
 import { runWhatsappAgent, runFreeChatStandalone } from '@/lib/agents/whatsapp-agent'
+import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE } from '@/lib/attachments'
 
 export const dynamic = 'force-dynamic'
 
@@ -54,6 +58,51 @@ async function recordMessage(row: {
   }
 }
 
+interface WahaMediaHint {
+  messageId: string
+  mediaUrl?: string
+  mimetype?: string
+  filename?: string
+}
+
+function extractMediaHint(msg: any, waMessageId: string): WahaMediaHint | null {
+  if (!msg) return null
+  const hasMedia = Boolean(msg.hasMedia ?? msg.media ?? msg._data?.media)
+  if (!hasMedia) return null
+  const media = msg.media ?? msg._data?.media ?? {}
+  const mediaUrl: string | undefined = media.url ?? msg.mediaUrl ?? undefined
+  const mimetype: string | undefined = media.mimetype ?? media.mimeType ?? msg.mimetype ?? msg.mimeType
+  const filename: string | undefined = media.filename ?? msg.filename
+  return { messageId: waMessageId, mediaUrl, mimetype, filename }
+}
+
+async function attachMediaToTicket(ticketId: string, hint: WahaMediaHint): Promise<{ ok: boolean; reason?: string }> {
+  const dl = await downloadWahaMedia(hint)
+  if (!dl) return { ok: false, reason: 'download_failed' }
+  if (!ALLOWED_ATTACHMENT_TYPES.includes(dl.mimeType)) {
+    return { ok: false, reason: `unsupported_mime:${dl.mimeType}` }
+  }
+  if (dl.buffer.length > MAX_ATTACHMENT_SIZE) {
+    return { ok: false, reason: 'too_large' }
+  }
+  const dir = join(process.cwd(), 'public', 'uploads', 'tickets', ticketId)
+  if (!existsSync(dir)) await mkdir(dir, { recursive: true })
+  const safeName = (dl.filename || `wa-${hint.messageId}`).replace(/[^a-zA-Z0-9.-]/g, '_')
+  const filename = `${Date.now()}-${safeName}`
+  const filepath = join(dir, filename)
+  await writeFile(filepath, dl.buffer)
+  await prisma.ticketImage.create({
+    data: {
+      ticketId,
+      filename,
+      url: `/api/uploads/tickets/${ticketId}/${filename}`,
+      size: dl.buffer.length,
+      mimeType: dl.mimeType,
+    },
+  })
+  return { ok: true }
+}
+
 async function handleDirectMessage(input: {
   chatId: string
   body: string
@@ -61,8 +110,9 @@ async function handleDirectMessage(input: {
   senderJid: string
   senderName: string | null
   fromMe: boolean
+  msg: any
 }): Promise<NextResponse> {
-  const { chatId, body, waMessageId, senderJid, senderName, fromMe } = input
+  const { chatId, body, waMessageId, senderJid, senderName, fromMe, msg } = input
   const baseRow = {
     waMessageId,
     groupJid: chatId,
@@ -167,6 +217,14 @@ async function handleDirectMessage(input: {
       }
     }
 
+    const mediaHint = extractMediaHint(msg, waMessageId)
+    if (mediaHint && result.ticketId) {
+      const attach = await attachMediaToTicket(result.ticketId, mediaHint).catch((err) => {
+        console.error('[whatsapp-webhook] DM media attach failed', err); return { ok: false, reason: 'exception' } as const
+      })
+      if (!attach.ok) console.warn('[whatsapp-webhook] DM media not attached:', attach.reason)
+    }
+
     await recordMessage({
       ...baseRow,
       filterReason: null,
@@ -216,7 +274,7 @@ export async function POST(request: NextRequest) {
   const fromMe = Boolean(msg?.fromMe)
 
   if (isDirect) {
-    return handleDirectMessage({ chatId, body, waMessageId, senderJid, senderName, fromMe })
+    return handleDirectMessage({ chatId, body, waMessageId, senderJid, senderName, fromMe, msg })
   }
 
   const groupJid = chatId
@@ -327,6 +385,14 @@ export async function POST(request: NextRequest) {
       } catch (err) {
         console.error('[whatsapp-webhook] sendGroupText failed', err)
       }
+    }
+
+    const mediaHint = extractMediaHint(msg, waMessageId)
+    if (mediaHint && result.ticketId) {
+      const attach = await attachMediaToTicket(result.ticketId, mediaHint).catch((err) => {
+        console.error('[whatsapp-webhook] group media attach failed', err); return { ok: false, reason: 'exception' } as const
+      })
+      if (!attach.ok) console.warn('[whatsapp-webhook] group media not attached:', attach.reason)
     }
 
     await recordMessage({
