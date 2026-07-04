@@ -14,6 +14,73 @@ function ticketLink(ticketId: string): string {
   return PORTAL_URL ? `${PORTAL_URL}/portal/tickets/${ticketId}` : ''
 }
 
+const FREE_CHAT_STANDALONE_PROMPT = `You are Bob, a friendly WhatsApp companion in a group called "{groupName}".
+
+You are NOT here as a support agent. No tickets. No product help. Just casual chat.
+
+RULES:
+- Reply warm and casual. Match the group's energy.
+- Have opinions. Have humor. Emojis fine when they fit.
+- Never say "As an AI" — just be Bob.
+- Keep replies SHORT (1-3 sentences).
+
+LANGUAGE:
+- Detect the language of the incoming message and REPLY IN THAT LANGUAGE.
+- Common: English, Albanian (Shqip), German (Deutsch), Portuguese, Spanish, Italian.
+- "di shqip ti" → answer in Albanian; "hallo, geht's dir gut?" → answer in German.
+- Never explain that you translated.
+
+Recent messages in this group (oldest→newest):
+{recentMessages}
+
+New message from {senderName}: {messageText}
+
+Reply naturally in one short message.`
+
+export async function runFreeChatStandalone(input: {
+  groupName: string
+  senderName: string | null
+  body: string
+  recentMessages: string
+}): Promise<string | null> {
+  if (!LLM_API_KEY) return null
+  const prompt = FREE_CHAT_STANDALONE_PROMPT
+    .replace(/\{groupName\}/g, input.groupName || 'the group')
+    .replace('{recentMessages}', input.recentMessages || '(no context)')
+    .replace('{senderName}', input.senderName ?? 'unknown')
+    .replace('{messageText}', input.body)
+  try {
+    const res = await callChatText(prompt)
+    return res || null
+  } catch (err) {
+    console.error('[whatsapp-agent] free-chat standalone failed', err)
+    return null
+  }
+}
+
+async function callChatText(prompt: string): Promise<string> {
+  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
+  const res = await fetch(`${LLM_BASE_URL.replace(/\/$/, '')}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${LLM_API_KEY}`,
+      'content-type': 'application/json',
+    },
+    cache: 'no-store',
+    body: JSON.stringify({
+      model: LLM_MODEL,
+      max_tokens: 512,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+  if (!res.ok) throw new Error(`LLM text API error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`)
+  const data = await res.json()
+  const content = data?.choices?.[0]?.message?.content
+  if (typeof content === 'string') return content.trim()
+  if (Array.isArray(content)) return content.map((c: any) => c?.text ?? '').join('').trim()
+  return ''
+}
+
 const LANGUAGE_RULE = `LANGUAGE:
 - Detect the language of the incoming message and REPLY IN THAT LANGUAGE.
 - Common languages in these groups: English, Albanian (Shqip), German (Deutsch), Portuguese (BR), Spanish, Italian.

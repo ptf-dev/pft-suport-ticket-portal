@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyWebhookSignature, sendGroupText, getBotIdentity } from '@/lib/integrations/waha'
-import { runWhatsappAgent } from '@/lib/agents/whatsapp-agent'
+import { runWhatsappAgent, runFreeChatStandalone } from '@/lib/agents/whatsapp-agent'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,8 +12,7 @@ interface WahaWebhookPayload {
   id?: string
 }
 
-const UNMAPPED_HELP_TEXT =
-  "Hi 👋 I'm the PFT Support Bot. I'm not linked to a company for this group yet, so I can't open tickets or look up statuses here. An admin can wire me up at https://portal.propfirmstech.com/admin/whatsapp — until then, hop into a mapped group or ping support directly."
+const UNMAPPED_FALLBACK_REPLY = "hey 👋 (bot not linked to a company here — free chat only, no support)"
 
 async function recordMessage(row: {
   waMessageId: string
@@ -125,13 +124,40 @@ export async function POST(request: NextRequest) {
   if (!group || !group.enabled) {
     const reason = !group ? 'group_unmapped' : 'group_disabled'
     if (mentionsBot) {
+      const recentMessages = await prisma.whatsappMessage.findMany({
+        where: { groupJid },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: { senderName: true, body: true },
+      })
+      const context = recentMessages.length
+        ? recentMessages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
+        : '(no context)'
+      const groupName = msg?._data?.chat?.name ?? msg?.chat?.name ?? groupJid.replace('@g.us', '')
+      let reply: string | null = null
       try {
-        await sendGroupText(groupJid, UNMAPPED_HELP_TEXT)
+        reply = await runFreeChatStandalone({
+          groupName,
+          senderName,
+          body,
+          recentMessages: context,
+        })
       } catch (err) {
-        console.error('[whatsapp-webhook] unmapped-group reply failed', err)
+        console.error('[whatsapp-webhook] unmapped-group free-chat failed', err)
       }
-      await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'unmapped_help_reply' })
-      return NextResponse.json({ ok: true, action: 'unmapped_help_reply' })
+      const finalReply = reply || UNMAPPED_FALLBACK_REPLY
+      try {
+        await sendGroupText(groupJid, finalReply)
+      } catch (err) {
+        console.error('[whatsapp-webhook] unmapped-group reply send failed', err)
+      }
+      await recordMessage({
+        ...baseRow,
+        filterReason: reason,
+        processed: true,
+        agentAction: reply ? 'unmapped_free_chat' : 'unmapped_fallback_reply',
+      })
+      return NextResponse.json({ ok: true, action: reply ? 'unmapped_free_chat' : 'unmapped_fallback_reply' })
     }
     await recordMessage({ ...baseRow, filterReason: reason, processed: true })
     return NextResponse.json({ ok: true, ignored: reason })
