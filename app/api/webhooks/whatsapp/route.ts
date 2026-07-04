@@ -54,6 +54,134 @@ async function recordMessage(row: {
   }
 }
 
+async function handleDirectMessage(input: {
+  chatId: string
+  body: string
+  waMessageId: string
+  senderJid: string
+  senderName: string | null
+  fromMe: boolean
+}): Promise<NextResponse> {
+  const { chatId, body, waMessageId, senderJid, senderName, fromMe } = input
+  const baseRow = {
+    waMessageId,
+    groupJid: chatId,
+    senderJid: senderJid || chatId,
+    senderName,
+    body: body || '(empty)',
+    wasMentioned: true,
+  }
+
+  if (fromMe) {
+    await recordMessage({ ...baseRow, filterReason: 'dm_from_bot', processed: true })
+    return NextResponse.json({ ok: true, ignored: 'dm from bot' })
+  }
+  if (!body || body.trim().length < 2) {
+    await recordMessage({ ...baseRow, filterReason: 'body_too_short', processed: true })
+    return NextResponse.json({ ok: true, ignored: 'empty or too short' })
+  }
+
+  const existing = await prisma.whatsappMessage.findUnique({ where: { waMessageId } })
+  if (existing?.agentAction && existing.agentAction !== 'error') {
+    return NextResponse.json({ ok: true, ignored: 'duplicate' })
+  }
+
+  const user = await prisma.whatsappUser.upsert({
+    where: { waJid: chatId },
+    create: { waJid: chatId, displayName: senderName, lastSeenAt: new Date() },
+    update: { displayName: senderName ?? undefined, lastSeenAt: new Date() },
+    include: { company: { select: { id: true, name: true } } },
+  })
+
+  if (!user.enabled) {
+    await recordMessage({ ...baseRow, filterReason: 'dm_user_disabled', processed: true })
+    return NextResponse.json({ ok: true, ignored: 'dm user disabled' })
+  }
+
+  const recentMessages = await prisma.whatsappMessage.findMany({
+    where: { groupJid: chatId },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: { senderName: true, body: true },
+  })
+  const context = recentMessages.length
+    ? recentMessages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
+    : '(no context)'
+
+  await recordMessage({ ...baseRow, filterReason: null, processed: false })
+
+  if (!user.company) {
+    let reply: string | null = null
+    try {
+      reply = await runFreeChatStandalone({
+        groupName: `DM with ${senderName ?? chatId}`,
+        senderName,
+        body,
+        recentMessages: context,
+      })
+    } catch (err) {
+      console.error('[whatsapp-webhook] DM free-chat failed', err)
+    }
+    if (reply && user.autoReply) {
+      try {
+        await sendGroupText(chatId, reply)
+      } catch (err) {
+        console.error('[whatsapp-webhook] DM reply send failed', err)
+      }
+    }
+    await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: reply ? 'dm_free_chat' : 'dm_free_chat_failed' })
+    return NextResponse.json({ ok: true, action: reply ? 'dm_free_chat' : 'dm_free_chat_failed' })
+  }
+
+  try {
+    const syntheticGroup = {
+      id: `dm-${user.id}`,
+      groupJid: chatId,
+      name: `DM: ${senderName ?? chatId}`,
+      companyId: user.company.id,
+      enabled: true,
+      autoTicket: user.autoTicket,
+      autoReply: user.autoReply,
+      mentionOnly: false,
+      agentMode: user.agentMode,
+      notifyOnStatusChange: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      company: { name: user.company.name },
+    } as any
+
+    const result = await runWhatsappAgent({
+      group: syntheticGroup,
+      senderJid: senderJid || chatId,
+      senderName,
+      body,
+      waMessageId,
+      wasMentioned: true,
+    })
+
+    if (result.reply && user.autoReply) {
+      try {
+        await sendGroupText(chatId, result.reply)
+      } catch (err) {
+        console.error('[whatsapp-webhook] DM reply send failed', err)
+      }
+    }
+
+    await recordMessage({
+      ...baseRow,
+      filterReason: null,
+      processed: true,
+      agentAction: `dm_${result.action}`,
+      ticketId: result.ticketId ?? null,
+    })
+    return NextResponse.json({ ok: true, action: `dm_${result.action}`, ticketId: result.ticketId })
+  } catch (err) {
+    console.error('[whatsapp-webhook] DM agent failed', err)
+    await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'error' })
+    return NextResponse.json({ ok: false, error: 'DM agent failure' }, { status: 500 })
+  }
+}
+
 export async function POST(request: NextRequest) {
   const rawBody = await request.text()
   const signature = request.headers.get('x-webhook-hmac')
@@ -74,16 +202,24 @@ export async function POST(request: NextRequest) {
   }
 
   const msg = event.payload
-  const groupJid: string = msg?.from ?? msg?.chatId ?? ''
-  if (!groupJid.endsWith('@g.us')) {
-    return NextResponse.json({ ok: true, ignored: 'not a group message' })
+  const chatId: string = msg?.from ?? msg?.chatId ?? ''
+  const isGroup = chatId.endsWith('@g.us')
+  const isDirect = chatId.endsWith('@c.us') || chatId.endsWith('@s.whatsapp.net')
+  if (!isGroup && !isDirect) {
+    return NextResponse.json({ ok: true, ignored: 'unknown chat type' })
   }
 
   const body: string = msg?.body ?? msg?.text ?? ''
-  const waMessageId: string = msg?.id ?? `${groupJid}-${Date.now()}`
+  const waMessageId: string = msg?.id ?? `${chatId}-${Date.now()}`
   const senderJid: string = msg?.participant ?? msg?.author ?? msg?.from ?? ''
   const senderName: string | null = msg?.notifyName ?? msg?._data?.notifyName ?? null
   const fromMe = Boolean(msg?.fromMe)
+
+  if (isDirect) {
+    return handleDirectMessage({ chatId, body, waMessageId, senderJid, senderName, fromMe })
+  }
+
+  const groupJid = chatId
 
   const bot = await getBotIdentity().catch(() => null)
   const mentionedIds: string[] = Array.isArray(msg?.mentionedIds)

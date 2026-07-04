@@ -119,6 +119,7 @@ model Company {
   emailTemplates       EmailTemplate[]
   notificationLogs     NotificationLog[]
   whatsappGroups       WhatsappGroup[]
+  whatsappUsers        WhatsappUser[]
 
   @@map("companies")
 }
@@ -408,6 +409,26 @@ model WhatsappGroup {
 
   @@index([companyId])
   @@map("whatsapp_groups")
+}
+
+model WhatsappUser {
+  id          String   @id @default(cuid())
+  waJid       String   @unique
+  displayName String?
+  companyId   String?
+  enabled     Boolean  @default(true)
+  agentMode   WhatsappAgentMode @default(FREE_CHAT)
+  mentionOnly Boolean  @default(false)
+  autoTicket  Boolean  @default(true)
+  autoReply   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastSeenAt  DateTime?
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@map("whatsapp_users")
 }
 
 model WhatsappMessage {

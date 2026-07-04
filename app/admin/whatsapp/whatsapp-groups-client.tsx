@@ -24,26 +24,56 @@ interface MappedGroup {
 }
 interface WaGroup { id: string; name: string; participants: number }
 interface SessionInfo { configured: boolean; status: string; qr?: string | null }
+interface DmUser {
+  id: string
+  waJid: string
+  displayName: string | null
+  companyId: string | null
+  enabled: boolean
+  agentMode: AgentMode
+  autoTicket: boolean
+  autoReply: boolean
+  lastSeenAt: string | null
+  company: { id: string; name: string } | null
+}
 
 export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
   const [session, setSession] = useState<SessionInfo | null>(null)
   const [mapped, setMapped] = useState<MappedGroup[]>([])
   const [waGroups, setWaGroups] = useState<WaGroup[]>([])
+  const [users, setUsers] = useState<DmUser[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedCompanies, setSelectedCompanies] = useState<Record<string, string>>({})
 
   const load = async () => {
     setRefreshing(true)
-    const [sessionRes, groupsRes] = await Promise.all([
+    const [sessionRes, groupsRes, usersRes] = await Promise.all([
       fetch('/api/admin/whatsapp/session', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
       fetch('/api/admin/whatsapp/groups', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ mapped: [], waGroups: [] })),
+      fetch('/api/admin/whatsapp/users', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ users: [] })),
     ])
     setSession(sessionRes)
     setMapped(groupsRes.mapped ?? [])
     setWaGroups(groupsRes.waGroups ?? [])
+    setUsers(usersRes.users ?? [])
     setLoading(false)
     setRefreshing(false)
+  }
+
+  const patchUser = async (id: string, patch: any) => {
+    await fetch(`/api/admin/whatsapp/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    load()
+  }
+
+  const removeUser = async (id: string) => {
+    if (!confirm('Delete this DM user record? Bot will treat future messages as new.')) return
+    await fetch(`/api/admin/whatsapp/users/${id}`, { method: 'DELETE' })
+    load()
   }
 
   useEffect(() => { load() }, [])
@@ -218,6 +248,75 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                       ))}
                     </Select>
                     <Button size="sm" onClick={() => mapGroup(g)} disabled={!selectedCompanies[g.id]}>Map</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Direct-message users ({users.length})</CardTitle></CardHeader>
+        <CardContent>
+          {users.length === 0 ? (
+            <p className="text-sm text-ink-mute">No one has DM'd the bot yet. When they do, they'll appear here — leave unmapped for free chat, or assign a company to route as single-person support.</p>
+          ) : (
+            <div className="space-y-3">
+              {users.map((u) => (
+                <div key={u.id} className="p-3 rounded-md border border-gray-200 dark:border-gray-700 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{u.displayName || '(unknown name)'}</div>
+                      <div className="text-xs text-ink-mute font-mono truncate">
+                        {u.waJid.replace(/@(c\.us|s\.whatsapp\.net)$/, '')}
+                        {u.lastSeenAt ? ` · last seen ${new Date(u.lastSeenAt).toLocaleString()}` : ''}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => removeUser(u.id)} className="text-red-600 shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <label className="flex flex-col text-xs text-ink-mute gap-1 md:w-64">
+                      <span>Company (empty = free chat)</span>
+                      <Select
+                        value={u.companyId ?? ''}
+                        onChange={(e) => patchUser(u.id, { companyId: e.target.value || null })}
+                        className="text-sm"
+                      >
+                        <option value="">— Free chat, no support —</option>
+                        {companies.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </Select>
+                    </label>
+                    <label className="flex flex-col text-xs text-ink-mute gap-1 md:w-48">
+                      <span>Mode</span>
+                      <Select
+                        value={u.agentMode}
+                        onChange={(e) => patchUser(u.id, { agentMode: e.target.value })}
+                        className="text-sm"
+                      >
+                        <option value="SUPPORT">Support (strict)</option>
+                        <option value="HYBRID">Hybrid</option>
+                        <option value="FREE_CHAT">Free chat (no tickets)</option>
+                      </Select>
+                    </label>
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={u.enabled} onChange={(e) => patchUser(u.id, { enabled: e.target.checked })} />
+                        <span>Enabled</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={u.autoTicket} onChange={(e) => patchUser(u.id, { autoTicket: e.target.checked })} />
+                        <span>Auto-ticket</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={u.autoReply} onChange={(e) => patchUser(u.id, { autoReply: e.target.checked })} />
+                        <span>Auto-reply</span>
+                      </label>
+                    </div>
                   </div>
                 </div>
               ))}
