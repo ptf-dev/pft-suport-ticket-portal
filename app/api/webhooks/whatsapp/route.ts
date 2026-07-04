@@ -47,15 +47,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignored: 'empty or too short' })
   }
 
-  const group = await prisma.whatsappGroup.findUnique({
-    where: { groupJid },
-    include: { company: { select: { name: true } } },
-  })
-
-  if (!group || !group.enabled) {
-    return NextResponse.json({ ok: true, ignored: 'group not mapped or disabled' })
-  }
-
   const bot = await getBotIdentity().catch(() => null)
   const mentionedIds: string[] = Array.isArray(msg?.mentionedIds)
     ? msg.mentionedIds
@@ -71,6 +62,26 @@ export async function POST(request: NextRequest) {
   const isBotOwnReply = fromMe && !mentionsBot
   if (isBotOwnReply) {
     return NextResponse.json({ ok: true, ignored: 'bot reply echo' })
+  }
+
+  const group = await prisma.whatsappGroup.findUnique({
+    where: { groupJid },
+    include: { company: { select: { name: true } } },
+  })
+
+  if (!group || !group.enabled) {
+    if (mentionsBot) {
+      try {
+        await sendGroupText(
+          groupJid,
+          "Hi 👋 I'm the PFT Support Bot. I'm not linked to a company for this group yet, so I can't open tickets or look up statuses here. An admin can wire me up at https://portal.propfirmstech.com/admin/whatsapp — until then, hop into a mapped group or ping support directly.",
+        )
+      } catch (err) {
+        console.error('[whatsapp-webhook] unmapped-group reply failed', err)
+      }
+      return NextResponse.json({ ok: true, action: 'unmapped_help_reply' })
+    }
+    return NextResponse.json({ ok: true, ignored: 'group not mapped or disabled' })
   }
 
   if (group.mentionOnly && !mentionsBot) {
