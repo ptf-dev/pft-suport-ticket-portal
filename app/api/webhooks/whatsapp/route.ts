@@ -60,6 +60,15 @@ async function recordMessage(row: {
   }
 }
 
+async function wasLastRateLimited(chatId: string): Promise<boolean> {
+  const last = await prisma.whatsappMessage.findFirst({
+    where: { groupJid: chatId, processed: true },
+    orderBy: { createdAt: 'desc' },
+    select: { agentAction: true },
+  })
+  return last?.agentAction === 'rate_limited'
+}
+
 interface WahaMediaHint {
   messageId: string
   mediaUrl?: string
@@ -175,8 +184,8 @@ async function handleDirectMessage(input: {
       outgoing = result.text
       action = 'dm_free_chat'
     } else if (result.reason === 'rate_limit') {
-      outgoing = RATE_LIMIT_REPLY
       action = 'rate_limited'
+      outgoing = (await wasLastRateLimited(chatId)) ? null : RATE_LIMIT_REPLY
     }
     if (outgoing && user.autoReply) {
       try { await sendGroupText(chatId, outgoing) } catch (err) { console.error('[whatsapp-webhook] DM reply send failed', err) }
@@ -237,7 +246,9 @@ async function handleDirectMessage(input: {
     return NextResponse.json({ ok: true, action: `dm_${result.action}`, ticketId: result.ticketId })
   } catch (err) {
     if (err instanceof RateLimitError) {
-      if (user.autoReply) { try { await sendGroupText(chatId, RATE_LIMIT_REPLY) } catch {} }
+      if (user.autoReply && !(await wasLastRateLimited(chatId))) {
+        try { await sendGroupText(chatId, RATE_LIMIT_REPLY) } catch {}
+      }
       await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'rate_limited' })
       return NextResponse.json({ ok: true, action: 'rate_limited' })
     }
@@ -341,19 +352,21 @@ export async function POST(request: NextRequest) {
         body,
         recentMessages: context,
       })
-      let outgoing: string
+      let outgoing: string | null
       let action: string
       if (result.ok) {
         outgoing = result.text
         action = 'unmapped_free_chat'
       } else if (result.reason === 'rate_limit') {
-        outgoing = RATE_LIMIT_REPLY
         action = 'rate_limited'
+        outgoing = (await wasLastRateLimited(groupJid)) ? null : RATE_LIMIT_REPLY
       } else {
         outgoing = UNMAPPED_FALLBACK_REPLY
         action = 'unmapped_fallback_reply'
       }
-      try { await sendGroupText(groupJid, outgoing) } catch (err) { console.error('[whatsapp-webhook] unmapped-group reply send failed', err) }
+      if (outgoing) {
+        try { await sendGroupText(groupJid, outgoing) } catch (err) { console.error('[whatsapp-webhook] unmapped-group reply send failed', err) }
+      }
       await recordMessage({
         ...baseRow,
         filterReason: reason,
@@ -415,7 +428,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, action: result.action, ticketId: result.ticketId })
   } catch (err) {
     if (err instanceof RateLimitError) {
-      if (group.autoReply) { try { await sendGroupText(groupJid, RATE_LIMIT_REPLY) } catch {} }
+      if (group.autoReply && !(await wasLastRateLimited(groupJid))) {
+        try { await sendGroupText(groupJid, RATE_LIMIT_REPLY) } catch {}
+      }
       await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'rate_limited' })
       return NextResponse.json({ ok: true, action: 'rate_limited' })
     }
