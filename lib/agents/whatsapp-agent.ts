@@ -136,10 +136,14 @@ RULES:
 - Reply length matches the message — quick banter gets a quick reply, a real question gets a real answer. This is WhatsApp, not email, but don't cut yourself short artificially.
 - Never call create_ticket. Never call comment_on_ticket. Only reply_only or ignore_message.
 - When not tagged: ignore_message.
+- If asked what you said/did in another group, or to relay something to another group's team, use "Your recent replies in other groups" below — only your own words, never other people's messages.
 
 ${LANGUAGE_RULE}
 
 Current group: {groupName}
+Your recent replies in other groups of this company (most recent last):
+{crossGroupContext}
+
 Recent messages (oldest→newest):
 {recentMessages}
 
@@ -158,6 +162,8 @@ ENGAGE WITHOUT MENTION only when ALL of these are true:
 - Reading Recent messages, you can see the discussion needs your help (they're stuck, asking each other, or referencing something you know).
 - You haven't already spoken about this thread in the last 3-5 messages (check Recent messages for your own recent replies — do NOT double-chime).
 - What you would say adds real value: a ticket key/status they don't have, an obvious clarification, or a concrete fix. Not a "let me know if you need help" pep talk.
+
+If someone asks what you said/did in another group, or asks you to relay something to another group's team, use "Your recent replies in other groups" below — only your own words, never other people's messages.
 
 Actions available:
 - reply_only: chime in with the info they need. As short or long as it takes to actually help.
@@ -179,6 +185,9 @@ Open tickets in this company (last 10):
 
 Referenced tickets (details for any ticket key mentioned in this message):
 {referencedTickets}
+
+Your recent replies in other groups of this company (most recent last):
+{crossGroupContext}
 
 Recent messages (oldest→newest):
 {recentMessages}
@@ -226,6 +235,11 @@ TICKET LOOKUPS (this is important):
 - If a referenced key came back as "no matching tickets found" → tell the user that key doesn't exist, don't pretend it does.
 - Recognize soft references too: "the withdrawal bug", "that outage" — scan Open tickets list for a title match; if unsure, ask which ticket they mean.
 
+CROSS-GROUP RECALL:
+- If asked what you said/did in another group, or to relay something to another group's team, use "Your recent replies in other groups" below.
+- Only ever share YOUR OWN past replies, never other people's messages from other groups.
+- If nothing relevant is there, say so plainly instead of guessing.
+
 Current group: {groupName}
 Company: {companyName} (companyId: {companyId})
 Open tickets in this company (last 10):
@@ -233,6 +247,9 @@ Open tickets in this company (last 10):
 
 Referenced tickets (details for any ticket key mentioned in this message):
 {referencedTickets}
+
+Your recent replies in other groups of this company (most recent last):
+{crossGroupContext}
 
 Recent messages (oldest→newest):
 {recentMessages}
@@ -346,8 +363,27 @@ async function loadReferencedTickets(companyId: string, body: string): Promise<s
   }).join('\n')
 }
 
-async function loadContext(group: WhatsappGroup, body: string): Promise<{ recentTickets: string; recentMessages: string; referencedTickets: string }> {
-  const [tickets, messages, referencedTickets] = await Promise.all([
+async function loadCrossGroupContext(companyId: string, currentGroupJid: string): Promise<string> {
+  const otherGroups = await prisma.whatsappGroup.findMany({
+    where: { companyId, groupJid: { not: currentGroupJid } },
+    select: { groupJid: true, name: true },
+  })
+  if (!otherGroups.length) return '(no other groups)'
+  const nameByJid = new Map(otherGroups.map((g) => [g.groupJid, g.name]))
+  const replies = await prisma.whatsappMessage.findMany({
+    where: { groupJid: { in: otherGroups.map((g) => g.groupJid) }, replyText: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    take: 6,
+    select: { groupJid: true, replyText: true, createdAt: true },
+  })
+  if (!replies.length) return '(no recent replies in other groups)'
+  return replies.reverse().map((r) =>
+    `- [${nameByJid.get(r.groupJid) ?? r.groupJid}] you said: ${(r.replyText ?? '').slice(0, 200)}`
+  ).join('\n')
+}
+
+async function loadContext(group: WhatsappGroup, body: string): Promise<{ recentTickets: string; recentMessages: string; referencedTickets: string; crossGroupContext: string }> {
+  const [tickets, messages, referencedTickets, crossGroupContext] = await Promise.all([
     prisma.ticket.findMany({
       where: { companyId: group.companyId, status: { in: ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'WAITING_CLIENT'] } },
       orderBy: { createdAt: 'desc' },
@@ -361,6 +397,7 @@ async function loadContext(group: WhatsappGroup, body: string): Promise<{ recent
       select: { senderName: true, body: true, agentAction: true },
     }),
     loadReferencedTickets(group.companyId, body),
+    loadCrossGroupContext(group.companyId, group.groupJid),
   ])
   return {
     recentTickets: tickets.length
@@ -370,6 +407,7 @@ async function loadContext(group: WhatsappGroup, body: string): Promise<{ recent
       ? messages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
       : '(none)',
     referencedTickets,
+    crossGroupContext,
   }
 }
 
@@ -533,6 +571,7 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
     .replace('{companyId}', input.group.companyId)
     .replace('{recentTickets}', ctx.recentTickets)
     .replace('{referencedTickets}', ctx.referencedTickets)
+    .replace('{crossGroupContext}', ctx.crossGroupContext)
     .replace('{recentMessages}', ctx.recentMessages)
     .replace('{senderName}', input.senderName ?? 'unknown')
     .replace('{messageText}', input.body)

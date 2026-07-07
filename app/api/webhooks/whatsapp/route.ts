@@ -31,6 +31,7 @@ async function recordMessage(row: {
   processed: boolean
   agentAction?: string | null
   ticketId?: string | null
+  replyText?: string | null
 }) {
   try {
     await prisma.whatsappMessage.upsert({
@@ -46,6 +47,7 @@ async function recordMessage(row: {
         processed: row.processed,
         agentAction: row.agentAction ?? null,
         ticketId: row.ticketId ?? null,
+        replyText: row.replyText ?? null,
       },
       update: {
         wasMentioned: row.wasMentioned,
@@ -53,6 +55,7 @@ async function recordMessage(row: {
         processed: row.processed,
         agentAction: row.agentAction ?? undefined,
         ticketId: row.ticketId ?? undefined,
+        replyText: row.replyText ?? undefined,
       },
     })
   } catch (err) {
@@ -242,6 +245,7 @@ async function handleDirectMessage(input: {
       processed: true,
       agentAction: `dm_${result.action}`,
       ticketId: result.ticketId ?? null,
+      replyText: result.reply ?? null,
     })
     return NextResponse.json({ ok: true, action: `dm_${result.action}`, ticketId: result.ticketId })
   } catch (err) {
@@ -423,6 +427,7 @@ export async function POST(request: NextRequest) {
       processed: true,
       agentAction: result.action,
       ticketId: result.ticketId ?? null,
+      replyText: result.reply ?? null,
     })
 
     return NextResponse.json({ ok: true, action: result.action, ticketId: result.ticketId })

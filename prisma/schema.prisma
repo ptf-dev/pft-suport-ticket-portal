@@ -443,6 +443,7 @@ model WhatsappMessage {
   agentAction  String?
   filterReason String?
   wasMentioned Boolean  @default(false)
+  replyText    String?
   createdAt    DateTime @default(now())
 
   @@index([groupJid, createdAt])
