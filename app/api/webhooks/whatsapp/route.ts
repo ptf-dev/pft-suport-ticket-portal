@@ -3,7 +3,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { prisma } from '@/lib/prisma'
-import { verifyWebhookSignature, sendGroupText, getBotIdentity, downloadWahaMedia } from '@/lib/integrations/waha'
+import { verifyWebhookSignature, sendGroupText, getBotIdentity, downloadWahaMedia, startTyping, stopTyping } from '@/lib/integrations/waha'
 import { runWhatsappAgent, runFreeChatStandalone, RateLimitError } from '@/lib/agents/whatsapp-agent'
 
 const RATE_LIMIT_REPLY = "⚠️ LLM rate limit reached — try again in a minute."
@@ -175,6 +175,7 @@ async function handleDirectMessage(input: {
   await recordMessage({ ...baseRow, filterReason: null, processed: false })
 
   if (!user.company) {
+    if (user.autoReply) await startTyping(chatId)
     const result = await runFreeChatStandalone({
       groupName: `DM with ${senderName ?? chatId}`,
       senderName,
@@ -193,10 +194,12 @@ async function handleDirectMessage(input: {
     if (outgoing && user.autoReply) {
       try { await sendGroupText(chatId, outgoing) } catch (err) { console.error('[whatsapp-webhook] DM reply send failed', err) }
     }
+    if (user.autoReply) await stopTyping(chatId)
     await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: action })
     return NextResponse.json({ ok: true, action })
   }
 
+  if (user.autoReply) await startTyping(chatId)
   try {
     const syntheticGroup = {
       id: `dm-${user.id}`,
@@ -259,6 +262,8 @@ async function handleDirectMessage(input: {
     console.error('[whatsapp-webhook] DM agent failed', err)
     await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'error' })
     return NextResponse.json({ ok: false, error: 'DM agent failure' }, { status: 500 })
+  } finally {
+    if (user.autoReply) await stopTyping(chatId)
   }
 }
 
@@ -350,6 +355,7 @@ export async function POST(request: NextRequest) {
         ? recentMessages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
         : '(no context)'
       const groupName = msg?._data?.chat?.name ?? msg?.chat?.name ?? groupJid.replace('@g.us', '')
+      await startTyping(groupJid)
       const result = await runFreeChatStandalone({
         groupName,
         senderName,
@@ -371,6 +377,7 @@ export async function POST(request: NextRequest) {
       if (outgoing) {
         try { await sendGroupText(groupJid, outgoing) } catch (err) { console.error('[whatsapp-webhook] unmapped-group reply send failed', err) }
       }
+      await stopTyping(groupJid)
       await recordMessage({
         ...baseRow,
         filterReason: reason,
@@ -395,6 +402,7 @@ export async function POST(request: NextRequest) {
 
   await recordMessage({ ...baseRow, filterReason: null, processed: false })
 
+  if (group.autoReply) await startTyping(groupJid)
   try {
     const result = await runWhatsappAgent({
       group,
@@ -442,5 +450,7 @@ export async function POST(request: NextRequest) {
     console.error('[whatsapp-webhook] agent failed', err)
     await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'error' })
     return NextResponse.json({ ok: false, error: 'Agent failure' }, { status: 500 })
+  } finally {
+    if (group.autoReply) await stopTyping(groupJid)
   }
 }

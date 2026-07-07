@@ -33,6 +33,28 @@ export async function sendGroupText(groupJid: string, text: string): Promise<voi
   }
 }
 
+export async function startTyping(chatId: string): Promise<void> {
+  try {
+    await wahaFetch(`/api/startTyping`, {
+      method: 'POST',
+      body: JSON.stringify({ session: WAHA_SESSION, chatId }),
+    })
+  } catch (err) {
+    console.error('[waha] startTyping failed', err)
+  }
+}
+
+export async function stopTyping(chatId: string): Promise<void> {
+  try {
+    await wahaFetch(`/api/stopTyping`, {
+      method: 'POST',
+      body: JSON.stringify({ session: WAHA_SESSION, chatId }),
+    })
+  } catch (err) {
+    console.error('[waha] stopTyping failed', err)
+  }
+}
+
 export interface WahaGroup {
   id: string
   name: string
