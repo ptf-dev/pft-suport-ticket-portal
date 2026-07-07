@@ -467,7 +467,10 @@ function isDegenerateCall(call: { name: string; input: any } | null): boolean {
   if (!call) return true
   if (call.name === 'reply_only' || call.name === 'create_ticket') {
     const text = String(call.input?.text ?? call.input?.replyText ?? '').trim()
-    if (text.length > 0 && text.length < 4) return true
+    if (!text.length) return false
+    if (text.length < 4) return true
+    if (text.split(/\s+/).length < 3) return true
+    if (!/[.!?…"')\]👍🙏😂😅🤝✅]$/.test(text)) return true
   }
   return false
 }
@@ -497,7 +500,6 @@ async function callOpenAiCompatAttempt(prompt: string): Promise<{ name: string; 
   const data = await res.json().catch(() => null)
   const choice = data?.choices?.[0]
   const call = choice?.message?.tool_calls?.[0]
-  console.warn('[whatsapp-agent] DEBUG raw response:', JSON.stringify({ finish_reason: choice?.finish_reason, usage: data?.usage, call }).slice(0, 1500))
   if (!call) {
     console.warn('[whatsapp-agent] no tool_call in LLM response:', JSON.stringify(data).slice(0, 400))
     return null
