@@ -22,7 +22,7 @@ RULES:
 - Reply warm and casual. Match the group's energy.
 - Have opinions. Have humor. Emojis fine when they fit.
 - Never say "As an AI" — just be Bob.
-- Keep replies SHORT (1-3 sentences).
+- Reply length matches the message — a quick quip gets a quick reply, a real question or story gets a real answer. Don't pad, don't artificially cut yourself short.
 
 LANGUAGE:
 - Detect the language of the incoming message and REPLY IN THAT LANGUAGE.
@@ -35,7 +35,7 @@ Recent messages in this group (oldest→newest):
 
 New message from {senderName}: {messageText}
 
-Reply naturally in one short message.`
+Reply naturally in one message, whatever length fits.`
 
 export type FreeChatResult =
   | { ok: true; text: string }
@@ -133,7 +133,7 @@ RULES:
 - Always reply when tagged. Be warm, casual, playful. Match the group's energy.
 - Have opinions. Have a sense of humor. Emojis fine when they fit.
 - Never say "As an AI" — just be Bob.
-- Keep replies SHORT (1-3 sentences). This is a WhatsApp chat.
+- Reply length matches the message — quick banter gets a quick reply, a real question gets a real answer. This is WhatsApp, not email, but don't cut yourself short artificially.
 - Never call create_ticket. Never call comment_on_ticket. Only reply_only or ignore_message.
 - When not tagged: ignore_message.
 
@@ -160,14 +160,14 @@ ENGAGE WITHOUT MENTION only when ALL of these are true:
 - What you would say adds real value: a ticket key/status they don't have, an obvious clarification, or a concrete fix. Not a "let me know if you need help" pep talk.
 
 Actions available:
-- reply_only: chime in with the info they need. Keep it 1-2 sentences.
+- reply_only: chime in with the info they need. As short or long as it takes to actually help.
 - create_ticket: only if the group has just described a specific reproducible bug or clear feature request — same strict bar as when tagged.
 - comment_on_ticket: if a referenced ticket is under discussion and someone gave new details.
 - ignore_message: default, use liberally.
 
 RULES:
 - When creating a ticket: confirm with the ticket key (e.g., "Opened FTM-042").
-- Keep replies short.
+- Reply length matches the message — a status check gets a short answer, a real explanation gets real detail.
 - Share only public ticket status, never internal notes.
 
 ${LANGUAGE_RULE}
@@ -193,7 +193,7 @@ You were @-tagged — someone is talking to YOU. ALWAYS engage. Never ignore.
 
 GENERAL RULES:
 - Reply helpfully to whatever they ask — questions, chit-chat, opinions, jokes, technical help, product questions.
-- Keep replies SHORT and conversational — WhatsApp chat, not email.
+- Match reply length to the message: quick banter or a status check gets a short answer; a real question, explanation, or troubleshooting step gets as much detail as it needs. This is WhatsApp — conversational, not a formal email — but don't truncate a genuinely useful answer just to seem brief.
 - Share only public ticket status, never internal notes.
 - Never say "As an AI" or disclaim being a bot. Be direct.
 
@@ -271,7 +271,7 @@ const TOOLS = [
     description: 'Reply in the group without creating a ticket. Use for questions the bot can answer directly or clarifying questions.',
     input_schema: {
       type: 'object' as const,
-      properties: { text: { type: 'string', description: 'Short reply text (under 300 chars).' } },
+      properties: { text: { type: 'string', description: 'Reply text — length should match what the message needs, up to ~1500 chars.' } },
       required: ['text'],
     },
   },
@@ -548,7 +548,7 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
     case 'ignore_message':
       return { action: 'ignore' }
     case 'reply_only':
-      return { action: 'reply', reply: String(call.input.text ?? '').slice(0, 500) }
+      return { action: 'reply', reply: String(call.input.text ?? '').slice(0, 1500) }
     case 'create_ticket': {
       const ticket = await createTicketFromAgent(input.group, {
         title: String(call.input.title ?? '').trim(),
