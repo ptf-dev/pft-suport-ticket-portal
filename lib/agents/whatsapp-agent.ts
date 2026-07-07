@@ -455,7 +455,7 @@ async function callOpenAiCompatOnce(prompt: string): Promise<Response> {
     cache: 'no-store',
     body: JSON.stringify({
       model: LLM_MODEL,
-      max_tokens: 1024,
+      max_tokens: 2048,
       tools: toOpenAiTools(),
       tool_choice: 'required',
       messages: [{ role: 'user', content: prompt }],
@@ -486,10 +486,14 @@ async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: 
     throw new Error(`LLM API error ${lastStatus} after retries: ${lastErr}`)
   }
   const data = await res.json().catch(() => null)
-  const message = data?.choices?.[0]?.message
-  const call = message?.tool_calls?.[0]
+  const choice = data?.choices?.[0]
+  const call = choice?.message?.tool_calls?.[0]
   if (!call) {
     console.warn('[whatsapp-agent] no tool_call in LLM response:', JSON.stringify(data).slice(0, 400))
+    return null
+  }
+  if (choice?.finish_reason === 'length') {
+    console.warn('[whatsapp-agent] tool call truncated (finish_reason=length), discarding:', JSON.stringify(call).slice(0, 300))
     return null
   }
   let parsed: any = {}
