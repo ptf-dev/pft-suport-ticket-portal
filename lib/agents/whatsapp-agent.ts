@@ -463,7 +463,16 @@ async function callOpenAiCompatOnce(prompt: string): Promise<Response> {
   })
 }
 
-async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: any } | null> {
+function isDegenerateCall(call: { name: string; input: any } | null): boolean {
+  if (!call) return true
+  if (call.name === 'reply_only' || call.name === 'create_ticket') {
+    const text = String(call.input?.text ?? call.input?.replyText ?? '').trim()
+    if (text.length > 0 && text.length < 4) return true
+  }
+  return false
+}
+
+async function callOpenAiCompatAttempt(prompt: string): Promise<{ name: string; input: any } | null> {
   if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
   let res!: Response
   let lastErr = ''
@@ -503,6 +512,14 @@ async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: 
     parsed = {}
   }
   return { name: call.function?.name ?? '', input: parsed }
+}
+
+async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: any } | null> {
+  const first = await callOpenAiCompatAttempt(prompt)
+  if (!isDegenerateCall(first)) return first
+  console.warn('[whatsapp-agent] degenerate reply from LLM, retrying once:', JSON.stringify(first).slice(0, 200))
+  const second = await callOpenAiCompatAttempt(prompt)
+  return isDegenerateCall(second) ? null : second
 }
 
 async function callAgent(prompt: string): Promise<{ name: string; input: any } | null> {
