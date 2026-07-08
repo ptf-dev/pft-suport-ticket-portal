@@ -306,7 +306,10 @@ export async function POST(request: NextRequest) {
 
   const groupJid = chatId
 
-  const bot = await getBotIdentity().catch(() => null)
+  const bot = await getBotIdentity().catch((err) => {
+    console.error('[whatsapp-webhook] getBotIdentity failed, mention detection disabled for this message', err)
+    return null
+  })
   const mentionedIds: string[] = Array.isArray(msg?.mentionedIds)
     ? msg.mentionedIds
     : Array.isArray(msg?._data?.contextInfo?.mentionedJid)

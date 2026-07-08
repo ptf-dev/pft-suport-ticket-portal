@@ -98,10 +98,19 @@ async function callChatText(prompt: string): Promise<string> {
   let lastErr = ''
   let lastStatus = 0
   for (let attempt = 0; attempt < 3; attempt++) {
-    res = await callChatTextOnce(prompt)
+    try {
+      res = await callChatTextOnce(prompt)
+    } catch (err) {
+      lastStatus = 0
+      lastErr = String(err)
+      const wait = 1200 * (attempt + 1)
+      console.warn(`[whatsapp-agent] chat-text network error, retry ${attempt + 1}/3 in ${wait}ms:`, lastErr)
+      await new Promise((r) => setTimeout(r, wait))
+      continue
+    }
     if (res.ok) break
     lastStatus = res.status
-    if (res.status !== 429 && res.status !== 503) {
+    if (res.status < 500 && res.status !== 429) {
       lastErr = (await res.text().catch(() => '')).slice(0, 300)
       throw new Error(`LLM text API error ${res.status}: ${lastErr}`)
     }
@@ -110,7 +119,7 @@ async function callChatText(prompt: string): Promise<string> {
     console.warn(`[whatsapp-agent] chat-text ${res.status}, retry ${attempt + 1}/3 in ${wait}ms`)
     await new Promise((r) => setTimeout(r, wait))
   }
-  if (!res.ok) {
+  if (!res || !res.ok) {
     if (lastStatus === 429 || lastStatus === 503) throw new RateLimitError(`LLM ${lastStatus} after retries`)
     throw new Error(`LLM text API error ${lastStatus} after retries: ${lastErr}`)
   }
@@ -492,10 +501,19 @@ async function callOpenAiCompatAttempt(prompt: string): Promise<{ name: string; 
   let lastErr = ''
   let lastStatus = 0
   for (let attempt = 0; attempt < 3; attempt++) {
-    res = await callOpenAiCompatOnce(prompt)
+    try {
+      res = await callOpenAiCompatOnce(prompt)
+    } catch (err) {
+      lastStatus = 0
+      lastErr = String(err)
+      const wait = 800 * (attempt + 1)
+      console.warn(`[whatsapp-agent] LLM network error, retry ${attempt + 1}/3 in ${wait}ms:`, lastErr)
+      await new Promise((r) => setTimeout(r, wait))
+      continue
+    }
     if (res.ok) break
     lastStatus = res.status
-    if (res.status !== 429 && res.status !== 503) {
+    if (res.status < 500 && res.status !== 429) {
       lastErr = (await res.text().catch(() => '')).slice(0, 300)
       throw new Error(`LLM API error ${res.status}: ${lastErr}`)
     }
@@ -504,7 +522,7 @@ async function callOpenAiCompatAttempt(prompt: string): Promise<{ name: string; 
     console.warn(`[whatsapp-agent] LLM ${res.status}, retry ${attempt + 1}/3 in ${wait}ms:`, lastErr)
     await new Promise((r) => setTimeout(r, wait))
   }
-  if (!res.ok) {
+  if (!res || !res.ok) {
     if (lastStatus === 429 || lastStatus === 503) throw new RateLimitError(`LLM ${lastStatus} after retries`)
     throw new Error(`LLM API error ${lastStatus} after retries: ${lastErr}`)
   }
