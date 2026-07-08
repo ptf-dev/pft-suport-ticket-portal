@@ -18,8 +18,6 @@ interface WahaWebhookPayload {
   id?: string
 }
 
-const UNMAPPED_FALLBACK_REPLY = "Hey! 👋 Give me a moment, I'm having a bit of trouble right now — someone from the team will follow up shortly."
-
 async function recordMessage(row: {
   waMessageId: string
   groupJid: string
@@ -374,7 +372,7 @@ export async function POST(request: NextRequest) {
         action = 'rate_limited'
         outgoing = (await wasLastRateLimited(groupJid)) ? null : RATE_LIMIT_REPLY
       } else {
-        outgoing = UNMAPPED_FALLBACK_REPLY
+        outgoing = null
         action = 'unmapped_fallback_reply'
       }
       if (outgoing) {
