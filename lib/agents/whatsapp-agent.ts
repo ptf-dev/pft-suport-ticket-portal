@@ -92,7 +92,7 @@ export class RateLimitError extends Error {
   constructor(msg = 'LLM rate limited') { super(msg); this.name = 'RateLimitError' }
 }
 
-async function callChatText(prompt: string): Promise<string> {
+async function callOpenAiChatText(prompt: string): Promise<string> {
   if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
   let res!: Response
   let lastErr = ''
@@ -128,6 +128,64 @@ async function callChatText(prompt: string): Promise<string> {
   if (typeof content === 'string') return content.trim()
   if (Array.isArray(content)) return content.map((c: any) => c?.text ?? '').join('').trim()
   return ''
+}
+
+async function callAnthropicTextOnce(prompt: string): Promise<Response> {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': LLM_API_KEY!,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+    },
+    cache: 'no-store',
+    body: JSON.stringify({
+      model: LLM_MODEL,
+      max_tokens: 512,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+}
+
+async function callAnthropicText(prompt: string): Promise<string> {
+  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
+  let res!: Response
+  let lastErr = ''
+  let lastStatus = 0
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      res = await callAnthropicTextOnce(prompt)
+    } catch (err) {
+      lastStatus = 0
+      lastErr = String(err)
+      const wait = 1200 * (attempt + 1)
+      console.warn(`[whatsapp-agent] anthropic-text network error, retry ${attempt + 1}/3 in ${wait}ms:`, lastErr)
+      await new Promise((r) => setTimeout(r, wait))
+      continue
+    }
+    if (res.ok) break
+    lastStatus = res.status
+    if (res.status < 500 && res.status !== 429) {
+      lastErr = (await res.text().catch(() => '')).slice(0, 300)
+      throw new Error(`Anthropic text API error ${res.status}: ${lastErr}`)
+    }
+    lastErr = (await res.text().catch(() => '')).slice(0, 200)
+    const wait = 1200 * (attempt + 1)
+    console.warn(`[whatsapp-agent] anthropic-text ${res.status}, retry ${attempt + 1}/3 in ${wait}ms`)
+    await new Promise((r) => setTimeout(r, wait))
+  }
+  if (!res || !res.ok) {
+    if (lastStatus === 429 || lastStatus === 503) throw new RateLimitError(`Anthropic ${lastStatus} after retries`)
+    throw new Error(`Anthropic text API error ${lastStatus} after retries: ${lastErr}`)
+  }
+  const data = await res.json()
+  const content = data?.content
+  if (Array.isArray(content)) return content.map((c: any) => c?.text ?? '').join('').trim()
+  return ''
+}
+
+async function callChatText(prompt: string): Promise<string> {
+  return LLM_PROVIDER === 'anthropic' ? callAnthropicText(prompt) : callOpenAiChatText(prompt)
 }
 
 const LANGUAGE_RULE = `LANGUAGE:
