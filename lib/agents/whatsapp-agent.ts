@@ -614,13 +614,11 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
   if (mode === 'FREE_CHAT') {
     if (!input.wasMentioned) return { action: 'ignore' }
     template = SYSTEM_PROMPT_FREE_CHAT
-  } else if (mode === 'SUPPORT') {
-    template = input.wasMentioned ? SYSTEM_PROMPT_MENTIONED : SYSTEM_PROMPT_PASSIVE
   } else {
     template = input.wasMentioned ? SYSTEM_PROMPT_MENTIONED : SYSTEM_PROMPT_PASSIVE
   }
   const souls = getSouls()
-  const soulText = mode === 'FREE_CHAT' ? souls.personal : souls.professional
+  const soulText = mode === 'SUPPORT' ? souls.professional : souls.personal
   const prompt = template
     .replace('{soul}', soulText)
     .replace(/\{companyName\}/g, input.group.company.name)
