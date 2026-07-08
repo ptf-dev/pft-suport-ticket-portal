@@ -287,8 +287,9 @@ export async function POST(request: NextRequest) {
   const msg = event.payload
   const chatId: string = msg?.from ?? msg?.chatId ?? ''
   const isGroup = chatId.endsWith('@g.us')
-  const isDirect = chatId.endsWith('@c.us') || chatId.endsWith('@s.whatsapp.net')
+  const isDirect = chatId.endsWith('@c.us') || chatId.endsWith('@s.whatsapp.net') || chatId.endsWith('@lid')
   if (!isGroup && !isDirect) {
+    console.warn('[whatsapp-webhook] unrecognized chat type, dropping:', chatId)
     return NextResponse.json({ ok: true, ignored: 'unknown chat type' })
   }
 
