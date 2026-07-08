@@ -481,10 +481,7 @@ function isDegenerateCall(call: { name: string; input: any } | null): boolean {
   if (!call) return true
   if (call.name === 'reply_only' || call.name === 'create_ticket') {
     const text = String(call.input?.text ?? call.input?.replyText ?? '').trim()
-    if (!text.length) return false
     if (text.length < 4) return true
-    if (text.split(/\s+/).length < 3) return true
-    if (!/[.!?…"')\]👍🙏😂😅🤝✅]$/.test(text)) return true
   }
   return false
 }
@@ -526,6 +523,7 @@ async function callOpenAiCompatAttempt(prompt: string): Promise<{ name: string; 
   try {
     parsed = typeof call.function?.arguments === 'string' ? JSON.parse(call.function.arguments) : (call.function?.arguments ?? {})
   } catch {
+    console.warn('[whatsapp-agent] failed to parse tool-call arguments:', String(call.function?.arguments).slice(0, 300))
     parsed = {}
   }
   return { name: call.function?.name ?? '', input: parsed }
