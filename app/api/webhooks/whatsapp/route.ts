@@ -18,7 +18,7 @@ interface WahaWebhookPayload {
   id?: string
 }
 
-const UNMAPPED_FALLBACK_REPLY = "hey 👋 (bot not linked to a company here — free chat only, no support)"
+const UNMAPPED_FALLBACK_REPLY = "Hey! 👋 Give me a moment, I'm having a bit of trouble right now — someone from the team will follow up shortly."
 
 async function recordMessage(row: {
   waMessageId: string
