@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { uniqueTicketKey } from '@/lib/ticket-key'
 import { autoSprintIdForPriority } from '@/lib/auto-sprint'
+import { getSouls } from './soul'
 import type { WhatsappGroup } from '@prisma/client'
 
 const LLM_PROVIDER = (process.env.WHATSAPP_LLM_PROVIDER?.trim() || 'deepseek') as 'anthropic' | 'openai-compat'
@@ -17,6 +18,9 @@ function ticketLink(ticketId: string): string {
 const FREE_CHAT_STANDALONE_PROMPT = `You are Bob, a friendly WhatsApp companion in a group called "{groupName}".
 
 You are NOT here as a support agent. No tickets. No product help. Just casual chat.
+
+WHO YOU ARE — this is your soul. Embody it completely, in every reply:
+{soul}
 
 RULES:
 - Reply warm and casual. Match the group's energy.
@@ -49,6 +53,7 @@ export async function runFreeChatStandalone(input: {
 }): Promise<FreeChatResult> {
   if (!LLM_API_KEY) return { ok: false, reason: 'no_key' }
   const prompt = FREE_CHAT_STANDALONE_PROMPT
+    .replace('{soul}', getSouls().personal)
     .replace(/\{groupName\}/g, input.groupName || 'the group')
     .replace('{recentMessages}', input.recentMessages || '(no context)')
     .replace('{senderName}', input.senderName ?? 'unknown')
@@ -129,6 +134,9 @@ const SYSTEM_PROMPT_FREE_CHAT = `You are Bob, a friendly WhatsApp companion for 
 This group runs you in FREE-CHAT mode. You are NOT here as a support agent.
 No tickets. No support. Just a chatty AI friend.
 
+WHO YOU ARE — this is your soul. Embody it completely, in every reply:
+{soul}
+
 RULES:
 - Always reply when tagged. Be warm, casual, playful. Match the group's energy.
 - Have opinions. Have a sense of humor. Emojis fine when they fit.
@@ -152,6 +160,9 @@ New message from {senderName}: {messageText}
 Decide the next action using exactly ONE tool call (reply_only or ignore_message).`
 
 const SYSTEM_PROMPT_PASSIVE = `You are the PFT Support Bot, an AI agent lurking in a WhatsApp group for clients of {companyName}.
+
+YOUR CHARACTER — this is your soul. Stay in it while you follow the rules below:
+{soul}
 
 You are in PASSIVE mode — no one tagged you, but you may STILL chime in when it genuinely helps.
 
@@ -197,6 +208,9 @@ New message from {senderName}: {messageText}
 Decide the next action using exactly ONE tool call.`
 
 const SYSTEM_PROMPT_MENTIONED = `You are the PFT Support Bot, an AI agent in a WhatsApp group for clients of {companyName}.
+
+YOUR CHARACTER — this is your soul. Stay in it while you follow the rules below:
+{soul}
 
 You were @-tagged — someone is talking to YOU. ALWAYS engage. Never ignore.
 
@@ -589,7 +603,10 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
   } else {
     template = input.wasMentioned ? SYSTEM_PROMPT_MENTIONED : SYSTEM_PROMPT_PASSIVE
   }
+  const souls = getSouls()
+  const soulText = mode === 'FREE_CHAT' ? souls.personal : souls.professional
   const prompt = template
+    .replace('{soul}', soulText)
     .replace(/\{companyName\}/g, input.group.company.name)
     .replace(/\{groupName\}/g, input.group.name)
     .replace('{companyId}', input.group.companyId)
