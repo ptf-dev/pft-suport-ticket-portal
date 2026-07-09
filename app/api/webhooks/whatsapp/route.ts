@@ -7,6 +7,8 @@ import { verifyWebhookSignature, sendGroupText, getBotIdentity, downloadWahaMedi
 import { runWhatsappAgent, runFreeChatStandalone, RateLimitError } from '@/lib/agents/whatsapp-agent'
 
 const RATE_LIMIT_REPLY = "⚠️ LLM rate limit reached — try again in a minute."
+const DM_HANDOFF_THRESHOLD = 6
+const DM_HANDOFF_REPLY = "Hey — just a heads up, I'm a lightweight AI assistant here, not the real Bob. For anything that needs a real look, hang tight and an actual human will get back to you when they see this."
 import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE } from '@/lib/attachments'
 
 export const dynamic = 'force-dynamic'
@@ -173,6 +175,24 @@ async function handleDirectMessage(input: {
   await recordMessage({ ...baseRow, filterReason: null, processed: false })
 
   if (!user.company) {
+    const alreadyHandedOff = await prisma.whatsappMessage.findFirst({
+      where: { groupJid: chatId, agentAction: 'dm_handoff' },
+      select: { id: true },
+    })
+    if (alreadyHandedOff) {
+      await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'dm_handoff' })
+      return NextResponse.json({ ok: true, action: 'dm_handoff' })
+    }
+    const priorFreeChatCount = await prisma.whatsappMessage.count({
+      where: { groupJid: chatId, agentAction: 'dm_free_chat' },
+    })
+    if (priorFreeChatCount >= DM_HANDOFF_THRESHOLD) {
+      if (user.autoReply) {
+        try { await sendGroupText(chatId, DM_HANDOFF_REPLY) } catch (err) { console.error('[whatsapp-webhook] DM handoff send failed', err) }
+      }
+      await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'dm_handoff', replyText: DM_HANDOFF_REPLY })
+      return NextResponse.json({ ok: true, action: 'dm_handoff' })
+    }
     if (user.autoReply) await startTyping(chatId)
     const result = await runFreeChatStandalone({
       groupName: `DM with ${senderName ?? chatId}`,
