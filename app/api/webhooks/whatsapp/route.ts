@@ -302,11 +302,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  if (event.event !== 'message') {
+  if (event.event !== 'message' && event.event !== 'message.edited') {
     return NextResponse.json({ ok: true, ignored: `event=${event.event}` })
   }
 
   const msg = event.payload
+  if (event.event === 'message.edited') {
+    console.warn('[whatsapp-webhook] message.edited received, reprocessing with new content:', JSON.stringify(msg).slice(0, 500))
+  }
   const chatId: string = msg?.from ?? msg?.chatId ?? ''
   const isGroup = chatId.endsWith('@g.us')
   const isDirect = chatId.endsWith('@c.us') || chatId.endsWith('@s.whatsapp.net') || chatId.endsWith('@lid')
