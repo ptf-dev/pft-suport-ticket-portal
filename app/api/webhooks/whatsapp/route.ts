@@ -9,6 +9,8 @@ import { runWhatsappAgent, runFreeChatStandalone, RateLimitError } from '@/lib/a
 const RATE_LIMIT_REPLY = "⚠️ LLM rate limit reached — try again in a minute."
 const DM_HANDOFF_THRESHOLD = 6
 const DM_HANDOFF_REPLY = "Hey — just a heads up, I'm a lightweight AI assistant here, not the real Bob. For anything that needs a real look, hang tight and an actual human will get back to you when they see this."
+const GROUP_DISABLED_NOTICE = "Hey — I'm actually turned off for this group right now (an admin disabled me in the WhatsApp settings). Flip \"Enabled\" back on in the admin panel and I'll pick support back up."
+const GROUP_DISABLED_NOTICE_COOLDOWN_MS = 60 * 60 * 1000
 import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE } from '@/lib/attachments'
 
 export const dynamic = 'force-dynamic'
@@ -366,6 +368,23 @@ export async function POST(request: NextRequest) {
 
   if (!group || !group.enabled) {
     const reason = !group ? 'group_unmapped' : 'group_disabled'
+
+    if (reason === 'group_disabled' && mentionsBot) {
+      const lastNotice = await prisma.whatsappMessage.findFirst({
+        where: { groupJid, agentAction: 'group_disabled_notice' },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      })
+      const withinCooldown = lastNotice && Date.now() - lastNotice.createdAt.getTime() < GROUP_DISABLED_NOTICE_COOLDOWN_MS
+      if (!withinCooldown) {
+        try { await sendGroupText(groupJid, GROUP_DISABLED_NOTICE) } catch (err) { console.error('[whatsapp-webhook] group-disabled notice send failed', err) }
+        await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'group_disabled_notice', replyText: GROUP_DISABLED_NOTICE })
+        return NextResponse.json({ ok: true, action: 'group_disabled_notice' })
+      }
+      await recordMessage({ ...baseRow, filterReason: reason, processed: true })
+      return NextResponse.json({ ok: true, ignored: reason })
+    }
+
     if (mentionsBot) {
       const recentMessages = await prisma.whatsappMessage.findMany({
         where: { groupJid },

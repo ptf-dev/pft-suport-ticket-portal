@@ -296,7 +296,9 @@ TICKET-CREATION RULES (this is the important one — you WILL get spammed):
   1. A concrete problem/feature described (not "fix stuff", "make it better")
   2. Enough context to be actionable (what page/feature/product; what happened vs what should)
   3. Either steps to reproduce OR a clear feature-request outcome
+  A symptom + comparison ("works on X, breaks on Y", "happens when I do X") already satisfies #3 — that IS a reproduction, don't ask for more.
 - If any of the above is missing → reply_only asking ONE focused follow-up question.
+- Once a report clears that bar, create the ticket. Don't substitute your own technical guesses or DIY troubleshooting speculation ("could be an iframe permissions issue, try checking...") for actually logging it — you have no access to the codebase or infra to diagnose it for real, and a plausible-sounding guess isn't a fix. That's a job for whoever picks up the ticket.
 - If the message is a joke / test / gibberish / vibes ("fix the batapim", "brr brr", memes) → reply_only, playful pushback. NEVER a ticket.
 - If the same person spam-tags with low-signal messages → reply_only politely deflecting; do NOT open tickets.
 - Look at Recent messages — if you (or your previous asks) already gathered enough info in this thread AND the user has now confirmed / provided details → create_ticket is fine.
@@ -617,6 +619,35 @@ async function callAgent(prompt: string): Promise<{ name: string; input: any } |
   return LLM_PROVIDER === 'anthropic' ? callAnthropic(prompt) : callOpenAiCompat(prompt)
 }
 
+const DUPLICATE_TITLE_THRESHOLD = 0.6
+
+function titleWords(title: string): Set<string> {
+  return new Set(title.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2))
+}
+
+function titleSimilarity(a: Set<string>, b: Set<string>): number {
+  if (!a.size || !b.size) return 0
+  let shared = 0
+  Array.from(a).forEach((w) => { if (b.has(w)) shared++ })
+  return shared / (a.size + b.size - shared)
+}
+
+async function findLikelyDuplicateTicket(companyId: string, proposedTitle: string): Promise<{ id: string; key: string | null } | null> {
+  if (!proposedTitle.trim()) return null
+  const openTickets = await prisma.ticket.findMany({
+    where: { companyId, status: { in: ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'WAITING_CLIENT'] } },
+    select: { id: true, key: true, title: true },
+  })
+  const proposedWords = titleWords(proposedTitle)
+  let best: { id: string; key: string | null } | null = null
+  let bestScore = 0
+  for (const t of openTickets) {
+    const score = titleSimilarity(proposedWords, titleWords(t.title))
+    if (score > bestScore) { bestScore = score; best = { id: t.id, key: t.key } }
+  }
+  return bestScore >= DUPLICATE_TITLE_THRESHOLD ? best : null
+}
+
 async function createTicketFromAgent(
   group: WhatsappGroup & { company: { name: string } },
   input: { title: string; description: string; priority: string; category?: string },
@@ -702,8 +733,20 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
     case 'reply_only':
       return { action: 'reply', reply: String(call.input.text ?? '').slice(0, 1500) }
     case 'create_ticket': {
+      const proposedTitle = String(call.input.title ?? '').trim()
+      const duplicate = await findLikelyDuplicateTicket(input.group.companyId, proposedTitle)
+      if (duplicate) {
+        const mergedComment = `${String(call.input.description ?? '').trim()}\n\n_(Reported again via WhatsApp by ${input.senderName ?? 'unknown'} — looked like a duplicate of this ticket, merged instead of opening a new one.)_`
+        const ticketId = await commentOnTicket(duplicate.key ?? '', mergedComment, input.group.companyId, input.senderName)
+        if (ticketId) {
+          const keyLabel = duplicate.key ?? duplicate.id.slice(0, 8)
+          const link = ticketLink(ticketId)
+          const body = `Looks like the same issue as ${keyLabel} — added your details there instead of opening a duplicate.`
+          return { action: 'comment_on_ticket', reply: link ? `${body}\n${link}` : body, ticketId }
+        }
+      }
       const ticket = await createTicketFromAgent(input.group, {
-        title: String(call.input.title ?? '').trim(),
+        title: proposedTitle,
         description: String(call.input.description ?? '').trim(),
         priority: String(call.input.priority ?? 'MEDIUM'),
         category: call.input.category ? String(call.input.category) : undefined,
