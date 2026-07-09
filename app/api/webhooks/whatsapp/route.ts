@@ -422,6 +422,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignored: 'duplicate' })
   }
 
+  const receivedAt = new Date()
   await recordMessage({ ...baseRow, filterReason: null, processed: false })
 
   if (group.autoReply) await startTyping(groupJid)
@@ -435,11 +436,21 @@ export async function POST(request: NextRequest) {
       wasMentioned: mentionsBot,
     })
 
+    let suppressedByHuman = false
     if (result.reply && group.autoReply) {
-      try {
-        await sendGroupText(groupJid, result.reply)
-      } catch (err) {
-        console.error('[whatsapp-webhook] sendGroupText failed', err)
+      const humanRepliedMeanwhile = await prisma.whatsappMessage.findFirst({
+        where: { groupJid, filterReason: 'bot_echo', createdAt: { gt: receivedAt } },
+        select: { id: true },
+      })
+      if (humanRepliedMeanwhile) {
+        suppressedByHuman = true
+        console.warn('[whatsapp-webhook] human replied while agent was processing, suppressing bot reply in', groupJid)
+      } else {
+        try {
+          await sendGroupText(groupJid, result.reply)
+        } catch (err) {
+          console.error('[whatsapp-webhook] sendGroupText failed', err)
+        }
       }
     }
 
@@ -455,12 +466,12 @@ export async function POST(request: NextRequest) {
       ...baseRow,
       filterReason: null,
       processed: true,
-      agentAction: result.action,
+      agentAction: suppressedByHuman ? 'suppressed_human_replied' : result.action,
       ticketId: result.ticketId ?? null,
-      replyText: result.reply ?? null,
+      replyText: suppressedByHuman ? null : (result.reply ?? null),
     })
 
-    return NextResponse.json({ ok: true, action: result.action, ticketId: result.ticketId })
+    return NextResponse.json({ ok: true, action: suppressedByHuman ? 'suppressed_human_replied' : result.action, ticketId: result.ticketId })
   } catch (err) {
     if (err instanceof RateLimitError) {
       if (group.autoReply && !(await wasLastRateLimited(groupJid))) {
