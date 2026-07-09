@@ -31,6 +31,12 @@ interface Props {
   companies: Company[]
 }
 
+interface DuplicateTicket {
+  id: string
+  key: string | null
+  title: string
+}
+
 const PRIORITIES = PRIORITY_OPTIONS
 
 const CATEGORIES = [
@@ -50,6 +56,8 @@ export function AdminTicketForm({ companies }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [duplicateTicket, setDuplicateTicket] = useState<DuplicateTicket | null>(null)
+  const [pendingBody, setPendingBody] = useState<Record<string, string | undefined> | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,31 +110,22 @@ export function AdminTicketForm({ companies }: Props) {
       .finally(() => setLoadingAdminUsers(false))
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setError('')
-
-    const fd = new FormData(e.currentTarget)
-    const body = {
-      title: fd.get('title') as string,
-      description: fd.get('description') as string,
-      priority: fd.get('priority') as string,
-      category: fd.get('category') as string,
-      companyId: fd.get('companyId') as string,
-      createdById: fd.get('createdById') as string,
-      assignedToId: fd.get('assignedToId') as string || undefined,
-    }
-
+  const submitTicket = async (body: Record<string, string | undefined>, force: boolean) => {
     try {
       const res = await fetch('/api/admin/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, force }),
       })
 
       const data = await res.json()
       if (!res.ok) {
+        if (data.error === 'duplicate' && data.duplicateTicket) {
+          setDuplicateTicket(data.duplicateTicket)
+          setPendingBody(body)
+          setIsSubmitting(false)
+          return
+        }
         setError(data.error ?? 'Failed to create ticket')
         setIsSubmitting(false)
         return
@@ -151,11 +150,54 @@ export function AdminTicketForm({ companies }: Props) {
     }
   }
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError('')
+    setDuplicateTicket(null)
+
+    const fd = new FormData(e.currentTarget)
+    const body = {
+      title: fd.get('title') as string,
+      description: fd.get('description') as string,
+      priority: fd.get('priority') as string,
+      category: fd.get('category') as string,
+      companyId: fd.get('companyId') as string,
+      createdById: fd.get('createdById') as string,
+      assignedToId: fd.get('assignedToId') as string || undefined,
+    }
+
+    await submitTicket(body, false)
+  }
+
+  const handleCreateAnyway = async () => {
+    if (!pendingBody) return
+    setIsSubmitting(true)
+    await submitTicket(pendingBody, true)
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 text-red-700 dark:text-red-400 px-4 py-3 rounded">
           {error}
+        </div>
+      )}
+
+      {duplicateTicket && (
+        <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 text-amber-800 dark:text-amber-200 px-4 py-3 rounded space-y-3">
+          <div>
+            This looks similar to an existing open ticket:{' '}
+            <strong>{duplicateTicket.key ?? duplicateTicket.id.slice(0, 8)}</strong> — &quot;{duplicateTicket.title}&quot;.
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link href={`/admin/tickets/${duplicateTicket.id}`}>
+              <Button type="button" size="sm" variant="outline">View existing ticket</Button>
+            </Link>
+            <Button type="button" size="sm" variant="outline" disabled={isSubmitting} onClick={handleCreateAnyway}>
+              Create a new ticket anyway
+            </Button>
+          </div>
         </div>
       )}
 

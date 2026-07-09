@@ -19,6 +19,12 @@ interface FormErrors {
   general?: string
 }
 
+interface DuplicateTicket {
+  id: string
+  key: string | null
+  title: string
+}
+
 const PRIORITIES = PRIORITY_OPTIONS
 
 const CATEGORIES = [
@@ -40,6 +46,8 @@ export function TicketForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [duplicateTicket, setDuplicateTicket] = useState<DuplicateTicket | null>(null)
+  const [pendingData, setPendingData] = useState<Record<string, string> | null>(null)
   const dropZoneRef = useRef<HTMLDivElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -96,49 +104,24 @@ export function TicketForm() {
     setSelectedFiles(selectedFiles.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setErrors({})
-
-    const formData = new FormData(e.currentTarget)
-    const data = {
-      title: formData.get('title') as string,
-      description: formData.get('description') as string,
-      priority: formData.get('priority') as string,
-      category: formData.get('category') as string,
-    }
-
-    // Client-side validation
-    const clientErrors: FormErrors = {}
-    if (!data.title?.trim()) {
-      clientErrors.title = ['Title is required']
-    }
-    if (!data.description?.trim()) {
-      clientErrors.description = ['Description is required']
-    }
-    if (!data.priority) {
-      clientErrors.priority = ['Priority is required']
-    }
-
-    if (Object.keys(clientErrors).length > 0) {
-      setErrors(clientErrors)
-      setIsSubmitting(false)
-      return
-    }
-
+  const submitTicket = async (data: Record<string, string>, force: boolean) => {
     try {
-      // Create ticket
       const response = await fetch('/api/portal/tickets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, force }),
       })
 
       if (!response.ok) {
         const errorData = await response.json()
+        if (errorData.error === 'duplicate' && errorData.duplicateTicket) {
+          setDuplicateTicket(errorData.duplicateTicket)
+          setPendingData(data)
+          setIsSubmitting(false)
+          return
+        }
         if (errorData.details) {
           setErrors(errorData.details)
         } else {
@@ -173,6 +156,47 @@ export function TicketForm() {
     }
   }
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setErrors({})
+    setDuplicateTicket(null)
+
+    const formData = new FormData(e.currentTarget)
+    const data = {
+      title: formData.get('title') as string,
+      description: formData.get('description') as string,
+      priority: formData.get('priority') as string,
+      category: formData.get('category') as string,
+    }
+
+    // Client-side validation
+    const clientErrors: FormErrors = {}
+    if (!data.title?.trim()) {
+      clientErrors.title = ['Title is required']
+    }
+    if (!data.description?.trim()) {
+      clientErrors.description = ['Description is required']
+    }
+    if (!data.priority) {
+      clientErrors.priority = ['Priority is required']
+    }
+
+    if (Object.keys(clientErrors).length > 0) {
+      setErrors(clientErrors)
+      setIsSubmitting(false)
+      return
+    }
+
+    await submitTicket(data, false)
+  }
+
+  const handleCreateAnyway = async () => {
+    if (!pendingData) return
+    setIsSubmitting(true)
+    await submitTicket(pendingData, true)
+  }
+
   return (
     <form onSubmit={handleSubmit}>
       <Card className="shadow-lg">
@@ -187,6 +211,27 @@ export function TicketForm() {
               <div className="flex items-center">
                 <span className="text-xl mr-2">⚠️</span>
                 <span>{errors.general}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Possible duplicate warning */}
+          {duplicateTicket && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 text-amber-800 dark:text-amber-200 px-4 py-3 rounded shadow-sm space-y-3">
+              <div className="flex items-start gap-2">
+                <span className="text-xl">⚠️</span>
+                <span>
+                  This looks similar to an existing open ticket:{' '}
+                  <strong>{duplicateTicket.key ?? duplicateTicket.id.slice(0, 8)}</strong> — &quot;{duplicateTicket.title}&quot;.
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link href={`/portal/tickets/${duplicateTicket.id}`}>
+                  <Button type="button" size="sm" variant="outline">View existing ticket</Button>
+                </Link>
+                <Button type="button" size="sm" variant="outline" disabled={isSubmitting} onClick={handleCreateAnyway}>
+                  Create a new ticket anyway
+                </Button>
               </div>
             </div>
           )}

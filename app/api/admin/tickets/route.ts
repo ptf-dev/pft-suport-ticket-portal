@@ -7,6 +7,7 @@ import { ActivityService } from '@/lib/services/activity'
 import { PRIORITY_VALUES } from '@/lib/priorities'
 import { autoSprintIdForPriority } from '@/lib/auto-sprint'
 import { uniqueTicketKey } from '@/lib/ticket-key'
+import { findLikelyDuplicateTicket } from '@/lib/ticket-duplicate'
 
 const createTicketSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -16,6 +17,7 @@ const createTicketSchema = z.object({
   companyId: z.string().min(1, 'Company is required'),
   createdById: z.string().min(1, 'User is required'),
   assignedToId: z.string().optional(),
+  force: z.boolean().optional(),
 })
 
 export async function POST(request: NextRequest) {
@@ -32,7 +34,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { title, description, priority, category, companyId, createdById, assignedToId } = result.data
+    const { title, description, priority, category, companyId, createdById, assignedToId, force } = result.data
+
+    if (!force) {
+      const duplicate = await findLikelyDuplicateTicket(companyId, title)
+      if (duplicate) {
+        return NextResponse.json(
+          {
+            error: 'duplicate',
+            duplicateTicket: { id: duplicate.id, key: duplicate.key, title: duplicate.title },
+          },
+          { status: 409 }
+        )
+      }
+    }
 
     // Verify the user belongs to the company
     const user = await prisma.user.findFirst({
