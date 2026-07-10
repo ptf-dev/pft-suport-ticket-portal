@@ -2,6 +2,7 @@
 
 import { signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '@/components/theme-toggle'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
@@ -129,6 +130,7 @@ export default function ModernPortalNav({ user, companyName, children }: ModernP
             </h2>
           </div>
           <div className="flex items-center gap-2 md:gap-4 shrink-0">
+            <ThemeToggle compact />
             <div className="hidden lg:block text-sm text-gray-600 dark:text-gray-400">
               Welcome, <span className="font-semibold text-gray-900 dark:text-gray-100">{user.name}</span>
             </div>
