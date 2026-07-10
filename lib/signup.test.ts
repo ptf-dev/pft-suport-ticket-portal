@@ -102,3 +102,26 @@ describe('SignupService.approve', () => {
     await expect(SignupService.approve('r1', 'c1', 'admin1')).rejects.toThrow('Invalid company')
   })
 })
+
+describe('SignupService.reject', () => {
+  beforeEach(() => jest.clearAllMocks())
+
+  it('marks a PENDING request REJECTED with reviewer + reason', async () => {
+    ;(mockPrisma.signupRequest.findUnique as jest.Mock).mockResolvedValue(
+      { id: 'r1', name: 'A', email: 'a@x.com', firmName: 'Acme', status: 'PENDING' } as any)
+    ;(mockPrisma.signupRequest.update as jest.Mock).mockResolvedValue({} as any)
+
+    const res = await SignupService.reject('r1', 'admin1', 'Not a real firm')
+
+    expect(res.request.email).toBe('a@x.com')
+    expect(mockPrisma.signupRequest.update).toHaveBeenCalledWith({
+      where: { id: 'r1' },
+      data: expect.objectContaining({ status: 'REJECTED', reviewedById: 'admin1', rejectionReason: 'Not a real firm' }),
+    })
+  })
+
+  it('throws when the request is not PENDING', async () => {
+    ;(mockPrisma.signupRequest.findUnique as jest.Mock).mockResolvedValue({ id: 'r1', status: 'REJECTED' } as any)
+    await expect(SignupService.reject('r1', 'admin1')).rejects.toThrow('Request already reviewed')
+  })
+})

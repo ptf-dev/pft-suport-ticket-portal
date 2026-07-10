@@ -106,4 +106,23 @@ export class SignupService {
       company: { id: company.id, name: company.name, subdomain: company.subdomain },
     }
   }
+
+  /** Admin: reject a request, optionally recording a reason. */
+  static async reject(requestId: string, adminUserId: string, reason?: string) {
+    const req = await prisma.signupRequest.findUnique({ where: { id: requestId } })
+    if (!req) throw new Error('Request not found')
+    if (req.status !== 'PENDING') throw new Error('Request already reviewed')
+
+    await prisma.signupRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'REJECTED',
+        reviewedById: adminUserId,
+        reviewedAt: new Date(),
+        rejectionReason: reason ?? null,
+      },
+    })
+
+    return { request: { id: req.id, name: req.name, email: req.email, firmName: req.firmName } }
+  }
 }
