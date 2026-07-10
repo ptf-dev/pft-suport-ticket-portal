@@ -1,17 +1,18 @@
 import { requireClient } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TicketStatus } from '@prisma/client'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { DashboardSearch } from './dashboard-search'
+import { ArrowUpRight, Plus, TicketIcon } from 'lucide-react'
 import Link from 'next/link'
 
 /**
  * Client Portal Dashboard
  * Requirements: 6.1, 6.2
- * 
+ *
  * Displays:
  * - Summary statistics scoped to client's company
  * - List of recent tickets for the company
@@ -69,115 +70,92 @@ export default async function PortalDashboard({
     },
   })
 
+  const activeCount = openTickets + inProgressTickets
+  const resolvedPct = totalTickets > 0 ? Math.round((resolvedTickets / totalTickets) * 100) : 0
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Overview of your support tickets
-        </p>
-      </div>
-
-      {/* Summary Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Total Tickets
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalTickets}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Open Tickets
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{openTickets}</div>
-            <Badge variant="destructive" className="mt-2">
-              OPEN
-            </Badge>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              In Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{inProgressTickets}</div>
-            <Badge variant="default" className="mt-2">
-              IN PROGRESS
-            </Badge>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Resolved
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">{resolvedTickets}</div>
-            <Badge variant="success" className="mt-2">
-              RESOLVED
-            </Badge>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Tickets Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Recent Tickets</CardTitle>
-          <Link
-            href="/portal/tickets"
-            className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300 font-medium"
-          >
-            View All Tickets →
+      <header className="flex items-center justify-between gap-4">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="font-display text-2xl tracking-tightest text-ink leading-none">
+            Your tickets, <em className="italic text-accent">at a glance.</em>
+          </h1>
+          <span className="hidden md:inline font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute">
+            Client portal
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href="/portal/tickets/new">
+            <Button variant="outline" size="sm" className="gap-2">
+              <Plus className="w-4 h-4" /> New ticket
+            </Button>
           </Link>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Search Bar */}
+          <Link href="/portal/tickets">
+            <Button variant="default" size="sm" className="gap-2">
+              All tickets <ArrowUpRight className="w-4 h-4" />
+            </Button>
+          </Link>
+        </div>
+      </header>
+
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-px bg-line rounded-xl overflow-hidden border border-line">
+        <StatCell label="Total tickets" value={totalTickets} sub={`${activeCount} still active`} />
+        <StatCell label="Open" value={openTickets} sub="awaiting our team" tone={openTickets > 0 ? 'text-danger' : 'text-ink'} />
+        <StatCell label="In progress" value={inProgressTickets} sub="being worked on" tone={inProgressTickets > 0 ? 'text-info' : 'text-ink'} />
+        <StatCell label="Resolved" value={resolvedTickets} sub={totalTickets > 0 ? `${resolvedPct}% of all tickets` : 'none yet'} tone={resolvedTickets > 0 ? 'text-ok' : 'text-ink'} />
+      </section>
+
+      <section className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+        <div className="flex items-baseline justify-between px-6 pt-5 pb-3">
+          <div>
+            <h2 className="font-display text-2xl tracking-tightest text-ink">Recent tickets</h2>
+            <p className="text-xs text-ink-mute mt-1">Your latest support requests, newest first.</p>
+          </div>
+          <Link href="/portal/tickets" className="text-xs font-mono uppercase tracking-widest text-ink-mute hover:text-ink inline-flex items-center gap-1">
+            View all <ArrowUpRight className="w-3 h-3" />
+          </Link>
+        </div>
+        <div className="rule mx-6" />
+        <div className="px-6 py-5 space-y-4">
           <DashboardSearch />
 
-          <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
+          <div className="overflow-x-auto rounded-lg border border-line">
+            <table className="min-w-full divide-y divide-line-soft">
+              <thead className="bg-bg-sunken">
                 <tr>
                   <SortableTh column="title"     label="Ticket"   currentSort={currentSort} currentOrder={currentOrder} />
                   <SortableTh column="status"    label="Status"   currentSort={currentSort} currentOrder={currentOrder} />
                   <SortableTh column="priority"  label="Priority" currentSort={currentSort} currentOrder={currentOrder} />
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Assigned To</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink-mute uppercase tracking-wider">Assigned To</th>
                   <SortableTh column="createdAt" label="Created"  currentSort={currentSort} currentOrder={currentOrder} />
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-ink-mute uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+              <tbody className="divide-y divide-line-soft">
                 {recentTickets.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                      No tickets found. <Link href="/portal/tickets/new" className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300">Create your first ticket</Link>
+                    <td colSpan={6} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <TicketIcon className="w-10 h-10 text-ink-faint" strokeWidth={1.2} />
+                        <p className="font-display text-2xl tracking-tightest text-ink">No tickets yet.</p>
+                        <Link href="/portal/tickets/new" className="text-sm font-medium text-accent hover:text-accent-ink">
+                          Create your first ticket
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   recentTickets.map((ticket) => (
-                    <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <tr key={ticket.id} className="group transition-colors hover:bg-bg-sunken">
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {ticket.title}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          #{ticket.id.slice(0, 8)}
+                        <div className="flex items-start gap-3">
+                          <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${priorityMeta(ticket.priority).dotClass}`} />
+                          <div className="min-w-0 flex-1">
+                            <Link href={`/portal/tickets/${ticket.id}`} className="font-medium text-ink hover:text-accent transition-colors line-clamp-1 block">
+                              {ticket.title}
+                            </Link>
+                            <div className="mt-1 text-[11px] font-mono text-ink-mute">#{ticket.id.slice(0, 8)}</div>
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -188,7 +166,7 @@ export default async function PortalDashboard({
                               : ticket.status === 'BLOCKED'
                               ? 'destructive'
                               : ticket.status === 'IN_PROGRESS'
-                              ? 'default'
+                              ? 'info'
                               : ticket.status === 'WAITING_CLIENT'
                               ? 'warning'
                               : ticket.status === 'RESOLVED'
@@ -196,7 +174,7 @@ export default async function PortalDashboard({
                               : 'secondary'
                           }
                         >
-                          {ticket.status.replace('_', ' ')}
+                          {ticket.status.replace(/_/g, ' ')}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -205,21 +183,21 @@ export default async function PortalDashboard({
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-white">
-                          {ticket.assignedTo?.name ?? 'Not yet assigned'}
-                        </div>
+                        {ticket.assignedTo?.name ? (
+                          <span className="text-sm text-ink">{ticket.assignedTo.name}</span>
+                        ) : (
+                          <span className="text-xs italic text-ink-faint">Not yet assigned</span>
+                        )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-white">
-                          {new Date(ticket.createdAt).toLocaleDateString()}
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ink tabular-nums">
+                        {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
                         <Link
                           href={`/portal/tickets/${ticket.id}`}
-                          className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300"
+                          className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:text-accent-ink transition-colors"
                         >
-                          View
+                          View <ArrowUpRight className="w-3.5 h-3.5" />
                         </Link>
                       </td>
                     </tr>
@@ -228,8 +206,27 @@ export default async function PortalDashboard({
               </tbody>
             </table>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function StatCell({
+  label, value, sub, tone,
+}: {
+  label: string
+  value: number
+  sub?: string
+  tone?: string
+}) {
+  return (
+    <div className="bg-bg-elev p-5">
+      <div className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-ink-mute">{label}</div>
+      <div className={`font-display text-5xl tracking-tightest leading-none tabular-nums ${tone ?? 'text-ink'}`}>
+        {value}
+      </div>
+      {sub && <div className="mt-2 text-xs text-ink-mute">{sub}</div>}
     </div>
   )
 }
