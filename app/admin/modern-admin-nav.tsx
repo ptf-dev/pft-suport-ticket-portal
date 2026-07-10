@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Ticket, Building2, Users, Settings, LogOut, Menu, X,
-  Rocket, PanelLeftClose, PanelLeftOpen, MessageCircle,
+  Rocket, PanelLeftClose, PanelLeftOpen, MessageCircle, UserPlus,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { href: '/admin/sprints', label: 'Sprints', icon: Rocket },
   { href: '/admin/companies', label: 'Companies', icon: Building2 },
   { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/access-requests', label: 'Access Requests', icon: UserPlus },
   { href: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { href: '/admin/settings/smtp', label: 'SMTP', icon: Settings },
 ]
