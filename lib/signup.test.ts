@@ -12,7 +12,7 @@ jest.mock('@/lib/prisma', () => ({
 const mockPrisma = prisma as jest.Mocked<typeof prisma>
 
 describe('SignupService.createRequest', () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => { jest.clearAllMocks() })
 
   it('creates a PENDING request when none exists', async () => {
     ;(mockPrisma.signupRequest.findFirst as jest.Mock).mockResolvedValue(null as any)
@@ -49,7 +49,7 @@ describe('SignupService.createRequest', () => {
 })
 
 describe('SignupService.approve', () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => { jest.clearAllMocks() })
 
   const pendingReq = { id: 'r1', name: 'A', email: 'a@x.com', firmName: 'Acme', status: 'PENDING' }
   const company = { id: 'c1', name: 'Acme LLC', subdomain: 'acme', isActive: true }
@@ -104,7 +104,7 @@ describe('SignupService.approve', () => {
 })
 
 describe('SignupService.reject', () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => { jest.clearAllMocks() })
 
   it('marks a PENDING request REJECTED with reviewer + reason', async () => {
     ;(mockPrisma.signupRequest.findUnique as jest.Mock).mockResolvedValue(
