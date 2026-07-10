@@ -450,6 +450,7 @@ model WhatsappMessage {
   filterReason String?
   wasMentioned Boolean  @default(false)
   replyText    String?
+  claimedAt    DateTime?
   createdAt    DateTime @default(now())
 
   @@index([groupJid, createdAt])

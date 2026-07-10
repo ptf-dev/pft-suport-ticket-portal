@@ -3,12 +3,11 @@ import { writeFile, mkdir } from 'fs/promises'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { verifyWebhookSignature, sendGroupText, getBotIdentity, downloadWahaMedia, startTyping, stopTyping } from '@/lib/integrations/waha'
 import { runWhatsappAgent, runFreeChatStandalone, RateLimitError } from '@/lib/agents/whatsapp-agent'
 
 const RATE_LIMIT_REPLY = "⚠️ LLM rate limit reached — try again in a minute."
-const DM_HANDOFF_THRESHOLD = 6
-const DM_HANDOFF_REPLY = "Hey — just a heads up, I'm a lightweight AI assistant here, not the real Bob. For anything that needs a real look, hang tight and an actual human will get back to you when they see this."
 const GROUP_DISABLED_NOTICE = "Hey — I'm actually turned off for this group right now (an admin disabled me in the WhatsApp settings). Flip \"Enabled\" back on in the admin panel and I'll pick support back up."
 const GROUP_DISABLED_NOTICE_COOLDOWN_MS = 60 * 60 * 1000
 import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE } from '@/lib/attachments'
@@ -62,6 +61,55 @@ async function recordMessage(row: {
     })
   } catch (err) {
     console.error('[whatsapp-webhook] recordMessage failed', err)
+  }
+}
+
+// WAHA can deliver the same event more than once (e.g. a global env-level webhook
+// plus a session-level webhook both firing, or retries on slow responses). Any code
+// path that SENDS something must first claim the message atomically; only the claim
+// winner may act. Re-claim is allowed for rows the bot never acted on (agentAction
+// null — e.g. a message edited to add a mention), failed rows ('error'), and stale
+// 'processing' rows from a crashed handler. Staleness is judged on claimedAt, which
+// every claim refreshes — never createdAt, which would make every re-claim of an old
+// row instantly "stale" again and let both duplicate deliveries win.
+const CLAIM_STALE_MS = 10 * 60 * 1000
+
+async function claimMessage(row: {
+  waMessageId: string
+  groupJid: string
+  senderJid: string
+  senderName: string | null
+  body: string
+  wasMentioned: boolean
+}): Promise<boolean> {
+  const now = new Date()
+  try {
+    await prisma.whatsappMessage.create({
+      data: { ...row, filterReason: null, processed: false, agentAction: 'processing', claimedAt: now },
+    })
+    return true
+  } catch (err) {
+    // Only a unique violation on waMessageId means "row already exists — try to
+    // re-claim". Any other failure must propagate so the handler 500s and WAHA
+    // retries; swallowing it here would silently drop the message forever.
+    const isUniqueViolation = err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
+    if (!isUniqueViolation) {
+      console.error('[whatsapp-webhook] claimMessage create failed (non-unique error), rethrowing', err)
+      throw err
+    }
+    const res = await prisma.whatsappMessage.updateMany({
+      where: {
+        waMessageId: row.waMessageId,
+        OR: [
+          { agentAction: null },
+          { agentAction: 'error' },
+          { agentAction: 'processing', claimedAt: { lt: new Date(now.getTime() - CLAIM_STALE_MS) } },
+          { agentAction: 'processing', claimedAt: null },
+        ],
+      },
+      data: { agentAction: 'processing', processed: false, body: row.body, wasMentioned: row.wasMentioned, claimedAt: now },
+    })
+    return res.count > 0
   }
 }
 
@@ -142,149 +190,17 @@ async function handleDirectMessage(input: {
     await recordMessage({ ...baseRow, filterReason: 'dm_from_bot', processed: true })
     return NextResponse.json({ ok: true, ignored: 'dm from bot' })
   }
-  if (!body || body.trim().length < 2) {
-    await recordMessage({ ...baseRow, filterReason: 'body_too_short', processed: true })
-    return NextResponse.json({ ok: true, ignored: 'empty or too short' })
-  }
 
-  const existing = await prisma.whatsappMessage.findUnique({ where: { waMessageId } })
-  if (existing?.agentAction && existing.agentAction !== 'error') {
-    return NextResponse.json({ ok: true, ignored: 'duplicate' })
-  }
-
-  const user = await prisma.whatsappUser.upsert({
+  // DMs are record-only: the bot never auto-replies in private chats. Messages are
+  // still logged and the contact tracked so the admin panel shows who reached out,
+  // and outbound ticket notifications (whatsapp-notify) remain unaffected.
+  await prisma.whatsappUser.upsert({
     where: { waJid: chatId },
     create: { waJid: chatId, displayName: senderName, lastSeenAt: new Date() },
     update: { displayName: senderName ?? undefined, lastSeenAt: new Date() },
-    include: { company: { select: { id: true, name: true } } },
   })
-
-  if (!user.enabled) {
-    await recordMessage({ ...baseRow, filterReason: 'dm_user_disabled', processed: true })
-    return NextResponse.json({ ok: true, ignored: 'dm user disabled' })
-  }
-
-  const recentMessages = await prisma.whatsappMessage.findMany({
-    where: { groupJid: chatId },
-    orderBy: { createdAt: 'desc' },
-    take: 10,
-    select: { senderName: true, body: true },
-  })
-  const context = recentMessages.length
-    ? recentMessages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
-    : '(no context)'
-
-  await recordMessage({ ...baseRow, filterReason: null, processed: false })
-
-  if (!user.company) {
-    const alreadyHandedOff = await prisma.whatsappMessage.findFirst({
-      where: { groupJid: chatId, agentAction: 'dm_handoff' },
-      select: { id: true },
-    })
-    if (alreadyHandedOff) {
-      await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'dm_handoff' })
-      return NextResponse.json({ ok: true, action: 'dm_handoff' })
-    }
-    const priorFreeChatCount = await prisma.whatsappMessage.count({
-      where: { groupJid: chatId, agentAction: 'dm_free_chat' },
-    })
-    if (priorFreeChatCount >= DM_HANDOFF_THRESHOLD) {
-      if (user.autoReply) {
-        try { await sendGroupText(chatId, DM_HANDOFF_REPLY) } catch (err) { console.error('[whatsapp-webhook] DM handoff send failed', err) }
-      }
-      await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'dm_handoff', replyText: DM_HANDOFF_REPLY })
-      return NextResponse.json({ ok: true, action: 'dm_handoff' })
-    }
-    if (user.autoReply) await startTyping(chatId)
-    const result = await runFreeChatStandalone({
-      groupName: `DM with ${senderName ?? chatId}`,
-      senderName,
-      body,
-      recentMessages: context,
-    })
-    let outgoing: string | null = null
-    let action = 'dm_free_chat_failed'
-    if (result.ok) {
-      outgoing = result.text
-      action = 'dm_free_chat'
-    } else if (result.reason === 'rate_limit') {
-      action = 'rate_limited'
-      outgoing = (await wasLastRateLimited(chatId)) ? null : RATE_LIMIT_REPLY
-    }
-    if (outgoing && user.autoReply) {
-      try { await sendGroupText(chatId, outgoing) } catch (err) { console.error('[whatsapp-webhook] DM reply send failed', err) }
-    }
-    if (user.autoReply) await stopTyping(chatId)
-    await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: action })
-    return NextResponse.json({ ok: true, action })
-  }
-
-  if (user.autoReply) await startTyping(chatId)
-  try {
-    const syntheticGroup = {
-      id: `dm-${user.id}`,
-      groupJid: chatId,
-      name: `DM: ${senderName ?? chatId}`,
-      companyId: user.company.id,
-      enabled: true,
-      autoTicket: user.autoTicket,
-      autoReply: user.autoReply,
-      mentionOnly: false,
-      agentMode: user.agentMode,
-      notifyOnStatusChange: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      company: { name: user.company.name },
-    } as any
-
-    const result = await runWhatsappAgent({
-      group: syntheticGroup,
-      senderJid: senderJid || chatId,
-      senderName,
-      body,
-      waMessageId,
-      wasMentioned: true,
-    })
-
-    if (result.reply && user.autoReply) {
-      try {
-        await sendGroupText(chatId, result.reply)
-      } catch (err) {
-        console.error('[whatsapp-webhook] DM reply send failed', err)
-      }
-    }
-
-    const mediaHint = extractMediaHint(msg, waMessageId)
-    if (mediaHint && result.ticketId) {
-      const attach = await attachMediaToTicket(result.ticketId, mediaHint).catch((err) => {
-        console.error('[whatsapp-webhook] DM media attach failed', err); return { ok: false, reason: 'exception' } as const
-      })
-      if (!attach.ok) console.warn('[whatsapp-webhook] DM media not attached:', attach.reason)
-    }
-
-    await recordMessage({
-      ...baseRow,
-      filterReason: null,
-      processed: true,
-      agentAction: `dm_${result.action}`,
-      ticketId: result.ticketId ?? null,
-      replyText: result.reply ?? null,
-    })
-    return NextResponse.json({ ok: true, action: `dm_${result.action}`, ticketId: result.ticketId })
-  } catch (err) {
-    if (err instanceof RateLimitError) {
-      if (user.autoReply && !(await wasLastRateLimited(chatId))) {
-        try { await sendGroupText(chatId, RATE_LIMIT_REPLY) } catch {}
-      }
-      await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'rate_limited' })
-      return NextResponse.json({ ok: true, action: 'rate_limited' })
-    }
-    console.error('[whatsapp-webhook] DM agent failed', err)
-    await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'error' })
-    return NextResponse.json({ ok: false, error: 'DM agent failure' }, { status: 500 })
-  } finally {
-    if (user.autoReply) await stopTyping(chatId)
-  }
+  await recordMessage({ ...baseRow, filterReason: 'dm_silent', processed: true })
+  return NextResponse.json({ ok: true, ignored: 'dm silent' })
 }
 
 export async function POST(request: NextRequest) {
@@ -373,79 +289,100 @@ export async function POST(request: NextRequest) {
     const reason = !group ? 'group_unmapped' : 'group_disabled'
 
     if (reason === 'group_disabled' && mentionsBot) {
-      const lastNotice = await prisma.whatsappMessage.findFirst({
-        where: { groupJid, agentAction: 'group_disabled_notice' },
-        orderBy: { createdAt: 'desc' },
-        select: { createdAt: true },
-      })
-      const withinCooldown = lastNotice && Date.now() - lastNotice.createdAt.getTime() < GROUP_DISABLED_NOTICE_COOLDOWN_MS
-      if (!withinCooldown) {
-        try { await sendGroupText(groupJid, GROUP_DISABLED_NOTICE) } catch (err) { console.error('[whatsapp-webhook] group-disabled notice send failed', err) }
-        await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'group_disabled_notice', replyText: GROUP_DISABLED_NOTICE })
-        return NextResponse.json({ ok: true, action: 'group_disabled_notice' })
+      if (!(await claimMessage(baseRow))) {
+        return NextResponse.json({ ok: true, ignored: 'duplicate' })
       }
-      await recordMessage({ ...baseRow, filterReason: reason, processed: true })
-      return NextResponse.json({ ok: true, ignored: reason })
+      try {
+        const lastNotice = await prisma.whatsappMessage.findFirst({
+          where: { groupJid, agentAction: 'group_disabled_notice' },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true },
+        })
+        const withinCooldown = lastNotice && Date.now() - lastNotice.createdAt.getTime() < GROUP_DISABLED_NOTICE_COOLDOWN_MS
+        if (!withinCooldown) {
+          try { await sendGroupText(groupJid, GROUP_DISABLED_NOTICE) } catch (err) { console.error('[whatsapp-webhook] group-disabled notice send failed', err) }
+          await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'group_disabled_notice', replyText: GROUP_DISABLED_NOTICE })
+          return NextResponse.json({ ok: true, action: 'group_disabled_notice' })
+        }
+        await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'notice_cooldown_skip' })
+        return NextResponse.json({ ok: true, ignored: reason })
+      } catch (err) {
+        // Never leave the row stuck at 'processing' — mark it 'error' (re-claimable)
+        // and 500 so WAHA's retry gets a real second chance.
+        console.error('[whatsapp-webhook] disabled-notice path failed after claim', err)
+        await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'error' })
+        return NextResponse.json({ ok: false, error: 'disabled-notice failure' }, { status: 500 })
+      }
     }
 
     if (mentionsBot) {
-      const recentMessages = await prisma.whatsappMessage.findMany({
-        where: { groupJid },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        select: { senderName: true, body: true },
-      })
-      const context = recentMessages.length
-        ? recentMessages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
-        : '(no context)'
-      const groupName = msg?._data?.chat?.name ?? msg?.chat?.name ?? groupJid.replace('@g.us', '')
-      await startTyping(groupJid)
-      const result = await runFreeChatStandalone({
-        groupName,
-        senderName,
-        body,
-        recentMessages: context,
-      })
-      let outgoing: string | null
-      let action: string
-      if (result.ok) {
-        outgoing = result.text
-        action = 'unmapped_free_chat'
-      } else if (result.reason === 'rate_limit') {
-        action = 'rate_limited'
-        outgoing = (await wasLastRateLimited(groupJid)) ? null : RATE_LIMIT_REPLY
-      } else {
-        outgoing = null
-        action = 'unmapped_fallback_reply'
+      if (!(await claimMessage(baseRow))) {
+        return NextResponse.json({ ok: true, ignored: 'duplicate' })
       }
-      if (outgoing) {
-        try { await sendGroupText(groupJid, outgoing) } catch (err) { console.error('[whatsapp-webhook] unmapped-group reply send failed', err) }
+      try {
+        const recentMessages = await prisma.whatsappMessage.findMany({
+          where: { groupJid },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          select: { senderName: true, body: true },
+        })
+        const context = recentMessages.length
+          ? recentMessages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
+          : '(no context)'
+        const groupName = msg?._data?.chat?.name ?? msg?.chat?.name ?? groupJid.replace('@g.us', '')
+        await startTyping(groupJid)
+        const result = await runFreeChatStandalone({
+          groupName,
+          senderName,
+          body,
+          recentMessages: context,
+        })
+        let outgoing: string | null
+        let action: string
+        if (result.ok) {
+          outgoing = result.text
+          action = 'unmapped_free_chat'
+        } else if (result.reason === 'rate_limit') {
+          action = 'rate_limited'
+          outgoing = (await wasLastRateLimited(groupJid).catch(() => true)) ? null : RATE_LIMIT_REPLY
+        } else {
+          outgoing = null
+          action = 'unmapped_fallback_reply'
+        }
+        if (outgoing) {
+          try { await sendGroupText(groupJid, outgoing) } catch (err) { console.error('[whatsapp-webhook] unmapped-group reply send failed', err) }
+        }
+        await stopTyping(groupJid)
+        await recordMessage({
+          ...baseRow,
+          filterReason: reason,
+          processed: true,
+          agentAction: action,
+        })
+        return NextResponse.json({ ok: true, action })
+      } catch (err) {
+        console.error('[whatsapp-webhook] unmapped free-chat path failed after claim', err)
+        await stopTyping(groupJid)
+        await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'error' })
+        return NextResponse.json({ ok: false, error: 'unmapped free-chat failure' }, { status: 500 })
       }
-      await stopTyping(groupJid)
-      await recordMessage({
-        ...baseRow,
-        filterReason: reason,
-        processed: true,
-        agentAction: action,
-      })
-      return NextResponse.json({ ok: true, action })
     }
     await recordMessage({ ...baseRow, filterReason: reason, processed: true })
     return NextResponse.json({ ok: true, ignored: reason })
   }
 
-  if (group.mentionOnly && !mentionsBot) {
+  // The bot is strictly mention-gated in every group (the agent also enforces this).
+  // Skipping here keeps non-mention rows at agentAction null, so editing a message
+  // to add @Bob later still triggers a fresh claim + reprocess.
+  if (!mentionsBot) {
     await recordMessage({ ...baseRow, filterReason: 'mention_only_skip', processed: true })
-    return NextResponse.json({ ok: true, ignored: 'mention-only mode, bot not tagged' })
-  }
-
-  const existing = await prisma.whatsappMessage.findUnique({ where: { waMessageId } })
-  if (existing?.agentAction && existing.agentAction !== 'error') {
-    return NextResponse.json({ ok: true, ignored: 'duplicate' })
+    return NextResponse.json({ ok: true, ignored: 'not mentioned' })
   }
 
   const receivedAt = new Date()
-  await recordMessage({ ...baseRow, filterReason: null, processed: false })
+  if (!(await claimMessage(baseRow))) {
+    return NextResponse.json({ ok: true, ignored: 'duplicate' })
+  }
 
   if (group.autoReply) await startTyping(groupJid)
   try {
@@ -501,7 +438,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, action: suppressedByHuman ? 'suppressed_human_replied' : result.action, ticketId: result.ticketId })
   } catch (err) {
     if (err instanceof RateLimitError) {
-      if (group.autoReply && !(await wasLastRateLimited(groupJid))) {
+      // .catch(() => true) — if the dedup lookup itself fails, err on the side of
+      // NOT sending; a throw here would skip the recordMessage below and leave the
+      // row stuck at 'processing'.
+      if (group.autoReply && !(await wasLastRateLimited(groupJid).catch(() => true))) {
         try { await sendGroupText(groupJid, RATE_LIMIT_REPLY) } catch {}
       }
       await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'rate_limited' })

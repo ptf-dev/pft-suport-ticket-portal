@@ -177,7 +177,7 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                         ))}
                       </Select>
                     </label>
-                    <label className="flex flex-col text-xs text-ink-mute gap-1 md:w-48" title="SUPPORT = strict tickets. HYBRID = support + chat. FREE_CHAT = casual companion, no tickets.">
+                    <label className="flex flex-col text-xs text-ink-mute gap-1 md:w-48" title="Informational — the bot currently always runs strict, mention-gated support behavior regardless of mode.">
                       <span>Mode</span>
                       <Select
                         value={g.agentMode}
@@ -194,15 +194,15 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                         <input type="checkbox" checked={g.enabled} onChange={(e) => patch(g.id, { enabled: e.target.checked })} />
                         <span>Enabled</span>
                       </label>
-                      <label className="flex items-center gap-2">
+                      <label className="flex items-center gap-2" title="Off = answer-only group: the bot can chat when tagged but cannot open or comment on tickets.">
                         <input type="checkbox" checked={g.autoTicket} onChange={(e) => patch(g.id, { autoTicket: e.target.checked })} />
                         <span>Auto-ticket</span>
                       </label>
-                      <label className="flex items-center gap-2">
+                      <label className="flex items-center gap-2" title="Gates chat replies only — ticket confirmations always send.">
                         <input type="checkbox" checked={g.autoReply} onChange={(e) => patch(g.id, { autoReply: e.target.checked })} />
                         <span>Auto-reply</span>
                       </label>
-                      <label className="flex items-center gap-2" title="Bot only fires when @-mentioned. Recommended.">
+                      <label className="flex items-center gap-2" title="Informational — the bot now only ever acts when @-mentioned, in every group.">
                         <input type="checkbox" checked={g.mentionOnly} onChange={(e) => patch(g.id, { mentionOnly: e.target.checked })} />
                         <span>Mention-only</span>
                       </label>
@@ -259,8 +259,9 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
       <Card>
         <CardHeader><CardTitle>Direct-message users ({users.length})</CardTitle></CardHeader>
         <CardContent>
+          <p className="text-sm text-ink-mute mb-3">The bot is silent in DMs — private messages are logged here but never auto-answered. The toggles below only affect outbound ticket notifications and record-keeping.</p>
           {users.length === 0 ? (
-            <p className="text-sm text-ink-mute">No one has DM&apos;d the bot yet. When they do, they&apos;ll appear here — leave unmapped for free chat, or assign a company to route as single-person support.</p>
+            <p className="text-sm text-ink-mute">No one has DM&apos;d the bot yet. When they do, they&apos;ll appear here.</p>
           ) : (
             <div className="space-y-3">
               {users.map((u) => (

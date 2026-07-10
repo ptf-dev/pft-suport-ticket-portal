@@ -26,7 +26,7 @@ WHO YOU ARE — this is your soul. Embody it completely, in every reply:
 RULES:
 - Reply warm and casual. Match the group's energy.
 - Have opinions. Have humor. Emojis fine when they fit.
-- Never say "As an AI" — just be Bob.
+- Don't volunteer that you're an AI, but if someone directly asks whether you're a bot/AI, own it casually and move on — NEVER deny it or claim to be human.
 - Reply length matches the message — a quick quip gets a quick reply, a real question or story gets a real answer. Don't pad, don't artificially cut yourself short.
 
 LANGUAGE:
@@ -208,7 +208,7 @@ GENERAL RULES:
 - Reply helpfully to whatever they ask — questions, chit-chat, opinions, jokes, technical help, product questions.
 - Match reply length to the message: quick banter or a status check gets a short answer; a real question, explanation, or troubleshooting step gets as much detail as it needs. This is WhatsApp — conversational, not a formal email — but don't truncate a genuinely useful answer just to seem brief.
 - Share only public ticket status, never internal notes.
-- Never say "As an AI" or disclaim being a bot. Be direct.
+- Don't volunteer AI disclaimers. If someone directly asks whether you're a bot/AI, confirm it briefly and move on — never deny it. Be direct.
 
 ${LANGUAGE_RULE}
 
@@ -417,14 +417,14 @@ async function loadContext(group: WhatsappGroup, body: string): Promise<{ recent
   }
 }
 
-function toOpenAiTools() {
-  return TOOLS.map((t) => ({
+function toOpenAiTools(tools: typeof TOOLS) {
+  return tools.map((t) => ({
     type: 'function' as const,
     function: { name: t.name, description: t.description, parameters: t.input_schema },
   }))
 }
 
-async function callAnthropic(prompt: string): Promise<{ name: string; input: any } | null> {
+async function callAnthropic(prompt: string, tools: typeof TOOLS): Promise<{ name: string; input: any } | null> {
   if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -437,7 +437,7 @@ async function callAnthropic(prompt: string): Promise<{ name: string; input: any
     body: JSON.stringify({
       model: LLM_MODEL,
       max_tokens: 1024,
-      tools: TOOLS,
+      tools,
       tool_choice: { type: 'any' },
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -451,7 +451,7 @@ async function callAnthropic(prompt: string): Promise<{ name: string; input: any
   return { name: toolUse.name, input: toolUse.input ?? {} }
 }
 
-async function callOpenAiCompatOnce(prompt: string): Promise<Response> {
+async function callOpenAiCompatOnce(prompt: string, tools: typeof TOOLS): Promise<Response> {
   return fetch(`${LLM_BASE_URL.replace(/\/$/, '')}/v1/chat/completions`, {
     method: 'POST',
     headers: {
@@ -462,7 +462,7 @@ async function callOpenAiCompatOnce(prompt: string): Promise<Response> {
     body: JSON.stringify({
       model: LLM_MODEL,
       max_tokens: 2048,
-      tools: toOpenAiTools(),
+      tools: toOpenAiTools(tools),
       tool_choice: 'required',
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -478,14 +478,14 @@ function isDegenerateCall(call: { name: string; input: any } | null): boolean {
   return false
 }
 
-async function callOpenAiCompatAttempt(prompt: string): Promise<{ name: string; input: any } | null> {
+async function callOpenAiCompatAttempt(prompt: string, tools: typeof TOOLS): Promise<{ name: string; input: any } | null> {
   if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
   let res!: Response
   let lastErr = ''
   let lastStatus = 0
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      res = await callOpenAiCompatOnce(prompt)
+      res = await callOpenAiCompatOnce(prompt, tools)
     } catch (err) {
       lastStatus = 0
       lastErr = String(err)
@@ -530,16 +530,16 @@ async function callOpenAiCompatAttempt(prompt: string): Promise<{ name: string; 
   return { name: call.function?.name ?? '', input: parsed }
 }
 
-async function callOpenAiCompat(prompt: string): Promise<{ name: string; input: any } | null> {
-  const first = await callOpenAiCompatAttempt(prompt)
+async function callOpenAiCompat(prompt: string, tools: typeof TOOLS): Promise<{ name: string; input: any } | null> {
+  const first = await callOpenAiCompatAttempt(prompt, tools)
   if (!isDegenerateCall(first)) return first
   console.warn('[whatsapp-agent] degenerate reply from LLM, retrying once:', JSON.stringify(first).slice(0, 200))
-  const second = await callOpenAiCompatAttempt(prompt)
+  const second = await callOpenAiCompatAttempt(prompt, tools)
   return isDegenerateCall(second) ? null : second
 }
 
-async function callAgent(prompt: string): Promise<{ name: string; input: any } | null> {
-  return LLM_PROVIDER === 'anthropic' ? callAnthropic(prompt) : callOpenAiCompat(prompt)
+async function callAgent(prompt: string, tools: typeof TOOLS = TOOLS): Promise<{ name: string; input: any } | null> {
+  return LLM_PROVIDER === 'anthropic' ? callAnthropic(prompt, tools) : callOpenAiCompat(prompt, tools)
 }
 
 
@@ -599,7 +599,7 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
   const ctx = await loadContext(input.group, input.body)
   const souls = getSouls()
   const soulText = souls.professional
-  const prompt = SYSTEM_PROMPT_MENTIONED
+  let prompt = SYSTEM_PROMPT_MENTIONED
     .replace('{soul}', soulText)
     .replace(/\{companyName\}/g, input.group.company.name)
     .replace(/\{groupName\}/g, input.group.name)
@@ -611,7 +611,15 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
     .replace('{senderName}', input.senderName ?? 'unknown')
     .replace('{messageText}', input.body)
 
-  const call = await callAgent(prompt)
+  // Auto-ticket off = the group is answer-only: the ticket tools aren't offered to
+  // the model at all, so it can't open or comment on tickets even if asked to.
+  const allowTickets = input.group.autoTicket !== false
+  const tools = allowTickets ? TOOLS : TOOLS.filter((t) => t.name !== 'create_ticket' && t.name !== 'comment_on_ticket')
+  if (!allowTickets) {
+    prompt += `\n\nNOTE: Ticket creation is disabled for this group (create_ticket and comment_on_ticket are unavailable). Answer questions directly with reply_only. If someone asks you to open a ticket, tell them ticketing from this group is turned off and a team member will pick it up.`
+  }
+
+  const call = await callAgent(prompt, tools)
   if (!call) return { action: 'ignore' }
 
   switch (call.name) {
