@@ -212,6 +212,12 @@ enum WhatsappAgentMode {
   FREE_CHAT
 }
 
+enum SignupStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Sprint {
   id          String       @id @default(cuid())
   name        String
@@ -450,4 +456,23 @@ model WhatsappMessage {
   @@index([ticketId])
   @@index([filterReason])
   @@map("whatsapp_messages")
+}
+
+model SignupRequest {
+  id              String       @id @default(cuid())
+  name            String
+  email           String
+  firmName        String       // free-text firm name the applicant typed
+  note            String?      // optional message from applicant
+  status          SignupStatus @default(PENDING)
+  reviewedById    String?      // admin User.id who actioned it
+  reviewedAt      DateTime?
+  mappedCompanyId String?      // Company chosen at approval
+  createdUserId   String?      // User provisioned on approval
+  rejectionReason String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([status, createdAt])
+  @@map("signup_requests")
 }
