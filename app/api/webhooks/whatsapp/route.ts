@@ -458,13 +458,18 @@ export async function POST(request: NextRequest) {
       wasMentioned: mentionsBot,
     })
 
+    // Ticket create/comment confirmations are essential feedback (the ticket key + link),
+    // not chatter — they must send even when Auto-reply is off. Only pure reply_only
+    // chat responses are gated by Auto-reply.
+    const isTicketConfirmation = result.action === 'create_ticket' || result.action === 'comment_on_ticket'
+    const shouldSend = isTicketConfirmation || group.autoReply
     let suppressedByHuman = false
-    if (result.reply && group.autoReply) {
+    if (result.reply && shouldSend) {
       const humanRepliedMeanwhile = await prisma.whatsappMessage.findFirst({
         where: { groupJid, filterReason: 'bot_echo', createdAt: { gt: receivedAt } },
         select: { id: true },
       })
-      if (humanRepliedMeanwhile) {
+      if (humanRepliedMeanwhile && !isTicketConfirmation) {
         suppressedByHuman = true
         console.warn('[whatsapp-webhook] human replied while agent was processing, suppressing bot reply in', groupJid)
       } else {
