@@ -173,6 +173,16 @@ function LoginForm() {
             </Button>
           </form>
 
+          <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
+            New here?{' '}
+            <a
+              href="/signup"
+              className="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 transition-colors"
+            >
+              Request access
+            </a>
+          </p>
+
           {tenantInfo && (
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
               <p className="text-xs text-center text-gray-500 dark:text-gray-400">
