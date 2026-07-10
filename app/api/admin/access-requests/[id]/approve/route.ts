@@ -3,7 +3,6 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { SignupService } from '@/lib/signup'
 import { SMTPService } from '@/lib/services/smtp'
 import { generateSignupInviteEmail } from '@/lib/email-templates/signup-invite'
-import { buildFirmBaseUrl } from '@/lib/urls'
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -20,7 +19,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
     const result = await SignupService.approve(params.id, companyId, session.user.id)
 
-    const inviteLink = `${buildFirmBaseUrl(result.company.subdomain)}/reset-password?token=${result.token}`
+    // Invite points at the app's own host (single-host deployment), mirroring the
+    // existing forgot-password reset link. Firm subdomains are not separate hosts.
+    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const inviteLink = `${baseUrl}/reset-password?token=${result.token}`
     const email = generateSignupInviteEmail({
       userName: result.user.name,
       firmName: result.company.name,

@@ -21,6 +21,7 @@ function req(body: unknown) {
 describe('POST /api/admin/access-requests/[id]/approve', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    process.env.NEXTAUTH_URL = 'https://portal.example.com'
     mockRequireAdmin.mockResolvedValue({ user: { id: 'admin1', role: 'ADMIN' } } as any)
     mockSend.mockResolvedValue(true)
   })
@@ -39,6 +40,11 @@ describe('POST /api/admin/access-requests/[id]/approve', () => {
     expect(data.emailSent).toBe(true)
     expect(mockApprove).toHaveBeenCalledWith('r1', 'c1', 'admin1')
     expect(mockSend).toHaveBeenCalledTimes(1)
+
+    // Invite link uses the app host (NEXTAUTH_URL), NOT a per-firm subdomain.
+    const sendArg = mockSend.mock.calls[0][0] as any
+    expect(sendArg.html).toContain(`https://portal.example.com/reset-password?token=${'a'.repeat(64)}`)
+    expect(sendArg.html).not.toContain('acme.portal.example.com')
   })
 
   it('returns 400 when companyId is missing', async () => {
