@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
     const response = {
       tickets: tickets.map(ticket => ({
         id: ticket.id,
+        key: ticket.key,
         title: ticket.title,
         description: ticket.description.substring(0, 200) + (ticket.description.length > 200 ? '...' : ''),
         status: ticket.status,

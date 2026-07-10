@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
       query,
       results: tickets.map(ticket => ({
         id: ticket.id,
+        key: ticket.key,
         title: ticket.title,
         description: ticket.description.substring(0, 150) + '...',
         status: ticket.status,

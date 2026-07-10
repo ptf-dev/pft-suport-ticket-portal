@@ -95,6 +95,7 @@ export async function GET(
     const response = {
       ticket: {
         id: ticket.id,
+        key: ticket.key,
         title: ticket.title,
         description: ticket.description,
         status: ticket.status,
