@@ -5,6 +5,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { ALLOWED_ATTACHMENT_TYPES as ALLOWED_TYPES, MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE } from '@/lib/attachments'
+import { ticketAccess } from '@/lib/ticket-access'
 
 /**
  * Image Upload API Endpoint
@@ -26,7 +27,7 @@ export async function POST(
     const session = await requireClient()
     const companyId = session.user.companyId!
 
-    // Verify ticket exists and belongs to client's company
+    // Verify ticket exists
     const ticket = await prisma.ticket.findUnique({
       where: { id: params.id },
     })
@@ -38,11 +39,9 @@ export async function POST(
       )
     }
 
-    if (ticket.companyId !== companyId) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
+    const access = await ticketAccess(session.user.id, session.user.role, companyId, params.id)
+    if (!access.view) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     // Parse form data

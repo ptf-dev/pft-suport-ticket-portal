@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { TicketStatus } from '@prisma/client'
 import { ActivityService } from '@/lib/services/activity'
+import { ticketAccess } from '@/lib/ticket-access'
 
 /**
  * PATCH /api/portal/tickets/[id]/status
@@ -44,7 +45,8 @@ export async function PATCH(
     }
 
     // Verify tenant access (clients can only update their own company's tickets)
-    if (session.user.role === 'CLIENT' && ticket.companyId !== session.user.companyId) {
+    const access = await ticketAccess(session.user.id, session.user.role, session.user.companyId ?? null, params.id)
+    if (!access.manage) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 

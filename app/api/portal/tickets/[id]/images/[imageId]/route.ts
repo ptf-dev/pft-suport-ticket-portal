@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireClient } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { ticketAccess } from '@/lib/ticket-access'
 import { unlink } from 'fs/promises'
 import { join } from 'path'
 
@@ -10,15 +11,12 @@ export async function DELETE(
 ) {
   try {
     const session = await requireClient()
+    const companyId = session.user.companyId!
 
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: params.id },
-      select: { companyId: true },
-    })
-
-    if (!ticket || ticket.companyId !== session.user.companyId) {
+    const access = await ticketAccess(session.user.id, session.user.role, companyId, params.id)
+    if (!access.view) {
       return NextResponse.json(
-        { error: 'Ticket not found' },
+        { error: 'Not found' },
         { status: 404 }
       )
     }

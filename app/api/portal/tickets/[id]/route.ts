@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireClient } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { ticketAccess } from '@/lib/ticket-access'
 
 /**
  * Ticket Update API Endpoint
@@ -20,23 +21,9 @@ export async function PATCH(
     const session = await requireClient()
     const companyId = session.user.companyId!
 
-    // Verify ticket exists and belongs to client's company
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: params.id },
-    })
-
-    if (!ticket) {
-      return NextResponse.json(
-        { error: 'Ticket not found' },
-        { status: 404 }
-      )
-    }
-
-    if (ticket.companyId !== companyId) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
+    const access = await ticketAccess(session.user.id, session.user.role, companyId, params.id)
+    if (!access.view) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     // Parse request body

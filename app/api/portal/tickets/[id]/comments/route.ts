@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { NotificationService } from '@/lib/services/notification'
 import { ActivityService } from '@/lib/services/activity'
 import { notifyTicketNewComment } from '@/lib/services/whatsapp-notify'
+import { ticketAccess } from '@/lib/ticket-access'
 
 /**
  * Comment Creation API Endpoint (Client Portal)
@@ -31,7 +32,7 @@ export async function POST(
     const companyId = session.user.companyId!
     const userId = session.user.id
 
-    // Verify ticket exists and belongs to client's company
+    // Verify ticket exists
     const ticket = await prisma.ticket.findUnique({
       where: { id: params.id },
     })
@@ -43,11 +44,9 @@ export async function POST(
       )
     }
 
-    if (ticket.companyId !== companyId) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      )
+    const access = await ticketAccess(session.user.id, session.user.role, companyId, params.id)
+    if (!access.comment) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     // Parse request body
