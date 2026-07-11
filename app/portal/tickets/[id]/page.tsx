@@ -17,6 +17,7 @@ import { MarkdownRenderer } from '@/components/markdown-renderer'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { isImageMime } from '@/lib/attachments'
 import { FileText } from 'lucide-react'
+import { WatchersPanel } from '@/components/watchers-panel'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -387,6 +388,17 @@ export default async function ClientTicketDetailPage({
                   {new Date(ticket.updatedAt).toLocaleString()}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-5">
+              <WatchersPanel
+                ticketId={ticket.id}
+                isAdmin={false}
+                canAddWatchers={access.manage}
+                currentUserId={session.user.id}
+              />
             </CardContent>
           </Card>
 

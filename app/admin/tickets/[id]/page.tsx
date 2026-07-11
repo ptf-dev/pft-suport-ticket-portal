@@ -20,6 +20,7 @@ import { TicketRelations } from './ticket-relations'
 import { TicketCommits } from './ticket-commits'
 import { TicketSprintForm } from '@/components/ticket-sprint-form'
 import { ActivityTimeline } from '@/components/activity-timeline'
+import { WatchersPanel } from '@/components/watchers-panel'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
 import { cn } from '@/lib/utils'
@@ -64,7 +65,7 @@ export default async function AdminTicketDetailPage({
   params: { id: string }
 }) {
   // Protect route - admin only
-  await requireAdmin()
+  const session = await requireAdmin()
 
   // Query ticket with all related data
   const ticket = await prisma.ticket.findUnique({
@@ -512,6 +513,17 @@ export default async function AdminTicketDetailPage({
                   {new Date(ticket.updatedAt).toLocaleString()}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-5">
+              <WatchersPanel
+                ticketId={ticket.id}
+                isAdmin={true}
+                canAddWatchers={true}
+                currentUserId={session.user.id}
+              />
             </CardContent>
           </Card>
 
