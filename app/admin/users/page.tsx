@@ -41,7 +41,7 @@ export default async function UsersPage({
       orderBy,
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      include: { company: { select: { name: true } } },
+      include: { company: { select: { name: true, isActive: true } } },
     }),
   ])
 

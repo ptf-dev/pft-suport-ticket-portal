@@ -14,7 +14,7 @@ interface User {
   role: 'ADMIN' | 'CLIENT'
   isActive: boolean
   createdAt: Date
-  company: { name: string } | null
+  company: { name: string; isActive: boolean } | null
 }
 
 export function UsersTable({ users }: { users: User[] }) {
@@ -59,8 +59,9 @@ export function UsersTable({ users }: { users: User[] }) {
               <div className="w-9 h-9 rounded-lg bg-ink text-bg flex items-center justify-center font-display text-sm shrink-0">
                 {user.name.charAt(0).toUpperCase()}
               </div>
-              <div className={`text-sm font-medium truncate ${user.isActive ? 'text-ink' : 'text-ink-mute'}`}>{user.name}</div>
+              <div className={`text-sm font-medium truncate ${user.isActive && user.company?.isActive !== false ? 'text-ink' : 'text-ink-mute'}`}>{user.name}</div>
               {!user.isActive && <Badge variant="secondary">Inactive</Badge>}
+              {user.isActive && user.company?.isActive === false && <Badge variant="secondary">Firm Inactive</Badge>}
             </div>
           </td>
           <td className="px-4 py-3.5 text-sm text-ink-soft">{user.email}</td>
