@@ -226,4 +226,24 @@ export class ActivityService {
       toValue: to,
     })
   }
+
+  static watcherAdded(ticketId: string, actorId: string, watcherUser: { id: string; name: string; email: string }) {
+    return this.log({
+      ticketId,
+      actorId,
+      type: ActivityType.WATCHER_ADDED,
+      toValue: watcherUser.name,
+      meta: { watcherUserId: watcherUser.id, watcherUserName: watcherUser.name, watcherUserEmail: watcherUser.email },
+    })
+  }
+
+  static watcherRemoved(ticketId: string, actorId: string, watcherUser: { id: string; name: string; email: string }) {
+    return this.log({
+      ticketId,
+      actorId,
+      type: ActivityType.WATCHER_REMOVED,
+      fromValue: watcherUser.name,
+      meta: { watcherUserId: watcherUser.id, watcherUserName: watcherUser.name, watcherUserEmail: watcherUser.email },
+    })
+  }
 }

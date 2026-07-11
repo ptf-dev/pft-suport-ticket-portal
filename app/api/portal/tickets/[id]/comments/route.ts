@@ -96,6 +96,11 @@ export async function POST(
 
     ActivityService.commented(params.id, userId, comment.id, false, data.message).catch(() => {})
 
+    NotificationService.notifyWatchers(params.id, 'comment', userId, {
+      commentAuthor: session.user.name,
+      commentPreview: data.message,
+    }).catch(() => {})
+
     return NextResponse.json(comment, { status: 201 })
   } catch (error) {
     console.error('Error creating comment:', error)

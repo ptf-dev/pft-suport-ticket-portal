@@ -54,6 +54,11 @@ export async function PATCH(
 
     if (ticket.status !== status) {
       ActivityService.statusChanged(params.id, session.user.id, ticket.status, status).catch(() => {})
+
+      NotificationService.notifyWatchers(params.id, 'status_changed', session.user.id, {
+        oldStatus: ticket.status,
+        newStatus: status,
+      }).catch(() => {})
     }
 
     NotificationService.notifyClientStatusChanged(params.id, ticket.status, status).catch(() => {})

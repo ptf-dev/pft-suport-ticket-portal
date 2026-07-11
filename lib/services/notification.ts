@@ -386,4 +386,121 @@ export class NotificationService {
       console.error('[NotificationService] notifyEscalation failed:', err)
     }
   }
+
+  /**
+   * Notify a user they've been added as a watcher on a ticket.
+   */
+  static async notifyWatcherAdded(ticketId: string, watcherUserId: string): Promise<void> {
+    try {
+      const smtpSettings = await prisma.sMTPSettings.findFirst({
+        where: { isActive: true },
+        orderBy: { updatedAt: 'desc' },
+      })
+      if (!smtpSettings) return
+
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+          company: { select: { name: true } },
+          createdBy: { select: { name: true } },
+        },
+      })
+      if (!ticket) return
+
+      const watcher = await prisma.user.findUnique({
+        where: { id: watcherUserId },
+        select: { name: true, email: true, role: true },
+      })
+      if (!watcher) return
+
+      const portalPath = watcher.role === 'ADMIN' ? 'admin' : 'portal'
+      const subject = `[Watching] You've been added to: ${ticket.title}`
+      const html = baseHtml('You\'re Now Watching a Ticket', `
+        <p>Hi ${watcher.name},</p>
+        <p>You've been added as a watcher on a support ticket. You'll receive notifications when there are updates.</p>
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+          <tr><td style="padding:8px;color:#6b7280;width:120px;">Ticket</td><td style="padding:8px;font-weight:600;">${ticket.title}</td></tr>
+          <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Company</td><td style="padding:8px;">${ticket.company.name}</td></tr>
+          <tr><td style="padding:8px;color:#6b7280;">Created by</td><td style="padding:8px;">${ticket.createdBy.name}</td></tr>
+        </table>
+        <a href="${process.env.NEXTAUTH_URL}/${portalPath}/tickets/${ticketId}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">View Ticket →</a>
+      `)
+
+      await SMTPService.sendEmail({ to: watcher.email, subject, html })
+    } catch (err) {
+      console.error('[NotificationService] notifyWatcherAdded failed:', err)
+    }
+  }
+
+  /**
+   * Notify all watchers on a ticket of a comment or status change event.
+   * Excludes the actor who triggered the event (they don't need to be told about their own action).
+   */
+  static async notifyWatchers(
+    ticketId: string,
+    event: 'comment' | 'status_changed',
+    excludeUserId?: string,
+    extraContext?: { commentAuthor?: string; commentPreview?: string; oldStatus?: string; newStatus?: string },
+  ): Promise<void> {
+    try {
+      const smtpSettings = await prisma.sMTPSettings.findFirst({
+        where: { isActive: true },
+        orderBy: { updatedAt: 'desc' },
+      })
+      if (!smtpSettings) return
+
+      const ticket = await prisma.ticket.findUnique({
+        where: { id: ticketId },
+        include: {
+          company: { select: { name: true } },
+          watchers: {
+            include: {
+              user: { select: { id: true, name: true, email: true, role: true } },
+            },
+          },
+        },
+      })
+      if (!ticket) return
+
+      for (const w of ticket.watchers) {
+        if (w.user.id === excludeUserId) continue
+
+        const portalPath = w.user.role === 'ADMIN' ? 'admin' : 'portal'
+        let subject: string
+        let body: string
+
+        if (event === 'comment') {
+          subject = `[Ticket Update] New comment on: ${ticket.title}`
+          body = `
+            <p>Hi ${w.user.name},</p>
+            <p>A new comment was added to a ticket you're watching.</p>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+              <tr><td style="padding:8px;color:#6b7280;width:120px;">Ticket</td><td style="padding:8px;font-weight:600;">${ticket.title}</td></tr>
+              <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Company</td><td style="padding:8px;">${ticket.company.name}</td></tr>
+              ${extraContext?.commentAuthor ? `<tr><td style="padding:8px;color:#6b7280;">Comment by</td><td style="padding:8px;">${extraContext.commentAuthor}</td></tr>` : ''}
+            </table>
+            ${extraContext?.commentPreview ? `<div style="background:#f9fafb;padding:16px;border-radius:6px;margin:16px 0;"><p style="color:#374151;margin:0;">${extraContext.commentPreview.slice(0, 300)}</p></div>` : ''}
+            <a href="${process.env.NEXTAUTH_URL}/${portalPath}/tickets/${ticketId}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">View Ticket →</a>
+          `
+        } else {
+          subject = `[Ticket Update] Status changed on: ${ticket.title}`
+          body = `
+            <p>Hi ${w.user.name},</p>
+            <p>A ticket you're watching has had its status updated.</p>
+            <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+              <tr><td style="padding:8px;color:#6b7280;width:120px;">Ticket</td><td style="padding:8px;font-weight:600;">${ticket.title}</td></tr>
+              ${extraContext?.oldStatus ? `<tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Previous status</td><td style="padding:8px;">${extraContext.oldStatus.replace(/_/g, ' ')}</td></tr>` : ''}
+              ${extraContext?.newStatus ? `<tr><td style="padding:8px;color:#6b7280;">New status</td><td style="padding:8px;font-weight:600;color:#2563eb;">${extraContext.newStatus.replace(/_/g, ' ')}</td></tr>` : ''}
+            </table>
+            <a href="${process.env.NEXTAUTH_URL}/${portalPath}/tickets/${ticketId}" style="display:inline-block;background:#2563eb;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:8px;">View Ticket →</a>
+          `
+        }
+
+        const html = baseHtml(event === 'comment' ? 'New Comment on Watched Ticket' : 'Status Change on Watched Ticket', body)
+        await SMTPService.sendEmail({ to: w.user.email, subject, html })
+      }
+    } catch (err) {
+      console.error('[NotificationService] notifyWatchers failed:', err)
+    }
+  }
 }

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { TicketStatus } from '@prisma/client'
 import { ActivityService } from '@/lib/services/activity'
+import { NotificationService } from '@/lib/services/notification'
 import { ticketAccess } from '@/lib/ticket-access'
 
 /**
@@ -73,6 +74,11 @@ export async function PATCH(
     // ticket out of WAITING_CLIENT gets counted as a boomerang (see lib/boomerang.ts).
     if (ticket.status !== status) {
       ActivityService.statusChanged(params.id, session.user.id, ticket.status, status).catch(() => {})
+
+      NotificationService.notifyWatchers(params.id, 'status_changed', session.user.id, {
+        oldStatus: ticket.status,
+        newStatus: status,
+      }).catch(() => {})
     }
 
     return NextResponse.json(updatedTicket)
