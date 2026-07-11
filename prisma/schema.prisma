@@ -93,6 +93,8 @@ enum ActivityType {
   RELATION_ADDED
   RELATION_REMOVED
   MENTIONED
+  WATCHER_ADDED
+  WATCHER_REMOVED
 }
 
 // ============================================================================
@@ -144,6 +146,8 @@ model User {
   comments        TicketComment[]
   ticketRelations TicketRelation[]
   activities      TicketActivity[]
+  watchedTickets  TicketWatcher[] @relation("WatchedTickets")
+  addedWatchers   TicketWatcher[] @relation("AddedWatchers")
 
   // Composite unique constraint for tenant isolation
   @@unique([email, companyId])
@@ -188,6 +192,7 @@ model Ticket {
   relationsAsSource TicketRelation[] @relation("TicketRelationSource")
   relationsAsTarget TicketRelation[] @relation("TicketRelationTarget")
   activities       TicketActivity[]
+  watchers         TicketWatcher[]
 
   @@index([assignedToId])
   @@index([scheduledDate])
@@ -395,6 +400,22 @@ model TicketActivity {
   @@index([createdAt])
   @@index([type])
   @@map("ticket_activities")
+}
+
+model TicketWatcher {
+  id        String   @id @default(cuid())
+  ticketId  String
+  userId    String
+  addedById String
+  createdAt DateTime @default(now())
+
+  ticket  Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user    User   @relation("WatchedTickets", fields: [userId], references: [id], onDelete: Cascade)
+  addedBy User   @relation("AddedWatchers", fields: [addedById], references: [id])
+
+  @@unique([ticketId, userId])
+  @@index([userId])
+  @@map("ticket_watchers")
 }
 
 model WhatsappGroup {

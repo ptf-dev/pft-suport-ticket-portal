@@ -37,6 +37,8 @@ const META: Record<ActivityType, { icon: ReactNode; tone: string; verb: string }
   RELATION_ADDED:   { icon: <Link2 className="w-3.5 h-3.5" />,              tone: 'text-info',   verb: 'linked' },
   RELATION_REMOVED: { icon: <Link2Off className="w-3.5 h-3.5" />,           tone: 'text-ink-mute', verb: 'unlinked' },
   MENTIONED:        { icon: <AtSign className="w-3.5 h-3.5" />,             tone: 'text-accent', verb: 'mentioned' },
+  WATCHER_ADDED:    { icon: <UserPlus className="w-3.5 h-3.5" />,           tone: 'text-info',   verb: 'added as watcher' },
+  WATCHER_REMOVED:  { icon: <UserMinus className="w-3.5 h-3.5" />,          tone: 'text-ink-mute', verb: 'removed as watcher' },
 }
 
 function groupByDay(entries: ActivityEntry[]): Map<string, ActivityEntry[]> {
