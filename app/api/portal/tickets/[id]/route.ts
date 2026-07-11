@@ -22,8 +22,8 @@ export async function PATCH(
     const companyId = session.user.companyId!
 
     const access = await ticketAccess(session.user.id, session.user.role, companyId, params.id)
-    if (!access.view) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!access.manage) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Parse request body
