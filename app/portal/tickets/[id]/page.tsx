@@ -1,4 +1,5 @@
 import { requireClient } from '@/lib/auth-helpers'
+import { ticketAccess, TicketCapability } from '@/lib/ticket-access'
 import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -59,6 +60,11 @@ export default async function ClientTicketDetailPage({
   const session = await requireClient()
   const companyId = session.user.companyId!
 
+  const access: TicketCapability = await ticketAccess(session.user.id, session.user.role, companyId, params.id)
+  if (!access.view) {
+    notFound()
+  }
+
   // Query ticket with tenant access validation
   const ticket = await prisma.ticket.findUnique({
     where: { id: params.id },
@@ -88,8 +94,8 @@ export default async function ClientTicketDetailPage({
     },
   })
 
-  // Return 404 if ticket doesn't exist or belongs to different company
-  if (!ticket || ticket.companyId !== companyId) {
+  // Ticket existence already confirmed by ticketAccess(), but guard for null narrowing
+  if (!ticket) {
     notFound()
   }
 
@@ -150,15 +156,17 @@ export default async function ClientTicketDetailPage({
       </div>
 
       {/* Edit and Add Attachments Actions */}
-      <div className="flex gap-2">
-        <EditTicketForm
-          ticketId={ticket.id}
-          initialTitle={ticket.title}
-          initialDescription={ticket.description}
-          initialCategory={ticket.category || undefined}
-        />
-        <AddAttachmentsForm ticketId={ticket.id} />
-      </div>
+      {access.manage && (
+        <div className="flex gap-2">
+          <EditTicketForm
+            ticketId={ticket.id}
+            initialTitle={ticket.title}
+            initialDescription={ticket.description}
+            initialCategory={ticket.category || undefined}
+          />
+          <AddAttachmentsForm ticketId={ticket.id} />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
@@ -322,24 +330,28 @@ export default async function ClientTicketDetailPage({
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Status Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TicketStatusForm ticketId={ticket.id} currentStatus={ticket.status} />
-            </CardContent>
-          </Card>
+          {access.manage && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TicketStatusForm ticketId={ticket.id} currentStatus={ticket.status} />
+              </CardContent>
+            </Card>
+          )}
 
           {/* Priority Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Priority</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TicketPriorityForm ticketId={ticket.id} currentPriority={ticket.priority} />
-            </CardContent>
-          </Card>
+          {access.manage && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Manage Priority</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TicketPriorityForm ticketId={ticket.id} currentPriority={ticket.priority} />
+              </CardContent>
+            </Card>
+          )}
 
           {/* Ticket Info */}
           <Card>

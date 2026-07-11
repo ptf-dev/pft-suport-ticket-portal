@@ -25,6 +25,11 @@ export default async function PortalDashboard({
   const session = await requireClient()
   const companyId = session.user.companyId!
 
+  const watchedTicketIds = await prisma.ticketWatcher.findMany({
+    where: { userId: session.user.id },
+    select: { ticketId: true },
+  }).then(rows => rows.map(r => r.ticketId))
+
   const SORT_MAP: Record<string, object> = {
     title:     { title: 'asc' },
     status:    { status: 'asc' },
@@ -42,12 +47,23 @@ export default async function PortalDashboard({
   const currentSort  = searchParams.sort ?? 'createdAt'
   const currentOrder = (order) as 'asc' | 'desc'
 
-  // Build where clause with search
-  const ticketWhere: any = { companyId, isDeleted: false }
+  // Build where clause: own company tickets merged with watched cross-firm tickets
+  const ticketWhere: any = {
+    OR: [
+      { companyId, isDeleted: false },
+      ...(watchedTicketIds.length > 0
+        ? [{ id: { in: watchedTicketIds }, isDeleted: false }]
+        : []),
+    ],
+  }
   if (searchParams.search) {
-    ticketWhere.OR = [
-      { title: { contains: searchParams.search, mode: 'insensitive' } },
-      { description: { contains: searchParams.search, mode: 'insensitive' } },
+    ticketWhere.AND = [
+      {
+        OR: [
+          { title: { contains: searchParams.search, mode: 'insensitive' } },
+          { description: { contains: searchParams.search, mode: 'insensitive' } },
+        ],
+      },
     ]
   }
 
@@ -65,6 +81,7 @@ export default async function PortalDashboard({
     take: 10,
     orderBy,
     include: {
+      company: { select: { name: true } },
       createdBy: { select: { name: true } },
       assignedTo: { select: { name: true } },
     },
@@ -154,7 +171,14 @@ export default async function PortalDashboard({
                             <Link href={`/portal/tickets/${ticket.id}`} className="font-medium text-ink hover:text-accent transition-colors line-clamp-1 block">
                               {ticket.title}
                             </Link>
-                            <div className="mt-1 text-[11px] font-mono text-ink-mute">#{ticket.id.slice(0, 8)}</div>
+                            <div className="mt-1 text-[11px] font-mono text-ink-mute">
+                              #{ticket.id.slice(0, 8)}
+                              {ticket.companyId !== companyId && (
+                                <span className="ml-2 text-info">
+                                  Watching · {ticket.company?.name}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>

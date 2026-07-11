@@ -33,18 +33,34 @@ export default async function PortalTicketsPage({
   const session = await requireClient()
   const companyId = session.user.companyId!
 
+  const watchedTicketIds = await prisma.ticketWatcher.findMany({
+    where: { userId: session.user.id },
+    select: { ticketId: true },
+  }).then(rows => rows.map(r => r.ticketId))
+
   const view = searchParams.view ?? 'board'
   const page = Math.max(1, parseInt(searchParams.page ?? '1', 10))
   const sortKey = SORT_MAP[searchParams.sort ?? ''] ? (searchParams.sort ?? 'createdAt') : 'createdAt'
   const order = searchParams.order === 'asc' ? 'asc' : 'desc'
   const orderBy = applyDir(SORT_MAP[sortKey], order)
 
-  // Build where clause with search
-  const where: any = { companyId, isDeleted: false }
+  // Build where clause: own company tickets merged with watched cross-firm tickets
+  const where: any = {
+    OR: [
+      { companyId, isDeleted: false },
+      ...(watchedTicketIds.length > 0
+        ? [{ id: { in: watchedTicketIds }, isDeleted: false }]
+        : []),
+    ],
+  }
   if (searchParams.search) {
-    where.OR = [
-      { title: { contains: searchParams.search, mode: 'insensitive' } },
-      { description: { contains: searchParams.search, mode: 'insensitive' } },
+    where.AND = [
+      {
+        OR: [
+          { title: { contains: searchParams.search, mode: 'insensitive' } },
+          { description: { contains: searchParams.search, mode: 'insensitive' } },
+        ],
+      },
     ]
   }
 
@@ -56,6 +72,7 @@ export default async function PortalTicketsPage({
       skip: view === 'board' ? 0 : (page - 1) * PAGE_SIZE,
       take: view === 'board' ? undefined : PAGE_SIZE,
       include: {
+        company: { select: { name: true } },
         createdBy: { select: { name: true } },
         assignedTo: { select: { name: true } },
         _count: { select: { comments: true, images: true } },
@@ -150,7 +167,14 @@ export default async function PortalTicketsPage({
                             className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-1 block">
                             {ticket.title}
                           </Link>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">#{ticket.id.slice(0, 8)}</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
+                            #{ticket.id.slice(0, 8)}
+                            {ticket.companyId !== companyId && (
+                              <span className="ml-2 text-info">
+                                Watching · {ticket.company?.name}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
