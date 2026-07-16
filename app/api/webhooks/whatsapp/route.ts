@@ -5,11 +5,7 @@ import { join } from 'path'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { verifyWebhookSignature, sendGroupText, getBotIdentity, downloadWahaMedia, startTyping, stopTyping } from '@/lib/integrations/waha'
-import { runWhatsappAgent, runFreeChatStandalone, RateLimitError } from '@/lib/agents/whatsapp-agent'
-
-const RATE_LIMIT_REPLY = "⚠️ LLM rate limit reached — try again in a minute."
-const GROUP_DISABLED_NOTICE = "Hey — I'm actually turned off for this group right now (an admin disabled me in the WhatsApp settings). Flip \"Enabled\" back on in the admin panel and I'll pick support back up."
-const GROUP_DISABLED_NOTICE_COOLDOWN_MS = 60 * 60 * 1000
+import { runWhatsappAgent, RateLimitError } from '@/lib/agents/whatsapp-agent'
 import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE } from '@/lib/attachments'
 
 export const dynamic = 'force-dynamic'
@@ -111,15 +107,6 @@ async function claimMessage(row: {
     })
     return res.count > 0
   }
-}
-
-async function wasLastRateLimited(chatId: string): Promise<boolean> {
-  const last = await prisma.whatsappMessage.findFirst({
-    where: { groupJid: chatId, processed: true },
-    orderBy: { createdAt: 'desc' },
-    select: { agentAction: true },
-  })
-  return last?.agentAction === 'rate_limited'
 }
 
 interface WahaMediaHint {
@@ -285,88 +272,11 @@ export async function POST(request: NextRequest) {
     include: { company: { select: { name: true } } },
   })
 
+  // Unmapped or disabled groups get no reply of any kind — not a notice, not chat.
+  // The bot only ever speaks via ticket confirmations and status-change
+  // notifications; there's nothing useful it can say here, so stay silent.
   if (!group || !group.enabled) {
     const reason = !group ? 'group_unmapped' : 'group_disabled'
-
-    if (reason === 'group_disabled' && mentionsBot) {
-      if (!(await claimMessage(baseRow))) {
-        return NextResponse.json({ ok: true, ignored: 'duplicate' })
-      }
-      try {
-        const lastNotice = await prisma.whatsappMessage.findFirst({
-          where: { groupJid, agentAction: 'group_disabled_notice' },
-          orderBy: { createdAt: 'desc' },
-          select: { createdAt: true },
-        })
-        const withinCooldown = lastNotice && Date.now() - lastNotice.createdAt.getTime() < GROUP_DISABLED_NOTICE_COOLDOWN_MS
-        if (!withinCooldown) {
-          try { await sendGroupText(groupJid, GROUP_DISABLED_NOTICE) } catch (err) { console.error('[whatsapp-webhook] group-disabled notice send failed', err) }
-          await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'group_disabled_notice', replyText: GROUP_DISABLED_NOTICE })
-          return NextResponse.json({ ok: true, action: 'group_disabled_notice' })
-        }
-        await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'notice_cooldown_skip' })
-        return NextResponse.json({ ok: true, ignored: reason })
-      } catch (err) {
-        // Never leave the row stuck at 'processing' — mark it 'error' (re-claimable)
-        // and 500 so WAHA's retry gets a real second chance.
-        console.error('[whatsapp-webhook] disabled-notice path failed after claim', err)
-        await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'error' })
-        return NextResponse.json({ ok: false, error: 'disabled-notice failure' }, { status: 500 })
-      }
-    }
-
-    if (mentionsBot) {
-      if (!(await claimMessage(baseRow))) {
-        return NextResponse.json({ ok: true, ignored: 'duplicate' })
-      }
-      try {
-        const recentMessages = await prisma.whatsappMessage.findMany({
-          where: { groupJid },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-          select: { senderName: true, body: true },
-        })
-        const context = recentMessages.length
-          ? recentMessages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
-          : '(no context)'
-        const groupName = msg?._data?.chat?.name ?? msg?.chat?.name ?? groupJid.replace('@g.us', '')
-        await startTyping(groupJid)
-        const result = await runFreeChatStandalone({
-          groupName,
-          senderName,
-          body,
-          recentMessages: context,
-        })
-        let outgoing: string | null
-        let action: string
-        if (result.ok) {
-          outgoing = result.text
-          action = 'unmapped_free_chat'
-        } else if (result.reason === 'rate_limit') {
-          action = 'rate_limited'
-          outgoing = (await wasLastRateLimited(groupJid).catch(() => true)) ? null : RATE_LIMIT_REPLY
-        } else {
-          outgoing = null
-          action = 'unmapped_fallback_reply'
-        }
-        if (outgoing) {
-          try { await sendGroupText(groupJid, outgoing) } catch (err) { console.error('[whatsapp-webhook] unmapped-group reply send failed', err) }
-        }
-        await stopTyping(groupJid)
-        await recordMessage({
-          ...baseRow,
-          filterReason: reason,
-          processed: true,
-          agentAction: action,
-        })
-        return NextResponse.json({ ok: true, action })
-      } catch (err) {
-        console.error('[whatsapp-webhook] unmapped free-chat path failed after claim', err)
-        await stopTyping(groupJid)
-        await recordMessage({ ...baseRow, filterReason: reason, processed: true, agentAction: 'error' })
-        return NextResponse.json({ ok: false, error: 'unmapped free-chat failure' }, { status: 500 })
-      }
-    }
     await recordMessage({ ...baseRow, filterReason: reason, processed: true })
     return NextResponse.json({ ok: true, ignored: reason })
   }
@@ -379,7 +289,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignored: 'not mentioned' })
   }
 
-  const receivedAt = new Date()
   if (!(await claimMessage(baseRow))) {
     return NextResponse.json({ ok: true, ignored: 'duplicate' })
   }
@@ -395,26 +304,16 @@ export async function POST(request: NextRequest) {
       wasMentioned: mentionsBot,
     })
 
-    // Ticket create/comment confirmations are essential feedback (the ticket key + link),
-    // not chatter — they must send even when Auto-reply is off. Only pure reply_only
-    // chat responses are gated by Auto-reply.
-    const isTicketConfirmation = result.action === 'create_ticket' || result.action === 'comment_on_ticket'
-    const shouldSend = isTicketConfirmation || group.autoReply
-    let suppressedByHuman = false
-    if (result.reply && shouldSend) {
-      const humanRepliedMeanwhile = await prisma.whatsappMessage.findFirst({
-        where: { groupJid, filterReason: 'bot_echo', createdAt: { gt: receivedAt } },
-        select: { id: true },
-      })
-      if (humanRepliedMeanwhile && !isTicketConfirmation) {
-        suppressedByHuman = true
-        console.warn('[whatsapp-webhook] human replied while agent was processing, suppressing bot reply in', groupJid)
-      } else {
-        try {
-          await sendGroupText(groupJid, result.reply)
-        } catch (err) {
-          console.error('[whatsapp-webhook] sendGroupText failed', err)
-        }
+    // The bot's only chat output is a ticket create/comment confirmation (the ticket
+    // key + link) — that's not chatter, it's the core function, so it always sends
+    // regardless of Auto-reply and regardless of any human reply in the meantime
+    // (a human's chat message doesn't convey the ticket key/link the confirmation
+    // does). There is no other reply path anymore, so nothing here needs suppressing.
+    if (result.reply) {
+      try {
+        await sendGroupText(groupJid, result.reply)
+      } catch (err) {
+        console.error('[whatsapp-webhook] sendGroupText failed', err)
       }
     }
 
@@ -430,20 +329,19 @@ export async function POST(request: NextRequest) {
       ...baseRow,
       filterReason: null,
       processed: true,
-      agentAction: suppressedByHuman ? 'suppressed_human_replied' : result.action,
+      agentAction: result.action,
       ticketId: result.ticketId ?? null,
-      replyText: suppressedByHuman ? null : (result.reply ?? null),
+      replyText: result.reply ?? null,
     })
 
-    return NextResponse.json({ ok: true, action: suppressedByHuman ? 'suppressed_human_replied' : result.action, ticketId: result.ticketId })
+    return NextResponse.json({ ok: true, action: result.action, ticketId: result.ticketId })
   } catch (err) {
     if (err instanceof RateLimitError) {
-      // .catch(() => true) — if the dedup lookup itself fails, err on the side of
-      // NOT sending; a throw here would skip the recordMessage below and leave the
-      // row stuck at 'processing'.
-      if (group.autoReply && !(await wasLastRateLimited(groupJid).catch(() => true))) {
-        try { await sendGroupText(groupJid, RATE_LIMIT_REPLY) } catch {}
-      }
+      // Silent — no chat text, just record it. 'rate_limited' is not in
+      // claimMessage's re-claim OR list, so this row is NOT auto-retried on the
+      // next duplicate delivery; it needs a fresh inbound message (or edit) to
+      // reprocess. That's fine here since there's nothing to retry towards but
+      // silence anyway.
       await recordMessage({ ...baseRow, filterReason: null, processed: true, agentAction: 'rate_limited' })
       return NextResponse.json({ ok: true, action: 'rate_limited' })
     }

@@ -194,11 +194,11 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                         <input type="checkbox" checked={g.enabled} onChange={(e) => patch(g.id, { enabled: e.target.checked })} />
                         <span>Enabled</span>
                       </label>
-                      <label className="flex items-center gap-2" title="Off = answer-only group: the bot can chat when tagged but cannot open or comment on tickets.">
+                      <label className="flex items-center gap-2" title="Off = the bot does nothing at all when tagged in this group. The bot never chats, only creates/comments on tickets.">
                         <input type="checkbox" checked={g.autoTicket} onChange={(e) => patch(g.id, { autoTicket: e.target.checked })} />
                         <span>Auto-ticket</span>
                       </label>
-                      <label className="flex items-center gap-2" title="Gates chat replies only — ticket confirmations always send.">
+                      <label className="flex items-center gap-2" title="Inert for message content — the bot has no chat replies to gate. Only affects whether the WhatsApp typing indicator shows.">
                         <input type="checkbox" checked={g.autoReply} onChange={(e) => patch(g.id, { autoReply: e.target.checked })} />
                         <span>Auto-reply</span>
                       </label>

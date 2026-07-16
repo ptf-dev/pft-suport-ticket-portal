@@ -16,177 +16,8 @@ function ticketLink(ticketId: string): string {
   return PORTAL_URL ? `${PORTAL_URL}/portal/tickets/${ticketId}` : ''
 }
 
-const FREE_CHAT_STANDALONE_PROMPT = `You are Bob, a friendly WhatsApp companion in a group called "{groupName}".
-
-You are NOT here as a support agent. No tickets. No product help. Just casual chat.
-
-WHO YOU ARE — this is your soul. Embody it completely, in every reply:
-{soul}
-
-RULES:
-- Reply warm and casual. Match the group's energy.
-- Have opinions. Have humor. Emojis fine when they fit.
-- Don't volunteer that you're an AI, but if someone directly asks whether you're a bot/AI, own it casually and move on — NEVER deny it or claim to be human.
-- Reply length matches the message — a quick quip gets a quick reply, a real question or story gets a real answer. Don't pad, don't artificially cut yourself short.
-
-LANGUAGE:
-- Detect the language of the incoming message and REPLY IN THAT LANGUAGE.
-- Common: English, Albanian (Shqip), German (Deutsch), Portuguese, Spanish, Italian.
-- "di shqip ti" → answer in Albanian; "hallo, geht's dir gut?" → answer in German.
-- Never explain that you translated.
-
-Recent messages in this group (oldest→newest):
-{recentMessages}
-
-New message from {senderName}: {messageText}
-
-Reply naturally in one message, whatever length fits.`
-
-export type FreeChatResult =
-  | { ok: true; text: string }
-  | { ok: false; reason: 'rate_limit' | 'no_key' | 'error' }
-
-export async function runFreeChatStandalone(input: {
-  groupName: string
-  senderName: string | null
-  body: string
-  recentMessages: string
-}): Promise<FreeChatResult> {
-  if (!LLM_API_KEY) return { ok: false, reason: 'no_key' }
-  const prompt = FREE_CHAT_STANDALONE_PROMPT
-    .replace('{soul}', getSouls().personal)
-    .replace(/\{groupName\}/g, input.groupName || 'the group')
-    .replace('{recentMessages}', input.recentMessages || '(no context)')
-    .replace('{senderName}', input.senderName ?? 'unknown')
-    .replace('{messageText}', input.body)
-  try {
-    const res = await callChatText(prompt)
-    if (!res) return { ok: false, reason: 'error' }
-    return { ok: true, text: res }
-  } catch (err) {
-    if (err instanceof RateLimitError) {
-      console.warn('[whatsapp-agent] free-chat rate limited')
-      return { ok: false, reason: 'rate_limit' }
-    }
-    console.error('[whatsapp-agent] free-chat standalone failed', err)
-    return { ok: false, reason: 'error' }
-  }
-}
-
-async function callChatTextOnce(prompt: string): Promise<Response> {
-  return fetch(`${LLM_BASE_URL.replace(/\/$/, '')}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${LLM_API_KEY}`,
-      'content-type': 'application/json',
-    },
-    cache: 'no-store',
-    body: JSON.stringify({
-      model: LLM_MODEL,
-      max_tokens: 512,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
-}
-
 export class RateLimitError extends Error {
   constructor(msg = 'LLM rate limited') { super(msg); this.name = 'RateLimitError' }
-}
-
-async function callOpenAiChatText(prompt: string): Promise<string> {
-  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
-  let res!: Response
-  let lastErr = ''
-  let lastStatus = 0
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      res = await callChatTextOnce(prompt)
-    } catch (err) {
-      lastStatus = 0
-      lastErr = String(err)
-      const wait = 1200 * (attempt + 1)
-      console.warn(`[whatsapp-agent] chat-text network error, retry ${attempt + 1}/3 in ${wait}ms:`, lastErr)
-      await new Promise((r) => setTimeout(r, wait))
-      continue
-    }
-    if (res.ok) break
-    lastStatus = res.status
-    if (res.status < 500 && res.status !== 429) {
-      lastErr = (await res.text().catch(() => '')).slice(0, 300)
-      throw new Error(`LLM text API error ${res.status}: ${lastErr}`)
-    }
-    lastErr = (await res.text().catch(() => '')).slice(0, 200)
-    const wait = 1200 * (attempt + 1)
-    console.warn(`[whatsapp-agent] chat-text ${res.status}, retry ${attempt + 1}/3 in ${wait}ms`)
-    await new Promise((r) => setTimeout(r, wait))
-  }
-  if (!res || !res.ok) {
-    if (lastStatus === 429 || lastStatus === 503) throw new RateLimitError(`LLM ${lastStatus} after retries`)
-    throw new Error(`LLM text API error ${lastStatus} after retries: ${lastErr}`)
-  }
-  const data = await res.json()
-  const content = data?.choices?.[0]?.message?.content
-  if (typeof content === 'string') return content.trim()
-  if (Array.isArray(content)) return content.map((c: any) => c?.text ?? '').join('').trim()
-  return ''
-}
-
-async function callAnthropicTextOnce(prompt: string): Promise<Response> {
-  return fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': LLM_API_KEY!,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    cache: 'no-store',
-    body: JSON.stringify({
-      model: LLM_MODEL,
-      max_tokens: 512,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  })
-}
-
-async function callAnthropicText(prompt: string): Promise<string> {
-  if (!LLM_API_KEY) throw new Error('WHATSAPP_LLM_API_KEY not configured')
-  let res!: Response
-  let lastErr = ''
-  let lastStatus = 0
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      res = await callAnthropicTextOnce(prompt)
-    } catch (err) {
-      lastStatus = 0
-      lastErr = String(err)
-      const wait = 1200 * (attempt + 1)
-      console.warn(`[whatsapp-agent] anthropic-text network error, retry ${attempt + 1}/3 in ${wait}ms:`, lastErr)
-      await new Promise((r) => setTimeout(r, wait))
-      continue
-    }
-    if (res.ok) break
-    lastStatus = res.status
-    if (res.status < 500 && res.status !== 429) {
-      lastErr = (await res.text().catch(() => '')).slice(0, 300)
-      throw new Error(`Anthropic text API error ${res.status}: ${lastErr}`)
-    }
-    lastErr = (await res.text().catch(() => '')).slice(0, 200)
-    const wait = 1200 * (attempt + 1)
-    console.warn(`[whatsapp-agent] anthropic-text ${res.status}, retry ${attempt + 1}/3 in ${wait}ms`)
-    await new Promise((r) => setTimeout(r, wait))
-  }
-  if (!res || !res.ok) {
-    if (lastStatus === 429 || lastStatus === 503) throw new RateLimitError(`Anthropic ${lastStatus} after retries`)
-    throw new Error(`Anthropic text API error ${lastStatus} after retries: ${lastErr}`)
-  }
-  const data = await res.json()
-  const content = data?.content
-  if (Array.isArray(content)) return content.map((c: any) => c?.text ?? '').join('').trim()
-  return ''
-}
-
-async function callChatText(prompt: string): Promise<string> {
-  return LLM_PROVIDER === 'anthropic' ? callAnthropicText(prompt) : callOpenAiChatText(prompt)
 }
 
 const LANGUAGE_RULE = `LANGUAGE:
@@ -197,57 +28,32 @@ const LANGUAGE_RULE = `LANGUAGE:
 - If user mixes languages, follow their dominant language.
 - Never explain that you translated. Just reply in their language.`
 
-const SYSTEM_PROMPT_MENTIONED = `You are the PFT Support Bot, an AI agent in a WhatsApp group for clients of {companyName}.
+const SYSTEM_PROMPT_MENTIONED = `You are the PFT Support Bot, a ticket-only WhatsApp integration for {companyName}. You are NOT a chat assistant.
 
-YOUR CHARACTER — this is your soul. Stay in it while you follow the rules below:
-{soul}
-
-You were @-tagged — someone is talking to YOU. ALWAYS engage. Never ignore.
-
-GENERAL RULES:
-- Reply helpfully to whatever they ask — questions, chit-chat, opinions, jokes, technical help, product questions.
-- Match reply length to the message: quick banter or a status check gets a short answer; a real question, explanation, or troubleshooting step gets as much detail as it needs. This is WhatsApp — conversational, not a formal email — but don't truncate a genuinely useful answer just to seem brief.
-- Share only public ticket status, never internal notes.
-- Don't volunteer AI disclaimers. If someone directly asks whether you're a bot/AI, confirm it briefly and move on — never deny it. Be direct.
+You were @-tagged. You have exactly two possible outcomes: log something, or do nothing. You never send a chat reply — no banter, no clarifying questions, no status answers, no "got it, tell me more". If you can't act, stay silent; a human will follow up.
 
 ${LANGUAGE_RULE}
 
-TICKET-CREATION RULES (this is the important one — you WILL get spammed):
-- DO NOT open tickets carelessly. Skepticism is the default.
-- Almost always prefer reply_only over create_ticket. Ask clarifying questions first.
-- Before you may call create_ticket, the request MUST have ALL of:
-  1. A concrete problem/feature described (not "fix stuff", "make it better")
-  2. Enough context to be actionable (what page/feature/product; what happened vs what should)
-  3. Either steps to reproduce OR a clear feature-request outcome
-  A symptom + comparison ("works on X, breaks on Y", "happens when I do X") already satisfies #3 — that IS a reproduction, don't ask for more.
-  An account/ticket ID + specific symptom + something they already tried ("verified account 900909613179, XAUUSD chart won't update, tried refreshing, nothing") ALSO satisfies #3 — the failed attempt IS the repro step. Don't hold a report like that hostage for extra polish.
-- If any of the above is missing → reply_only asking ONE focused follow-up question.
-- Once a report clears that bar, CREATE THE TICKET NOW — don't ask more questions first. Any remaining nice-to-have detail (which exact instrument, precise error text) goes in the ticket description as "still need to confirm: X", or as ONE follow-up question in your confirmation reply AFTER the ticket is already opened. The failure mode to avoid: asking 2-3 clarifying questions on a report that already had enough to act on, so a human ends up creating the ticket themselves before you would have.
-- If a message bundles multiple sub-issues and at least one of them independently clears the bar, create_ticket for that one now — don't block it on the other, still-unclear parts. Address those with reply_only or a follow-up question.
-- Don't substitute your own technical guesses or DIY troubleshooting speculation ("could be an iframe permissions issue, try checking...") for actually logging it — you have no access to the codebase or infra to diagnose it for real, and a plausible-sounding guess isn't a fix. That's a job for whoever picks up the ticket.
-- If the message is a joke / test / gibberish / vibes ("fix the batapim", "brr brr", memes) → reply_only, playful pushback. NEVER a ticket.
-- If the same person spam-tags with low-signal messages → reply_only politely deflecting; do NOT open tickets.
-- Look at Recent messages — if you (or your previous asks) already gathered enough info in this thread AND the user has now confirmed / provided details → create_ticket is fine.
-- Look at Existing open tickets — if a similar ticket already exists, add via comment_on_ticket instead of creating a duplicate.
+WHEN TO create_ticket:
+- The message describes a real, concrete problem or request with enough detail to act on: what's wrong, and either (a) a symptom + comparison ("works on X, breaks on Y"), or (b) an account/ticket ID + specific symptom + something they already tried (the failed attempt IS the repro step).
+- That bar is deliberately low — don't hold out for more polish once it's cleared. An account number + a specific symptom + "tried X, nothing happened" is already enough. Never ask a follow-up question instead of logging it.
+- If a message bundles multiple sub-issues and at least one clears the bar, create_ticket for that one now — the rest can go in the description as "also mentioned: ...".
+- Also check Recent messages: if an earlier message in this thread plus this one together clear the bar, create_ticket.
+
+WHEN TO comment_on_ticket instead:
+- The message clearly relates to an existing open ticket — either references a key directly, or matches one in Open tickets / Referenced tickets below closely enough that opening a new ticket would just be a duplicate.
+
+WHEN TO ignore_message (the default — most messages land here):
+- Greetings, banter, opinions, jokes, gibberish, spam-tags, vague asks with no actionable detail ("fix stuff", "check please" with nothing else), pure status questions ("any update on X?"), or anything that doesn't clear the create_ticket bar above.
+- Never invent a substitute action. If in doubt, ignore — silence costs nothing; a wrong ticket or an unwanted reply does.
 
 WHEN YOU DO create_ticket:
 - Set a specific, searchable title (imperative or noun phrase; no emoji; no "fix", no "help").
 - Description: 2-4 lines summarizing the reporter's message. Include reproduction steps if given.
 - Priority: default MEDIUM. HIGH/URGENT only if the reporter clearly indicates blocking/outage/money/security.
-- replyText: short "Got it, opened X" (bot code appends the ticket key + link).
+- replyText: short "Got it, opened X" (bot code appends the ticket key + link). This is a confirmation, not a conversation opener — don't ask a question in it.
 
-TICKET LOOKUPS (this is important):
-- If the user references any ticket by key (e.g. "PFT-045", "NSF-015", "the login one"), full details for referenced keys are pre-loaded below (status, priority, last 3 public comments).
-- Use those details to answer status questions accurately. Never invent status.
-- If the user reports a NEW piece of info on an existing referenced ticket → comment_on_ticket with their input as the comment.
-- If the user just asks status → reply_only with the ticket's current status + a short summary of the latest public comment.
-- If a referenced key came back as "no matching tickets found" → tell the user that key doesn't exist, don't pretend it does.
-- Recognize soft references too: "the withdrawal bug", "that outage" — scan Open tickets list for a title match; if unsure, ask which ticket they mean.
-
-CROSS-GROUP RECALL:
-- If asked what you said/did in another group, or to relay something to another group's team, use "Your recent replies in other groups" below.
-- Only ever share YOUR OWN past replies, never other people's messages from other groups.
-- If nothing relevant is there, say so plainly instead of guessing.
+Never invent ticket status or details. Don't substitute your own technical guesses or DIY troubleshooting speculation ("could be an iframe permissions issue, try checking...") for actually logging it — you have no access to the codebase or infra to diagnose it for real, and a plausible-sounding guess isn't a fix. That's a job for whoever picks up the ticket.
 
 Current group: {groupName}
 Company: {companyName} (companyId: {companyId})
@@ -257,15 +63,12 @@ Open tickets in this company (last 10):
 Referenced tickets (details for any ticket key mentioned in this message):
 {referencedTickets}
 
-Your recent replies in other groups of this company (most recent last):
-{crossGroupContext}
-
 Recent messages (oldest→newest):
 {recentMessages}
 
 @ mention from {senderName}: {messageText}
 
-Reply now using exactly ONE tool call (reply_only, create_ticket, or comment_on_ticket).`
+Reply now using exactly ONE tool call (create_ticket, comment_on_ticket, or ignore_message).`
 
 interface AgentInput {
   group: WhatsappGroup & { company: { name: string } }
@@ -277,7 +80,7 @@ interface AgentInput {
 }
 
 interface AgentResult {
-  action: 'ignore' | 'reply' | 'create_ticket' | 'comment_on_ticket'
+  action: 'ignore' | 'create_ticket' | 'comment_on_ticket'
   reply?: string
   ticketId?: string
 }
@@ -290,15 +93,6 @@ const TOOLS = [
       type: 'object' as const,
       properties: { reason: { type: 'string' } },
       required: ['reason'],
-    },
-  },
-  {
-    name: 'reply_only',
-    description: 'Reply in the group without creating a ticket. Use for questions the bot can answer directly or clarifying questions.',
-    input_schema: {
-      type: 'object' as const,
-      properties: { text: { type: 'string', description: 'Reply text — length should match what the message needs, up to ~1500 chars.' } },
-      required: ['text'],
     },
   },
   {
@@ -372,27 +166,8 @@ async function loadReferencedTickets(companyId: string, body: string): Promise<s
   }).join('\n')
 }
 
-async function loadCrossGroupContext(companyId: string, currentGroupJid: string): Promise<string> {
-  const otherGroups = await prisma.whatsappGroup.findMany({
-    where: { companyId, groupJid: { not: currentGroupJid } },
-    select: { groupJid: true, name: true },
-  })
-  if (!otherGroups.length) return '(no other groups)'
-  const nameByJid = new Map(otherGroups.map((g) => [g.groupJid, g.name]))
-  const replies = await prisma.whatsappMessage.findMany({
-    where: { groupJid: { in: otherGroups.map((g) => g.groupJid) }, replyText: { not: null } },
-    orderBy: { createdAt: 'desc' },
-    take: 6,
-    select: { groupJid: true, replyText: true, createdAt: true },
-  })
-  if (!replies.length) return '(no recent replies in other groups)'
-  return replies.reverse().map((r) =>
-    `- [${nameByJid.get(r.groupJid) ?? r.groupJid}] you said: ${(r.replyText ?? '').slice(0, 200)}`
-  ).join('\n')
-}
-
-async function loadContext(group: WhatsappGroup, body: string): Promise<{ recentTickets: string; recentMessages: string; referencedTickets: string; crossGroupContext: string }> {
-  const [tickets, messages, referencedTickets, crossGroupContext] = await Promise.all([
+async function loadContext(group: WhatsappGroup, body: string): Promise<{ recentTickets: string; recentMessages: string; referencedTickets: string }> {
+  const [tickets, messages, referencedTickets] = await Promise.all([
     prisma.ticket.findMany({
       where: { companyId: group.companyId, status: { in: ['OPEN', 'IN_PROGRESS', 'BLOCKED', 'WAITING_CLIENT'] } },
       orderBy: { createdAt: 'desc' },
@@ -406,7 +181,6 @@ async function loadContext(group: WhatsappGroup, body: string): Promise<{ recent
       select: { senderName: true, body: true, agentAction: true },
     }),
     loadReferencedTickets(group.companyId, body),
-    loadCrossGroupContext(group.companyId, group.groupJid),
   ])
   return {
     recentTickets: tickets.length
@@ -416,7 +190,6 @@ async function loadContext(group: WhatsappGroup, body: string): Promise<{ recent
       ? messages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
       : '(none)',
     referencedTickets,
-    crossGroupContext,
   }
 }
 
@@ -474,8 +247,8 @@ async function callOpenAiCompatOnce(prompt: string, tools: typeof TOOLS): Promis
 
 function isDegenerateCall(call: { name: string; input: any } | null): boolean {
   if (!call) return true
-  if (call.name === 'reply_only' || call.name === 'create_ticket') {
-    const text = String(call.input?.text ?? call.input?.replyText ?? '').trim()
+  if (call.name === 'create_ticket') {
+    const text = String(call.input?.replyText ?? '').trim()
     if (text.length < 4) return true
   }
   return false
@@ -599,37 +372,31 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
   // banter. Every agentMode collapses to the same strict support behavior.
   if (!input.wasMentioned) return { action: 'ignore' }
 
+  // Auto-ticket off = the group has nothing left for the bot to do — the only tools
+  // are create_ticket/comment_on_ticket, and the bot never chats — so skip the LLM
+  // call entirely rather than pay for a call whose only possible outcome is ignore.
+  if (input.group.autoTicket === false) return { action: 'ignore' }
+
   const ctx = await loadContext(input.group, input.body)
   const souls = getSouls()
   const soulText = souls.professional
-  let prompt = SYSTEM_PROMPT_MENTIONED
+  const prompt = SYSTEM_PROMPT_MENTIONED
     .replace('{soul}', soulText)
     .replace(/\{companyName\}/g, input.group.company.name)
     .replace(/\{groupName\}/g, input.group.name)
     .replace('{companyId}', input.group.companyId)
     .replace('{recentTickets}', ctx.recentTickets)
     .replace('{referencedTickets}', ctx.referencedTickets)
-    .replace('{crossGroupContext}', ctx.crossGroupContext)
     .replace('{recentMessages}', ctx.recentMessages)
     .replace('{senderName}', input.senderName ?? 'unknown')
     .replace('{messageText}', input.body)
 
-  // Auto-ticket off = the group is answer-only: the ticket tools aren't offered to
-  // the model at all, so it can't open or comment on tickets even if asked to.
-  const allowTickets = input.group.autoTicket !== false
-  const tools = allowTickets ? TOOLS : TOOLS.filter((t) => t.name !== 'create_ticket' && t.name !== 'comment_on_ticket')
-  if (!allowTickets) {
-    prompt += `\n\nNOTE: Ticket creation is disabled for this group (create_ticket and comment_on_ticket are unavailable). Answer questions directly with reply_only. If someone asks you to open a ticket, tell them ticketing from this group is turned off and a team member will pick it up.`
-  }
-
-  const call = await callAgent(prompt, tools)
+  const call = await callAgent(prompt, TOOLS)
   if (!call) return { action: 'ignore' }
 
   switch (call.name) {
     case 'ignore_message':
       return { action: 'ignore' }
-    case 'reply_only':
-      return { action: 'reply', reply: String(call.input.text ?? '').slice(0, 1500) }
     case 'create_ticket': {
       const proposedTitle = String(call.input.title ?? '').trim()
       const duplicate = await findLikelyDuplicateTicket(input.group.companyId, proposedTitle)
