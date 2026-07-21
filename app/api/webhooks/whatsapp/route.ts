@@ -118,13 +118,19 @@ interface WahaMediaHint {
 
 function extractMediaHint(msg: any, waMessageId: string): WahaMediaHint | null {
   if (!msg) return null
-  const hasMedia = Boolean(msg.hasMedia ?? msg.media ?? msg._data?.media)
-  if (!hasMedia) return null
-  const media = msg.media ?? msg._data?.media ?? {}
+  // The image is often on a quoted/replied-to message ("@Bob create a ticket of
+  // this" replying to an earlier image), not on the triggering message itself —
+  // WAHA exposes that as msg.replyTo with its own hasMedia/media. Prefer the
+  // triggering message's own media; fall back to the quoted message's.
+  const own = { hasMedia: Boolean(msg.hasMedia ?? msg.media ?? msg._data?.media), media: msg.media ?? msg._data?.media, id: waMessageId }
+  const quoted = msg.replyTo?.hasMedia ? { hasMedia: true, media: msg.replyTo.media, id: msg.replyTo.id ?? waMessageId } : null
+  const source = own.hasMedia ? own : quoted
+  if (!source) return null
+  const media = source.media ?? {}
   const mediaUrl: string | undefined = media.url ?? msg.mediaUrl ?? undefined
   const mimetype: string | undefined = media.mimetype ?? media.mimeType ?? msg.mimetype ?? msg.mimeType
   const filename: string | undefined = media.filename ?? msg.filename
-  return { messageId: waMessageId, mediaUrl, mimetype, filename }
+  return { messageId: source.id, mediaUrl, mimetype, filename }
 }
 
 async function attachMediaToTicket(ticketId: string, hint: WahaMediaHint): Promise<{ ok: boolean; reason?: string }> {

@@ -126,10 +126,22 @@ export async function downloadWahaMedia(input: {
 }): Promise<WahaMediaBytes | null> {
   if (!WAHA_URL || !WAHA_API_KEY) return null
 
+  // WAHA's own media.url in webhook payloads is self-referential (e.g.
+  // "http://localhost:3000/api/files/default/<id>.jpg") — that host is WAHA's own
+  // container, unreachable from here. The path itself (/api/files/{session}/{id}.ext,
+  // WAHA's real local-storage serving route) is correct, so rewrite just the origin
+  // to the actual configured WAHA_URL instead of guessing at other endpoints (WAHA
+  // has no /messages/{id}/download route — confirmed 404 on this WAHA version).
   const attempts: string[] = []
-  if (input.mediaUrl) attempts.push(input.mediaUrl)
-  attempts.push(`${WAHA_URL}/api/${WAHA_SESSION}/messages/${encodeURIComponent(input.messageId)}/download`)
-  attempts.push(`${WAHA_URL}/api/messages/${encodeURIComponent(input.messageId)}/download`)
+  if (input.mediaUrl) {
+    try {
+      const u = new URL(input.mediaUrl)
+      const rewritten = new URL(u.pathname + u.search, WAHA_URL).toString()
+      attempts.push(rewritten)
+    } catch {
+      attempts.push(input.mediaUrl)
+    }
+  }
 
   for (const url of attempts) {
     try {
