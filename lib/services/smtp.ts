@@ -35,6 +35,13 @@ export interface EmailOptions {
   html?: string
 }
 
+// User rows that represent integrations, not people — no mailbox exists behind
+// these addresses, so mail to them bounces straight back into the real inbox.
+const SYSTEM_BOT_RECIPIENTS = new Set([
+  'mcp-bot@propfirmstech.com',
+  'whatsapp-bot@propfirmstech.com',
+])
+
 export class SMTPService {
   private static readonly CONNECTION_TIMEOUT = 10000 // 10 seconds
 
@@ -239,6 +246,15 @@ export class SMTPService {
    * @returns true if email sent successfully, false otherwise
    */
   static async sendEmail(options: EmailOptions): Promise<boolean> {
+    // System bot accounts (WhatsApp/MCP integrations) exist as User rows so they
+    // can author tickets/comments, but their addresses are not real mailboxes —
+    // sending to them just bounces back (550 Invalid email recipients) into the
+    // real inbox. Central guard so no notification path has to remember this.
+    const recipient = options.to?.trim().toLowerCase() ?? ''
+    if (SYSTEM_BOT_RECIPIENTS.has(recipient)) {
+      console.log(`[SMTP] skipping system bot recipient: ${recipient}`)
+      return true
+    }
     try {
       const config = await this.getActiveConfig()
 
