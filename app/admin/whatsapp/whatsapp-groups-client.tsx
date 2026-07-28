@@ -24,6 +24,14 @@ interface MappedGroup {
 }
 interface WaGroup { id: string; name: string; participants: number }
 interface SessionInfo { configured: boolean; status: string; qr?: string | null }
+interface WebhookRelay {
+  id: string
+  name: string
+  groupJid: string
+  secret: string | null
+  enabled: boolean
+  lastEventAt: string | null
+}
 interface DmUser {
   id: string
   waJid: string
@@ -42,23 +50,55 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
   const [mapped, setMapped] = useState<MappedGroup[]>([])
   const [waGroups, setWaGroups] = useState<WaGroup[]>([])
   const [users, setUsers] = useState<DmUser[]>([])
+  const [relays, setRelays] = useState<WebhookRelay[]>([])
+  const [newRelayName, setNewRelayName] = useState('')
+  const [newRelayGroup, setNewRelayGroup] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedCompanies, setSelectedCompanies] = useState<Record<string, string>>({})
 
   const load = async () => {
     setRefreshing(true)
-    const [sessionRes, groupsRes, usersRes] = await Promise.all([
+    const [sessionRes, groupsRes, usersRes, relaysRes] = await Promise.all([
       fetch('/api/admin/whatsapp/session', { cache: 'no-store' }).then((r) => r.json()).catch(() => null),
       fetch('/api/admin/whatsapp/groups', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ mapped: [], waGroups: [] })),
       fetch('/api/admin/whatsapp/users', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ users: [] })),
+      fetch('/api/admin/whatsapp/relays', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ relays: [] })),
     ])
     setSession(sessionRes)
     setMapped(groupsRes.mapped ?? [])
     setWaGroups(groupsRes.waGroups ?? [])
     setUsers(usersRes.users ?? [])
+    setRelays(relaysRes.relays ?? [])
     setLoading(false)
     setRefreshing(false)
+  }
+
+  const createRelay = async () => {
+    if (!newRelayName.trim() || !newRelayGroup) return
+    await fetch('/api/admin/whatsapp/relays', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newRelayName.trim(), groupJid: newRelayGroup }),
+    })
+    setNewRelayName('')
+    setNewRelayGroup('')
+    load()
+  }
+
+  const patchRelay = async (id: string, patch: any) => {
+    await fetch(`/api/admin/whatsapp/relays/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    load()
+  }
+
+  const removeRelay = async (id: string) => {
+    if (!confirm('Delete this webhook relay? External systems posting to its URL will start getting 404s.')) return
+    await fetch(`/api/admin/whatsapp/relays/${id}`, { method: 'DELETE' })
+    load()
   }
 
   const patchUser = async (id: string, patch: any) => {
@@ -316,6 +356,88 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                       <label className="flex items-center gap-2">
                         <input type="checkbox" checked={u.autoReply} onChange={(e) => patchUser(u.id, { autoReply: e.target.checked })} />
                         <span>Auto-reply</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Webhook relays ({relays.length})</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-ink-mute">
+            Give an external dashboard (sales webhooks, CRM, payments) a relay URL and it&apos;ll post its events here —
+            each event is forwarded as a message to the WhatsApp group you pick. Set the relay&apos;s secret as the
+            HMAC-SHA256 signing secret on the sender (sent as <code>X-Webhook-Signature</code>).
+          </p>
+
+          <div className="flex flex-col md:flex-row gap-2">
+            <input
+              type="text"
+              value={newRelayName}
+              onChange={(e) => setNewRelayName(e.target.value)}
+              placeholder="Relay name (e.g. ForRealFunding sales)"
+              className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+            />
+            <Select value={newRelayGroup} onChange={(e) => setNewRelayGroup(e.target.value)} className="text-sm md:w-72">
+              <option value="">Target group…</option>
+              {mapped.map((g) => (
+                <option key={g.groupJid} value={g.groupJid}>{g.name}</option>
+              ))}
+            </Select>
+            <Button size="sm" onClick={createRelay} disabled={!newRelayName.trim() || !newRelayGroup}>Create relay</Button>
+          </div>
+
+          {relays.length > 0 && (
+            <div className="space-y-3">
+              {relays.map((r) => (
+                <div key={r.id} className="p-3 rounded-md border border-gray-200 dark:border-gray-700 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{r.name}</div>
+                      <div className="text-xs text-ink-mute truncate">
+                        {r.lastEventAt ? `Last event ${new Date(r.lastEventAt).toLocaleString()}` : 'No events received yet'}
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => removeRelay(r.id)} className="text-red-600 shrink-0">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex flex-col gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-ink-mute w-20 shrink-0">Webhook URL</span>
+                      <code className="text-xs bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 truncate flex-1">
+                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/relay/${r.id}`}
+                      </code>
+                      <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/api/webhooks/relay/${r.id}`)}>Copy</Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-ink-mute w-20 shrink-0">Secret</span>
+                      <code className="text-xs bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 truncate flex-1">{r.secret ?? '(none)'}</code>
+                      {r.secret && (
+                        <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(r.secret!)}>Copy</Button>
+                      )}
+                      <Button variant="outline" size="sm" onClick={() => { if (confirm('Rotate secret? The sender must be updated with the new one.')) patchRelay(r.id, { rotateSecret: true }) }}>Rotate</Button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4">
+                      <label className="flex flex-col text-xs text-ink-mute gap-1 md:w-72">
+                        <span>Target group</span>
+                        <Select value={r.groupJid} onChange={(e) => patchRelay(r.id, { groupJid: e.target.value })} className="text-sm">
+                          {!mapped.some((g) => g.groupJid === r.groupJid) && (
+                            <option value={r.groupJid}>{r.groupJid}</option>
+                          )}
+                          {mapped.map((g) => (
+                            <option key={g.groupJid} value={g.groupJid}>{g.name}</option>
+                          ))}
+                        </Select>
+                      </label>
+                      <label className="flex items-center gap-2 mt-4">
+                        <input type="checkbox" checked={r.enabled} onChange={(e) => patchRelay(r.id, { enabled: e.target.checked })} />
+                        <span>Enabled</span>
                       </label>
                     </div>
                   </div>

@@ -480,6 +480,19 @@ model WhatsappMessage {
   @@map("whatsapp_messages")
 }
 
+model WebhookRelay {
+  id          String    @id @default(cuid())
+  name        String
+  groupJid    String
+  secret      String?
+  enabled     Boolean   @default(true)
+  lastEventAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("webhook_relays")
+}
+
 model SignupRequest {
   id              String       @id @default(cuid())
   name            String
