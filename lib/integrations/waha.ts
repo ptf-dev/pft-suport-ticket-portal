@@ -112,6 +112,45 @@ export async function getSessionQr(): Promise<string | null> {
   return `data:image/png;base64,${Buffer.from(buf).toString('base64')}`
 }
 
+/**
+ * Restart the WAHA session and wait for it to reach SCAN_QR_CODE.
+ *
+ * WAHA only serves a QR for a short window after a restart (~60-90s), then
+ * drops back to FAILED. Without this, the admin page could only ever *read*
+ * status, so the QR window had to be opened out-of-band and was almost always
+ * expired by the time anyone looked.
+ *
+ * Session config (webhooks, HMAC key, NOWEB store) is held by WAHA across
+ * restarts, and group→company mappings live in our own database keyed by
+ * groupJid — neither is touched here.
+ */
+export async function restartSession(): Promise<WahaSessionStatus | null> {
+  const res = await wahaFetch(`/api/sessions/${WAHA_SESSION}/restart`, { method: 'POST' })
+  if (!res.ok) return null
+
+  for (let attempt = 0; attempt < 15; attempt++) {
+    await new Promise((r) => setTimeout(r, 2000))
+    const status = await getSessionStatus()
+    if (!status) continue
+    if (status.status === 'SCAN_QR_CODE' || status.status === 'WORKING') return status
+  }
+  return getSessionStatus()
+}
+
+/**
+ * Request a phone-number pairing code — the alternative to scanning a QR.
+ * Only valid while the session is in SCAN_QR_CODE.
+ */
+export async function requestPairingCode(phoneNumber: string): Promise<string | null> {
+  const res = await wahaFetch(`/api/${WAHA_SESSION}/auth/request-code`, {
+    method: 'POST',
+    body: JSON.stringify({ phoneNumber: phoneNumber.replace(/[^0-9]/g, '') }),
+  })
+  if (!res.ok) return null
+  const data: any = await res.json().catch(() => null)
+  return data?.code ?? null
+}
+
 export interface WahaMediaBytes {
   buffer: Buffer
   mimeType: string

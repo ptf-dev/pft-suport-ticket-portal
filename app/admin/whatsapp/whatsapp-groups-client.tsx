@@ -55,6 +55,8 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
   const [newRelayGroup, setNewRelayGroup] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [reconnecting, setReconnecting] = useState(false)
+  const [pairingCode, setPairingCode] = useState<string | null>(null)
   const [selectedCompanies, setSelectedCompanies] = useState<Record<string, string>>({})
 
   const load = async () => {
@@ -118,6 +120,30 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
 
   useEffect(() => { load() }, [])
 
+  // The QR only stays valid for a few seconds at a time and the pairing window
+  // itself closes after ~a minute — poll while it's open so the code on screen
+  // is always the live one, and so a successful scan flips to WORKING on its own.
+  useEffect(() => {
+    if (session?.status !== 'SCAN_QR_CODE') return
+    const t = setInterval(load, 4000)
+    return () => clearInterval(t)
+  }, [session?.status])
+
+  const reconnect = async () => {
+    setReconnecting(true)
+    setPairingCode(null)
+    try {
+      const res = await fetch('/api/admin/whatsapp/session/reconnect', {
+        method: 'POST',
+      }).then((r) => r.json()).catch(() => null)
+      if (res?.pairingCode) setPairingCode(res.pairingCode)
+      if (res?.qr) setSession((prev) => (prev ? { ...prev, status: res.status, qr: res.qr } : prev))
+    } finally {
+      setReconnecting(false)
+      load()
+    }
+  }
+
   const mappedJids = new Set(mapped.map((g) => g.groupJid))
   const unmapped = waGroups.filter((g) => !mappedJids.has(g.id))
 
@@ -155,9 +181,17 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2"><MessageCircle className="w-5 h-5" />WhatsApp session</CardTitle>
-          <Button variant="outline" size="sm" onClick={load} disabled={refreshing} className="gap-2">
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={load} disabled={refreshing} className="gap-2">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />Refresh
+            </Button>
+            {session?.configured && session.status !== 'WORKING' && (
+              <Button size="sm" onClick={reconnect} disabled={reconnecting} className="gap-2">
+                <QrCode className={`w-4 h-4 ${reconnecting ? 'animate-pulse' : ''}`} />
+                {reconnecting ? 'Opening…' : 'Reconnect'}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
           {!session?.configured && (
@@ -172,13 +206,37 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                 <Badge variant={session.status === 'WORKING' ? 'success' : session.status === 'SCAN_QR_CODE' ? 'warning' : 'secondary'}>
                   {session.status}
                 </Badge>
+                {session.status === 'SCAN_QR_CODE' && (
+                  <span className="text-xs text-ink-mute">Pairing window open — auto-refreshing</span>
+                )}
               </div>
-              {session.status === 'SCAN_QR_CODE' && session.qr && (
+
+              {session.status !== 'WORKING' && session.status !== 'SCAN_QR_CODE' && (
+                <p className="text-sm text-ink-mute">
+                  Not connected. Hit <strong>Reconnect</strong> to open a pairing window, then scan the QR (or use the
+                  pairing code) within about a minute. Group mappings and settings below are stored here and are not
+                  affected by reconnecting.
+                </p>
+              )}
+
+              {session.status === 'SCAN_QR_CODE' && (
                 <div className="rounded-md border border-gray-200 dark:border-gray-700 p-4 flex flex-col items-center gap-2">
-                  <QrCode className="w-4 h-4 text-ink-mute" />
-                  <p className="text-sm text-ink-mute">Scan with WhatsApp → Linked devices</p>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={session.qr} alt="QR code" className="w-64 h-64" />
+                  {session.qr ? (
+                    <>
+                      <QrCode className="w-4 h-4 text-ink-mute" />
+                      <p className="text-sm text-ink-mute">WhatsApp → Linked devices → Link a device → scan</p>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={session.qr} alt="QR code" className="w-64 h-64" />
+                    </>
+                  ) : (
+                    <p className="text-sm text-ink-mute">Waiting for QR…</p>
+                  )}
+                  {pairingCode && (
+                    <p className="text-sm">
+                      Or &quot;Link with phone number instead&quot; and enter:{' '}
+                      <code className="bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 font-mono">{pairingCode}</code>
+                    </p>
+                  )}
                 </div>
               )}
             </>
