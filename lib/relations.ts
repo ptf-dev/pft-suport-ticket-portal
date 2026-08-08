@@ -1,13 +1,23 @@
 import type { TicketRelationType } from '@prisma/client'
 
-/** Reciprocal relation for each type (symmetric types map to themselves). */
+/**
+ * Reciprocal relation for each type.
+ *
+ * Only RELATES_TO is genuinely symmetric. Every other type is directional and
+ * MUST map to a distinct opposite — mapping a directional type to itself makes
+ * both tickets claim the same side of the relationship (e.g. two tickets that
+ * are each "Is idea for" the other).
+ */
 export const RELATION_INVERSE: Record<TicketRelationType, TicketRelationType> = {
   BLOCKS: 'BLOCKED_BY',
   BLOCKED_BY: 'BLOCKS',
   RELATES_TO: 'RELATES_TO',
-  IS_IDEA_FOR: 'IS_IDEA_FOR',
-  WILL_IMPLEMENT_AFTER: 'WILL_IMPLEMENT_AFTER',
-  ADDED_TO_ROADMAP: 'ADDED_TO_ROADMAP',
+  IS_IDEA_FOR: 'HAS_IDEA',
+  HAS_IDEA: 'IS_IDEA_FOR',
+  WILL_IMPLEMENT_AFTER: 'WILL_BE_IMPLEMENTED_BEFORE',
+  WILL_BE_IMPLEMENTED_BEFORE: 'WILL_IMPLEMENT_AFTER',
+  ADDED_TO_ROADMAP: 'ROADMAP_INCLUDES',
+  ROADMAP_INCLUDES: 'ADDED_TO_ROADMAP',
   CLONES: 'CLONED_BY',
   CLONED_BY: 'CLONES',
   DUPLICATES: 'DUPLICATED_BY',
@@ -26,8 +36,11 @@ export const RELATION_LABEL: Record<TicketRelationType, string> = {
   BLOCKED_BY: 'Is blocked by',
   RELATES_TO: 'Relates to',
   IS_IDEA_FOR: 'Is idea for',
+  HAS_IDEA: 'Has idea',
   WILL_IMPLEMENT_AFTER: 'Will implement after',
+  WILL_BE_IMPLEMENTED_BEFORE: 'Will be implemented before',
   ADDED_TO_ROADMAP: 'Added to roadmap',
+  ROADMAP_INCLUDES: 'Roadmap includes',
   CLONES: 'Clones',
   CLONED_BY: 'Is cloned by',
   DUPLICATES: 'Duplicates',
