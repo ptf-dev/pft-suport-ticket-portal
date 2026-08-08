@@ -8,6 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import Link from 'next/link'
 import { RELATION_LABEL } from '@/lib/relations'
+import { PRIORITY_OPTIONS } from '@/lib/priorities'
+
+const CATEGORIES = [
+  'Account Issue', 'Technical Problem', 'Billing Question',
+  'Feature Request', 'Bug Report', 'General Inquiry',
+  'Platform Access', 'Data Issue', 'Performance Issue',
+  'Integration Problem', 'Other',
+]
 
 interface RelatedTicket {
   id: string
@@ -70,6 +78,27 @@ export function TicketRelations({ ticketId }: TicketRelationsProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<RelatedTicket[]>([])
   const [searching, setSearching] = useState(false)
+  const [mode, setMode] = useState<'existing' | 'new'>('existing')
+  const [newTitle, setNewTitle] = useState('')
+  const [newDescription, setNewDescription] = useState('')
+  const [newPriority, setNewPriority] = useState('MEDIUM')
+  const [newCategory, setNewCategory] = useState('')
+
+  const resetForm = () => {
+    setTargetTicketId('')
+    setRelationType('')
+    setSearchQuery('')
+    setSearchResults([])
+    setNewTitle('')
+    setNewDescription('')
+    setNewPriority('MEDIUM')
+    setNewCategory('')
+    setError('')
+  }
+
+  const canSubmit = relationType && (mode === 'existing'
+    ? Boolean(targetTicketId)
+    : Boolean(newTitle.trim() && newDescription.trim()))
 
   const fetchRelations = useCallback(async () => {
     try {
@@ -117,8 +146,10 @@ export function TicketRelations({ ticketId }: TicketRelationsProps) {
   }
 
   const handleAddRelation = async () => {
-    if (!targetTicketId || !relationType) {
-      setError('Please select a ticket and relation type')
+    if (!canSubmit) {
+      setError(mode === 'existing'
+        ? 'Please select a ticket and relation type'
+        : 'Title, description and relation type are required')
       return
     }
 
@@ -126,18 +157,27 @@ export function TicketRelations({ ticketId }: TicketRelationsProps) {
     setError('')
 
     try {
+      const payload = mode === 'existing'
+        ? { targetTicketId, relationType }
+        : {
+            relationType,
+            newTicket: {
+              title: newTitle.trim(),
+              description: newDescription.trim(),
+              priority: newPriority,
+              category: newCategory || null,
+            },
+          }
+
       const res = await fetch(`/api/admin/tickets/${ticketId}/relations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetTicketId, relationType }),
+        body: JSON.stringify(payload),
       })
 
       if (res.ok) {
         setShowAddForm(false)
-        setTargetTicketId('')
-        setRelationType('')
-        setSearchQuery('')
-        setSearchResults([])
+        resetForm()
         fetchRelations()
       } else {
         const data = await res.json()
@@ -173,7 +213,7 @@ export function TicketRelations({ ticketId }: TicketRelationsProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={() => { if (showAddForm) resetForm(); setShowAddForm(!showAddForm) }}
           >
             {showAddForm ? 'Cancel' : '+ Add Relation'}
           </Button>
@@ -183,48 +223,115 @@ export function TicketRelations({ ticketId }: TicketRelationsProps) {
         {/* Add Relation Form */}
         {showAddForm && (
           <div className="mb-4 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 space-y-3">
-            <div>
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
-                Search Ticket
-              </label>
-              <Input
-                placeholder="Search by title or ticket ID..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  searchTickets(e.target.value)
-                }}
-                className="text-sm"
-              />
-              {searching && (
-                <p className="text-xs text-gray-500 mt-1">Searching...</p>
-              )}
-              {searchResults.length > 0 && (
-                <div className="mt-1 border border-gray-200 dark:border-gray-700 rounded-md max-h-40 overflow-y-auto">
-                  {searchResults.map((ticket) => (
-                    <button
-                      key={ticket.id}
-                      onClick={() => {
-                        setTargetTicketId(ticket.id)
-                        setSearchQuery(ticket.title)
-                        setSearchResults([])
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 border-b last:border-b-0 border-gray-100 dark:border-gray-700 ${
-                        targetTicketId === ticket.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                      }`}
-                    >
-                      <span className="font-mono text-xs text-gray-500">#{ticket.id.slice(0, 8)}</span>{' '}
-                      <span>{ticket.title}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {targetTicketId && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                  Selected: #{targetTicketId.slice(0, 8)}
-                </p>
-              )}
+            <div className="flex gap-1 p-1 rounded-md bg-gray-200/60 dark:bg-gray-900/40 w-fit">
+              {(['existing', 'new'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => { setMode(m); setError('') }}
+                  className={`px-3 py-1 text-xs rounded transition-colors ${
+                    mode === m
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm font-medium'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {m === 'existing' ? 'Link existing' : 'Create new'}
+                </button>
+              ))}
             </div>
+
+            {mode === 'existing' ? (
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                  Search Ticket
+                </label>
+                <Input
+                  placeholder="Search by title or ticket ID..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value)
+                    searchTickets(e.target.value)
+                  }}
+                  className="text-sm"
+                />
+                {searching && (
+                  <p className="text-xs text-gray-500 mt-1">Searching...</p>
+                )}
+                {searchResults.length > 0 && (
+                  <div className="mt-1 border border-gray-200 dark:border-gray-700 rounded-md max-h-40 overflow-y-auto">
+                    {searchResults.map((ticket) => (
+                      <button
+                        key={ticket.id}
+                        onClick={() => {
+                          setTargetTicketId(ticket.id)
+                          setSearchQuery(ticket.title)
+                          setSearchResults([])
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 border-b last:border-b-0 border-gray-100 dark:border-gray-700 ${
+                          targetTicketId === ticket.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                        }`}
+                      >
+                        <span className="font-mono text-xs text-gray-500">#{ticket.id.slice(0, 8)}</span>{' '}
+                        <span>{ticket.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {targetTicketId && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    Selected: #{targetTicketId.slice(0, 8)}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Opens a new ticket for this ticket&apos;s company and links it — no need to leave this page.
+                </p>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                    Title <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    placeholder="Brief summary of the new ticket"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                    Description <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder="What needs to happen…"
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    className="flex w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+                  />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">Priority</label>
+                    <Select value={newPriority} onChange={(e) => setNewPriority(e.target.value)} className="text-sm">
+                      {PRIORITY_OPTIONS.map((p) => (
+                        <option key={p.value} value={p.value}>{p.label}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">Category</label>
+                    <Select value={newCategory} onChange={(e) => setNewCategory(e.target.value)} className="text-sm">
+                      <option value="">Select a category (optional)</option>
+                      {CATEGORIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
@@ -251,9 +358,11 @@ export function TicketRelations({ ticketId }: TicketRelationsProps) {
             <Button
               size="sm"
               onClick={handleAddRelation}
-              disabled={submitting || !targetTicketId || !relationType}
+              disabled={submitting || !canSubmit}
             >
-              {submitting ? 'Adding...' : 'Add Relation'}
+              {submitting
+                ? (mode === 'new' ? 'Creating…' : 'Adding...')
+                : (mode === 'new' ? 'Create & Link' : 'Add Relation')}
             </Button>
           </div>
         )}

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, getSession } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
-import { TicketRelationType } from '@prisma/client'
+import { TicketRelationType, TicketPriority } from '@prisma/client'
 import { ActivityService } from '@/lib/services/activity'
+import { NotificationService } from '@/lib/services/notification'
 import { RELATION_INVERSE, RELATION_TYPES } from '@/lib/relations'
+import { PRIORITY_VALUES } from '@/lib/priorities'
+import { autoSprintIdForPriority } from '@/lib/auto-sprint'
+import { uniqueTicketKey } from '@/lib/ticket-key'
 
 /**
  * Admin API: Get Ticket Relations
@@ -47,6 +51,11 @@ export async function GET(
  * Admin API: Add Ticket Relation
  * Also creates the inverse relation automatically.
  * e.g. A BLOCKS B => also creates B BLOCKED_BY A
+ *
+ * Accepts either an existing `targetTicketId`, or a `newTicket` payload to
+ * create the related ticket inline (splitting work off a ticket, logging a
+ * follow-up bug) without leaving the ticket page. The new ticket inherits the
+ * source ticket's company.
  */
 export async function POST(
   request: NextRequest,
@@ -56,11 +65,15 @@ export async function POST(
     const session = await requireAdmin()
 
     const body = await request.json()
-    const { targetTicketId, relationType } = body
+    const { relationType, newTicket } = body
+    let { targetTicketId } = body
 
-    if (!targetTicketId || !relationType) {
+    if (!relationType) {
+      return NextResponse.json({ error: 'relationType is required' }, { status: 400 })
+    }
+    if (!targetTicketId && !newTicket) {
       return NextResponse.json(
-        { error: 'targetTicketId and relationType are required' },
+        { error: 'Either targetTicketId or newTicket is required' },
         { status: 400 }
       )
     }
@@ -72,6 +85,57 @@ export async function POST(
       )
     }
 
+    const sourceTicket = await prisma.ticket.findUnique({ where: { id: params.id } })
+    if (!sourceTicket) {
+      return NextResponse.json({ error: 'Source ticket not found' }, { status: 404 })
+    }
+
+    const createdById = (session as any).user?.id || null
+
+    // Inline creation path — build the ticket first, then relate to it below.
+    if (!targetTicketId) {
+      const title = String(newTicket?.title ?? '').trim()
+      const description = String(newTicket?.description ?? '').trim()
+      const priority = String(newTicket?.priority ?? 'MEDIUM')
+      const category = newTicket?.category ? String(newTicket.category).trim() : null
+
+      if (!title || !description) {
+        return NextResponse.json(
+          { error: 'newTicket.title and newTicket.description are required' },
+          { status: 400 }
+        )
+      }
+      if (!PRIORITY_VALUES.includes(priority as TicketPriority)) {
+        return NextResponse.json({ error: 'Invalid priority' }, { status: 400 })
+      }
+      if (!createdById) {
+        return NextResponse.json({ error: 'No session user to attribute the ticket to' }, { status: 401 })
+      }
+
+      const [key, sprintId] = await Promise.all([
+        uniqueTicketKey(sourceTicket.companyId),
+        autoSprintIdForPriority(priority as TicketPriority),
+      ])
+
+      const created = await prisma.ticket.create({
+        data: {
+          key,
+          title: title.slice(0, 200),
+          description,
+          priority: priority as TicketPriority,
+          category: category || null,
+          status: 'OPEN',
+          companyId: sourceTicket.companyId,
+          createdById,
+          sprintId,
+        },
+      })
+
+      targetTicketId = created.id
+      NotificationService.notifyAdminTicketCreated(created.id).catch(() => {})
+      ActivityService.created(created.id, createdById, created.title).catch(() => {})
+    }
+
     if (params.id === targetTicketId) {
       return NextResponse.json(
         { error: 'Cannot create a relation to the same ticket' },
@@ -79,20 +143,10 @@ export async function POST(
       )
     }
 
-    // Verify both tickets exist
-    const [sourceTicket, targetTicket] = await Promise.all([
-      prisma.ticket.findUnique({ where: { id: params.id } }),
-      prisma.ticket.findUnique({ where: { id: targetTicketId } }),
-    ])
-
-    if (!sourceTicket || !targetTicket) {
-      return NextResponse.json(
-        { error: 'One or both tickets not found' },
-        { status: 404 }
-      )
+    const targetTicket = await prisma.ticket.findUnique({ where: { id: targetTicketId } })
+    if (!targetTicket) {
+      return NextResponse.json({ error: 'Target ticket not found' }, { status: 404 })
     }
-
-    const createdById = (session as any).user?.id || null
     const inverseType = RELATION_INVERSE[relationType as TicketRelationType]
 
     // Create both the relation and its inverse in a transaction
