@@ -5,7 +5,7 @@ import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { ActivityService } from '@/lib/services/activity'
-import { ALLOWED_ATTACHMENT_TYPES as ALLOWED_TYPES, MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE } from '@/lib/attachments'
+import { MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE, isAllowedAttachment, resolveAttachmentMime } from '@/lib/attachments'
 
 export async function POST(
   request: NextRequest,
@@ -27,7 +27,7 @@ export async function POST(
     }
 
     for (const file of files) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
+      if (!isAllowedAttachment(file.name, file.type)) {
         return NextResponse.json(
           { error: `Invalid file type: ${file.type}` },
           { status: 400 }
@@ -62,7 +62,7 @@ export async function POST(
           filename,
           url: `/api/uploads/tickets/${params.id}/${filename}`,
           size: file.size,
-          mimeType: file.type,
+          mimeType: resolveAttachmentMime(file.name, file.type),
         },
       })
 

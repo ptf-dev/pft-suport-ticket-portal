@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { PRIORITY_OPTIONS } from '@/lib/priorities'
-import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT } from '@/lib/attachments'
+import { ATTACHMENT_ACCEPT, isAllowedAttachment } from '@/lib/attachments'
 import Link from 'next/link'
 
 interface Company {
@@ -68,7 +68,7 @@ export function AdminTicketForm({ companies }: Props) {
   }
 
   const addFiles = (files: File[]) => {
-    const validFiles = files.filter(f => ALLOWED_ATTACHMENT_TYPES.includes(f.type))
+    const validFiles = files.filter(f => isAllowedAttachment(f.name, f.type))
     if (validFiles.length + selectedFiles.length > 5) {
       setError('Maximum 5 attachments allowed')
       return
@@ -319,7 +319,7 @@ export function AdminTicketForm({ companies }: Props) {
             </svg>
             Click to upload attachments
             <span className="block text-xs text-gray-400 dark:text-gray-500 mt-1">
-              PNG, JPG, GIF, WebP, PDF up to 10MB (max 5 files)
+              PNG, JPG, GIF, WebP, PDF, XLSX, XLS up to 10MB (max 5 files)
             </span>
           </button>
         </div>

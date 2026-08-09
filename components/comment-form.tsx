@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { X, Image as ImageIcon, AtSign, Lock, Send, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT, MAX_ATTACHMENT_SIZE, isImageMime } from '@/lib/attachments'
+import { ATTACHMENT_ACCEPT, MAX_ATTACHMENT_SIZE, isImageMime, isAllowedAttachment } from '@/lib/attachments'
 
 interface CommentFormProps {
   ticketId: string
@@ -118,7 +118,7 @@ export default function CommentForm({
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     const valid = files.filter((f) => {
-      const okType = ALLOWED_ATTACHMENT_TYPES.includes(f.type)
+      const okType = isAllowedAttachment(f.name, f.type)
       const okSize = f.size <= MAX_ATTACHMENT_SIZE
       return okType && okSize
     })

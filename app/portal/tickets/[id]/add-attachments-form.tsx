@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
-import { ALLOWED_ATTACHMENT_TYPES, ATTACHMENT_ACCEPT, MAX_ATTACHMENT_SIZE } from '@/lib/attachments'
+import { ATTACHMENT_ACCEPT, MAX_ATTACHMENT_SIZE, isAllowedAttachment } from '@/lib/attachments'
 
 interface AddAttachmentsFormProps {
   ticketId: string
@@ -28,10 +28,10 @@ export function AddAttachmentsForm({
       const files = Array.from(e.target.files)
       
       // Validate file types
-      const invalidFiles = files.filter(f => !ALLOWED_ATTACHMENT_TYPES.includes(f.type))
+      const invalidFiles = files.filter(f => !isAllowedAttachment(f.name, f.type))
 
       if (invalidFiles.length > 0) {
-        setError('Only JPEG, PNG, GIF, WebP images and PDFs are allowed')
+        setError('Only JPEG, PNG, GIF, WebP images, PDFs and Excel files are allowed')
         return
       }
 
@@ -118,7 +118,7 @@ export function AddAttachmentsForm({
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Accepted formats: JPEG, PNG, GIF, WebP, PDF (max 10MB each)
+            Accepted formats: JPEG, PNG, GIF, WebP, PDF, XLSX, XLS (max 10MB each)
           </p>
         </div>
 

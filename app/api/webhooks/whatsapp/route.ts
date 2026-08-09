@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 import { verifyWebhookSignature, sendGroupText, getBotIdentity, downloadWahaMedia, startTyping, stopTyping } from '@/lib/integrations/waha'
 import { runWhatsappAgent, RateLimitError } from '@/lib/agents/whatsapp-agent'
-import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE } from '@/lib/attachments'
+import { MAX_ATTACHMENT_SIZE, isAllowedAttachment, resolveAttachmentMime } from '@/lib/attachments'
 
 export const dynamic = 'force-dynamic'
 
@@ -136,7 +136,8 @@ function extractMediaHint(msg: any, waMessageId: string): WahaMediaHint | null {
 async function attachMediaToTicket(ticketId: string, hint: WahaMediaHint): Promise<{ ok: boolean; reason?: string }> {
   const dl = await downloadWahaMedia(hint)
   if (!dl) return { ok: false, reason: 'download_failed' }
-  if (!ALLOWED_ATTACHMENT_TYPES.includes(dl.mimeType)) {
+  const attachmentName = dl.filename || `wa-${hint.messageId}`
+  if (!isAllowedAttachment(attachmentName, dl.mimeType)) {
     return { ok: false, reason: `unsupported_mime:${dl.mimeType}` }
   }
   if (dl.buffer.length > MAX_ATTACHMENT_SIZE) {
@@ -144,7 +145,7 @@ async function attachMediaToTicket(ticketId: string, hint: WahaMediaHint): Promi
   }
   const dir = join(process.cwd(), 'public', 'uploads', 'tickets', ticketId)
   if (!existsSync(dir)) await mkdir(dir, { recursive: true })
-  const safeName = (dl.filename || `wa-${hint.messageId}`).replace(/[^a-zA-Z0-9.-]/g, '_')
+  const safeName = attachmentName.replace(/[^a-zA-Z0-9.-]/g, '_')
   const filename = `${Date.now()}-${safeName}`
   const filepath = join(dir, filename)
   await writeFile(filepath, dl.buffer)
@@ -154,7 +155,7 @@ async function attachMediaToTicket(ticketId: string, hint: WahaMediaHint): Promi
       filename,
       url: `/api/uploads/tickets/${ticketId}/${filename}`,
       size: dl.buffer.length,
-      mimeType: dl.mimeType,
+      mimeType: resolveAttachmentMime(attachmentName, dl.mimeType),
     },
   })
   return { ok: true }

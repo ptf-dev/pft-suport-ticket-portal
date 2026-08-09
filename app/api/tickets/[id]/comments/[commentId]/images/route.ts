@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { ALLOWED_ATTACHMENT_TYPES as ALLOWED_TYPES, MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE } from '@/lib/attachments'
+import { MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE, isAllowedAttachment, resolveAttachmentMime } from '@/lib/attachments'
 
 /**
  * Comment Image Upload API Endpoint
@@ -65,7 +65,7 @@ export async function POST(
 
     // Validate files
     for (const file of files) {
-      if (!ALLOWED_TYPES.includes(file.type)) {
+      if (!isAllowedAttachment(file.name, file.type)) {
         return NextResponse.json(
           { message: `Invalid file type: ${file.type}. Allowed types: JPEG, PNG, GIF, WebP, PDF` },
           { status: 400 }
@@ -107,7 +107,7 @@ export async function POST(
           filename,
           url: `/api/uploads/comments/${params.commentId}/${filename}`,
           size: file.size,
-          mimeType: file.type,
+          mimeType: resolveAttachmentMime(file.name, file.type),
         },
       })
 
