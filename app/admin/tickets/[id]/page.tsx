@@ -25,7 +25,7 @@ import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { isBoomerang, boomerangMeta } from '@/lib/boomerang'
 import { cn } from '@/lib/utils'
 import { Undo2, FileText } from 'lucide-react'
-import { isImageMime } from '@/lib/attachments'
+import { isImageMime, attachmentOpenLabel } from '@/lib/attachments'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -269,7 +269,7 @@ export default async function AdminTicketDetailPage({
                           className="w-full h-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-1.5 hover:border-primary-400 transition-colors"
                         >
                           <FileText className="w-8 h-8 text-gray-400" />
-                          <span className="text-xs text-primary-600 dark:text-primary-400">Open PDF</span>
+                          <span className="text-xs text-primary-600 dark:text-primary-400">{attachmentOpenLabel(image.mimeType)}</span>
                         </a>
                       )}
                       <div className="mt-1 text-xs text-gray-500 truncate">
@@ -372,7 +372,7 @@ export default async function AdminTicketDetailPage({
                                   className="w-full h-24 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-1 hover:border-primary-400 transition-colors"
                                 >
                                   <FileText className="w-5 h-5 text-gray-400" />
-                                  <span className="text-[10px] text-primary-600 dark:text-primary-400">Open PDF</span>
+                                  <span className="text-[10px] text-primary-600 dark:text-primary-400">{attachmentOpenLabel(image.mimeType)}</span>
                                 </a>
                               )}
                             </div>

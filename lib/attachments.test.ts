@@ -5,6 +5,7 @@ import {
   isAllowedAttachment,
   isSpreadsheetMime,
   resolveAttachmentMime,
+  attachmentOpenLabel,
 } from './attachments'
 
 const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -72,5 +73,17 @@ describe('attachment config', () => {
     expect(isSpreadsheetMime(XLSX)).toBe(true)
     expect(isSpreadsheetMime(XLS)).toBe(true)
     expect(isSpreadsheetMime('application/pdf')).toBe(false)
+  })
+})
+
+describe('attachmentOpenLabel', () => {
+  it('names the actual file type instead of assuming PDF', () => {
+    expect(attachmentOpenLabel('application/pdf')).toBe('Open PDF')
+    expect(attachmentOpenLabel(XLSX)).toBe('Open Excel')
+    expect(attachmentOpenLabel(XLS)).toBe('Open Excel')
+  })
+
+  it('falls back to a generic label for anything else', () => {
+    expect(attachmentOpenLabel('application/octet-stream')).toBe('Open file')
   })
 })

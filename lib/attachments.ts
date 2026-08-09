@@ -52,6 +52,17 @@ export function isSpreadsheetMime(mimeType: string): boolean {
   )
 }
 
+/**
+ * Label for a stored non-image attachment tile. Kept generic rather than
+ * assuming PDF — every non-image attachment used to be labelled "Open PDF",
+ * including spreadsheets.
+ */
+export function attachmentOpenLabel(mimeType: string): string {
+  if (isPdfMime(mimeType)) return 'Open PDF'
+  if (isSpreadsheetMime(mimeType)) return 'Open Excel'
+  return 'Open file'
+}
+
 function extensionOf(fileName: string): string {
   return fileName.toLowerCase().split('.').pop() ?? ''
 }
