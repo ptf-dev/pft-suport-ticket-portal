@@ -116,7 +116,7 @@ export class NotificationService {
         <p>An admin has responded to your support ticket.</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0;">
           <tr><td style="padding:8px;color:#6b7280;width:120px;">Ticket</td><td style="padding:8px;font-weight:600;">${comment.ticket.title}</td></tr>
-          <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Response by</td><td style="padding:8px;">${comment.author.name}</td></tr>
+          <tr style="background:#f9fafb;"><td style="padding:8px;color:#6b7280;">Response by</td><td style="padding:8px;">Support Team</td></tr>
         </table>
         <div style="background:#f9fafb;padding:16px;border-radius:6px;margin:16px 0;">
           <p style="color:#374151;margin:0;">${comment.message}</p>

@@ -255,7 +255,7 @@ export default async function ClientTicketDetailPage({
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {comment.author.name}
+                          {comment.author.role === 'ADMIN' ? 'Support Team' : comment.author.name}
                         </span>
                         <Badge variant="secondary" className="text-xs">
                           {comment.author.role}
