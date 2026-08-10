@@ -1,6 +1,6 @@
 {
   "name": "propfirmstech-support-portal",
-  "version": "0.1.102",
+  "version": "0.1.103",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -17,6 +17,7 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "cleanup:tokens": "ts-node scripts/cleanup-expired-tokens.ts",
+    "escalate:priorities": "ts-node -r tsconfig-paths/register --compiler-options {\"module\":\"CommonJS\"} scripts/escalate-priorities.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
