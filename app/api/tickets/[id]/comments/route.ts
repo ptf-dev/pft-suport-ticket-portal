@@ -88,11 +88,15 @@ export async function POST(
       await NotificationService.notifyAdminNewComment(params.id, comment.id)
     }
 
-    // WhatsApp notification for public comments
+    // WhatsApp + watcher notifications for public comments
     if (!isInternal) {
       notifyTicketNewComment(params.id, comment.id).catch((err) => {
         console.error('[tickets/comments] whatsapp notify failed', err)
       })
+      NotificationService.notifyWatchers(params.id, 'comment', session.user.id, {
+        commentAuthor: session.user.name,
+        commentPreview: message.trim(),
+      }).catch(() => {})
     }
 
     // Send email notifications to mentioned users
