@@ -1,3 +1,10 @@
+/**
+ * Per-event group notifications.
+ *
+ * Only groups in INSTANT mode are notified here. Groups set to DIGEST get one
+ * periodic summary instead (lib/services/whatsapp-digest.ts) — without the mode
+ * filter they would receive both. DM recipients are unaffected either way.
+ */
 import { prisma } from '@/lib/prisma'
 import { isWahaConfigured, sendGroupText } from '@/lib/integrations/waha'
 import type { TicketStatus } from '@prisma/client'
@@ -27,7 +34,7 @@ export async function notifyTicketStatusChanged(
   if (!ticket) return
 
   const groups = await prisma.whatsappGroup.findMany({
-    where: { companyId: ticket.companyId, enabled: true, notifyOnStatusChange: true },
+    where: { companyId: ticket.companyId, enabled: true, notifyOnStatusChange: true, notifyMode: 'INSTANT' },
     select: { groupJid: true },
   })
   if (!groups.length) return
@@ -63,7 +70,7 @@ export async function notifyTicketNewComment(ticketId: string, commentId: string
 
   const [groups, dmUsers] = await Promise.all([
     prisma.whatsappGroup.findMany({
-      where: { companyId: comment.ticket.companyId, enabled: true, notifyOnStatusChange: true },
+      where: { companyId: comment.ticket.companyId, enabled: true, notifyOnStatusChange: true, notifyMode: 'INSTANT' },
       select: { groupJid: true },
     }),
     prisma.whatsappUser.findMany({
@@ -93,7 +100,7 @@ export async function notifyTicketCreated(ticketId: string): Promise<void> {
   if (!ticket) return
 
   const groups = await prisma.whatsappGroup.findMany({
-    where: { companyId: ticket.companyId, enabled: true, notifyOnStatusChange: true },
+    where: { companyId: ticket.companyId, enabled: true, notifyOnStatusChange: true, notifyMode: 'INSTANT' },
     select: { groupJid: true },
   })
   if (!groups.length) return

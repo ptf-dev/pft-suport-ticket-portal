@@ -20,6 +20,7 @@ interface MappedGroup {
   mentionOnly: boolean
   agentMode: AgentMode
   notifyOnStatusChange: boolean
+  notifyMode: 'INSTANT' | 'DIGEST'
   company: { id: string; name: string }
 }
 interface WaGroup { id: string; name: string; participants: number }
@@ -325,6 +326,22 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                         <input type="checkbox" checked={g.notifyOnStatusChange} onChange={(e) => patch(g.id, { notifyOnStatusChange: e.target.checked })} />
                         <span>Notify on status change</span>
                       </label>
+                      {g.notifyOnStatusChange && (
+                        <label
+                          className="flex items-center gap-2"
+                          title="Every event: one message per change, as it happens. Every 6h: one summary of everything that changed, and nothing is sent when nothing happened."
+                        >
+                          <span className="text-xs text-ink-mute">Notify</span>
+                          <Select
+                            value={g.notifyMode}
+                            onChange={(e) => patch(g.id, { notifyMode: e.target.value as 'INSTANT' | 'DIGEST' })}
+                            className="text-sm py-1"
+                          >
+                            <option value="INSTANT">Every event</option>
+                            <option value="DIGEST">Every 6h summary</option>
+                          </Select>
+                        </label>
+                      )}
                     </div>
                   </div>
                 </div>

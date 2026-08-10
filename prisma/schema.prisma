@@ -75,6 +75,13 @@ enum TicketRelationType {
   SPLIT_TO
 }
 
+enum WhatsappNotifyMode {
+  /** Post every event to the group as it happens. */
+  INSTANT
+  /** Hold events and post one summary of the window instead. */
+  DIGEST
+}
+
 enum ActivityType {
   CREATED
   EDITED
@@ -432,6 +439,8 @@ model WhatsappGroup {
   mentionOnly Boolean  @default(true)
   agentMode   WhatsappAgentMode @default(HYBRID)
   notifyOnStatusChange Boolean @default(true)
+  notifyMode   WhatsappNotifyMode @default(INSTANT)
+  lastDigestAt DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
