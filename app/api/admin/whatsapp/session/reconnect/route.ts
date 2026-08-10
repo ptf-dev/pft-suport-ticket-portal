@@ -3,11 +3,11 @@ import { requireAdmin } from '@/lib/auth-helpers'
 import { isWahaConfigured, restartSession, getSessionQr, requestPairingCode, getBotIdentity } from '@/lib/integrations/waha'
 
 export const dynamic = 'force-dynamic'
-// Restart + poll can take ~30s before WAHA reaches SCAN_QR_CODE.
-export const maxDuration = 60
+// Logout + poll: usually ~5s, but allow headroom for a slow WAHA start.
+export const maxDuration = 90
 
 /**
- * Kick off WhatsApp pairing: restart the session, wait for the QR window to
+ * Kick off WhatsApp pairing: clear the dead session, wait for the QR window to
  * open, and return the QR (plus a pairing code when a phone number is given).
  *
  * Does NOT touch group→company mappings — those live in our database keyed by

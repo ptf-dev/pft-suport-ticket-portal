@@ -113,22 +113,29 @@ export async function getSessionQr(): Promise<string | null> {
 }
 
 /**
- * Restart the WAHA session and wait for it to reach SCAN_QR_CODE.
+ * Open a fresh pairing window and wait for it to reach SCAN_QR_CODE.
  *
- * WAHA only serves a QR for a short window after a restart (~60-90s), then
- * drops back to FAILED. Without this, the admin page could only ever *read*
- * status, so the QR window had to be opened out-of-band and was almost always
- * expired by the time anyone looked.
+ * Uses logout, NOT restart. WAHA keeps the previous device credentials on disk,
+ * and a restart simply replays them ("logging in… passive: true"). Once the
+ * device has been unlinked from the phone — or the credentials have otherwise
+ * expired — WhatsApp rejects that login and the session drops to FAILED within
+ * seconds, without ever issuing a QR. Restarting again just repeats it.
  *
- * Session config (webhooks, HMAC key, NOWEB store) is held by WAHA across
- * restarts, and group→company mappings live in our own database keyed by
- * groupJid — neither is touched here.
+ * Logging out clears the stored credentials, so the session comes back up
+ * unauthenticated and issues a QR (observed: ~5s). A WORKING session is left
+ * alone, since logging that out would disconnect a healthy bot.
+ *
+ * Session config (webhooks, HMAC key, NOWEB store) survives, and group→company
+ * mappings live in our own database keyed by groupJid — neither is touched.
  */
 export async function restartSession(): Promise<WahaSessionStatus | null> {
-  const res = await wahaFetch(`/api/sessions/${WAHA_SESSION}/restart`, { method: 'POST' })
+  const current = await getSessionStatus()
+  if (current?.status === 'WORKING') return current
+
+  const res = await wahaFetch(`/api/sessions/${WAHA_SESSION}/logout`, { method: 'POST' })
   if (!res.ok) return null
 
-  for (let attempt = 0; attempt < 15; attempt++) {
+  for (let attempt = 0; attempt < 20; attempt++) {
     await new Promise((r) => setTimeout(r, 2000))
     const status = await getSessionStatus()
     if (!status) continue

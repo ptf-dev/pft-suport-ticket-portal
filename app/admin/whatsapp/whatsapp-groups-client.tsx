@@ -57,6 +57,7 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
   const [refreshing, setRefreshing] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
   const [pairingCode, setPairingCode] = useState<string | null>(null)
+  const [reconnectError, setReconnectError] = useState<string | null>(null)
   const [selectedCompanies, setSelectedCompanies] = useState<Record<string, string>>({})
 
   const load = async () => {
@@ -132,12 +133,22 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
   const reconnect = async () => {
     setReconnecting(true)
     setPairingCode(null)
+    setReconnectError(null)
     try {
       const res = await fetch('/api/admin/whatsapp/session/reconnect', {
         method: 'POST',
       }).then((r) => r.json()).catch(() => null)
       if (res?.pairingCode) setPairingCode(res.pairingCode)
-      if (res?.qr) setSession((prev) => (prev ? { ...prev, status: res.status, qr: res.qr } : prev))
+      if (res?.qr) {
+        setSession((prev) => (prev ? { ...prev, status: res.status, qr: res.qr } : prev))
+      } else if (res?.status !== 'WORKING') {
+        // Without this the button looked like it did nothing at all.
+        setReconnectError(
+          res?.error
+            ? String(res.error)
+            : `Could not open a pairing window (WhatsApp reported "${res?.status ?? 'no response'}"). Try again in a minute.`
+        )
+      }
     } finally {
       setReconnecting(false)
       load()
@@ -210,6 +221,12 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                   <span className="text-xs text-ink-mute">Pairing window open — auto-refreshing</span>
                 )}
               </div>
+
+              {reconnectError && (
+                <div className="rounded-md bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-3 text-sm text-red-800 dark:text-red-200">
+                  {reconnectError}
+                </div>
+              )}
 
               {session.status !== 'WORKING' && session.status !== 'SCAN_QR_CODE' && (
                 <p className="text-sm text-ink-mute">
