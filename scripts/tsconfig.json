@@ -1,0 +1,16 @@
+{
+  "//": "Standalone config for ts-node CLI scripts. The app's tsconfig targets the Next bundler (module: esnext, moduleResolution: bundler) and has no baseUrl, so tsconfig-paths cannot resolve the @/* alias under plain Node. Kept separate so the app build is untouched.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "baseUrl": "..",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "noEmit": false,
+    "incremental": false
+  },
+  "include": ["./**/*.ts", "../lib/**/*.ts"],
+  "exclude": ["../node_modules"]
+}
