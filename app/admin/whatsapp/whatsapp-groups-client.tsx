@@ -30,6 +30,7 @@ interface WebhookRelay {
   name: string
   groupJid: string
   secret: string | null
+  baseUrl: string | null
   enabled: boolean
   lastEventAt: string | null
 }
@@ -54,6 +55,7 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
   const [relays, setRelays] = useState<WebhookRelay[]>([])
   const [newRelayName, setNewRelayName] = useState('')
   const [newRelayGroup, setNewRelayGroup] = useState('')
+  const [newRelayBaseUrl, setNewRelayBaseUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
@@ -83,10 +85,11 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
     await fetch('/api/admin/whatsapp/relays', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newRelayName.trim(), groupJid: newRelayGroup }),
+      body: JSON.stringify({ name: newRelayName.trim(), groupJid: newRelayGroup, baseUrl: newRelayBaseUrl.trim() || null }),
     })
     setNewRelayName('')
     setNewRelayGroup('')
+    setNewRelayBaseUrl('')
     load()
   }
 
@@ -467,21 +470,30 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
             HMAC-SHA256 signing secret on the sender (sent as <code>X-Webhook-Signature</code>).
           </p>
 
-          <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col md:flex-row gap-2">
+              <input
+                type="text"
+                value={newRelayName}
+                onChange={(e) => setNewRelayName(e.target.value)}
+                placeholder="Relay name (e.g. ForRealFunding sales)"
+                className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+              />
+              <Select value={newRelayGroup} onChange={(e) => setNewRelayGroup(e.target.value)} className="text-sm md:w-72">
+                <option value="">Target group…</option>
+                {mapped.map((g) => (
+                  <option key={g.groupJid} value={g.groupJid}>{g.name}</option>
+                ))}
+              </Select>
+              <Button size="sm" onClick={createRelay} disabled={!newRelayName.trim() || !newRelayGroup}>Create relay</Button>
+            </div>
             <input
-              type="text"
-              value={newRelayName}
-              onChange={(e) => setNewRelayName(e.target.value)}
-              placeholder="Relay name (e.g. ForRealFunding sales)"
-              className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+              type="url"
+              value={newRelayBaseUrl}
+              onChange={(e) => setNewRelayBaseUrl(e.target.value)}
+              placeholder="Dashboard base URL for deep links (e.g. https://app.forrealfunding.com) — optional"
+              className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
             />
-            <Select value={newRelayGroup} onChange={(e) => setNewRelayGroup(e.target.value)} className="text-sm md:w-72">
-              <option value="">Target group…</option>
-              {mapped.map((g) => (
-                <option key={g.groupJid} value={g.groupJid}>{g.name}</option>
-              ))}
-            </Select>
-            <Button size="sm" onClick={createRelay} disabled={!newRelayName.trim() || !newRelayGroup}>Create relay</Button>
           </div>
 
           {relays.length > 0 && (
@@ -514,6 +526,16 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                         <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(r.secret!)}>Copy</Button>
                       )}
                       <Button variant="outline" size="sm" onClick={() => { if (confirm('Rotate secret? The sender must be updated with the new one.')) patchRelay(r.id, { rotateSecret: true }) }}>Rotate</Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-ink-mute w-20 shrink-0">Base URL</span>
+                      <input
+                        type="url"
+                        defaultValue={r.baseUrl ?? ''}
+                        placeholder="https://app.example.com"
+                        onBlur={(e) => { const v = e.target.value.trim(); if (v !== (r.baseUrl ?? '')) patchRelay(r.id, { baseUrl: v }) }}
+                        className="text-xs bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 flex-1 border-0"
+                      />
                     </div>
                     <div className="flex flex-wrap items-center gap-4">
                       <label className="flex flex-col text-xs text-ink-mute gap-1 md:w-72">

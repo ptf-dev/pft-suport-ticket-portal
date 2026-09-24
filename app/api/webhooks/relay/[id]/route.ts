@@ -25,7 +25,62 @@ function verifySignature(rawBody: string, signature: string | null, secret: stri
   return timingSafeEqual(a, b)
 }
 
-function formatEventMessage(relayName: string, rawBody: string): string {
+function getEventData(payload: any): Record<string, unknown> {
+  if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) return { ...payload, ...payload.data }
+  return payload
+}
+
+function formatCurrency(amount: number, currency: string): string {
+  const sym: Record<string, string> = { USD: '$', EUR: '€', GBP: '£' }
+  const s = sym[currency.toUpperCase()] ?? ''
+  return s ? `${s}${amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${currency.toUpperCase()}` : `${amount} ${currency.toUpperCase()}`
+}
+
+function humanize(s: string): string {
+  return s.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function formatPurchase(relayName: string, d: Record<string, unknown>, baseUrl: string | null): string {
+  const amount = typeof d.amount === 'number' ? d.amount : typeof d.usdAmount === 'number' ? d.usdAmount : null
+  const currency = typeof d.currency === 'string' ? d.currency : 'USD'
+  const email = typeof d.email === 'string' ? d.email : null
+  const method = typeof d.paymentMethod === 'string' ? humanize(d.paymentMethod) : null
+  const challenge = typeof d.challengeType === 'string' ? humanize(d.challengeType) : null
+  const programName = typeof d.programName === 'string' ? d.programName : null
+  const paymentId = typeof d.paymentId === 'string' ? d.paymentId : null
+
+  const lines = [`💰 *${relayName}* — New Sale!`, '']
+  if (amount !== null) {
+    const price = formatCurrency(amount, currency)
+    lines.push(method ? `${price} via ${method}` : price)
+  }
+  if (email) lines.push(`📧 ${email}`)
+  if (programName) lines.push(`📦 ${programName}`)
+  if (challenge) lines.push(`🏆 ${challenge} Challenge`)
+  if (baseUrl && paymentId) lines.push(`\n🔗 ${baseUrl.replace(/\/$/, '')}/admin/payments/${paymentId}`)
+
+  return lines.join('\n')
+}
+
+function formatGeneric(relayName: string, event: string | null, d: Record<string, unknown>, baseUrl: string | null): string {
+  const header = event ? `🔔 *${relayName}* — ${humanize(event)}` : `🔔 *${relayName}*`
+  const skip = new Set(['event', 'type', 'event_type', 'signature', 'timestamp', 'data'])
+  const idFields = new Set(['eventId', 'userId', 'programId'])
+  const lines: string[] = []
+  for (const [key, value] of Object.entries(d)) {
+    if (lines.length >= 8) break
+    if (skip.has(key) || idFields.has(key)) continue
+    if (value === null || value === undefined) continue
+    const t = typeof value
+    if (t !== 'string' && t !== 'number' && t !== 'boolean') continue
+    const text = String(value).replace(/\s+/g, ' ').trim()
+    if (!text) continue
+    lines.push(`• ${key}: ${text.slice(0, 120)}`)
+  }
+  return lines.length ? `${header}\n${lines.join('\n')}` : header
+}
+
+function formatEventMessage(relayName: string, rawBody: string, baseUrl: string | null): string {
   let payload: any
   try {
     payload = JSON.parse(rawBody)
@@ -38,31 +93,12 @@ function formatEventMessage(relayName: string, rawBody: string): string {
     return `🔔 *${relayName}*\n${text || '(empty payload)'}`
   }
 
-  const event = payload.event ?? payload.type ?? payload.event_type ?? null
-  const header = event ? `🔔 *${relayName}* — ${event}` : `🔔 *${relayName}*`
+  const event: string | null = payload.event ?? payload.type ?? payload.event_type ?? null
+  const d = getEventData(payload)
 
-  // Collect readable fields: top-level primitives, plus primitives from a
-  // nested `data` object (the common {event, data:{...}} webhook shape).
-  const skip = new Set(['event', 'type', 'event_type', 'signature', 'timestamp'])
-  const lines: string[] = []
-  const collect = (obj: Record<string, unknown>) => {
-    for (const [key, value] of Object.entries(obj)) {
-      if (lines.length >= 10) return
-      if (skip.has(key)) continue
-      if (value === null || value === undefined) continue
-      const t = typeof value
-      if (t !== 'string' && t !== 'number' && t !== 'boolean') continue
-      const text = String(value).replace(/\s+/g, ' ').trim()
-      if (!text) continue
-      lines.push(`• ${key}: ${text.slice(0, 120)}`)
-    }
-  }
-  collect(payload)
-  if (payload.data && typeof payload.data === 'object' && !Array.isArray(payload.data)) {
-    collect(payload.data)
-  }
+  if (event === 'purchase_completed') return formatPurchase(relayName, d, baseUrl)
 
-  return lines.length ? `${header}\n${lines.join('\n')}` : header
+  return formatGeneric(relayName, event, d, baseUrl)
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
@@ -81,7 +117,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
   }
 
-  const message = formatEventMessage(relay.name, rawBody)
+  const message = formatEventMessage(relay.name, rawBody, relay.baseUrl ?? null)
   try {
     await sendGroupText(relay.groupJid, message)
   } catch (err) {

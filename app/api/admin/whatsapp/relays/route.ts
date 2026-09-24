@@ -14,7 +14,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   await requireAdmin()
   const body = await request.json().catch(() => ({}))
-  const { name, groupJid } = body ?? {}
+  const { name, groupJid, baseUrl } = body ?? {}
   if (!name?.trim() || !groupJid?.trim()) {
     return NextResponse.json({ error: 'name and groupJid are required' }, { status: 400 })
   }
@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
       name: String(name).trim().slice(0, 100),
       groupJid: String(groupJid).trim(),
       secret: randomBytes(24).toString('hex'),
+      baseUrl: typeof baseUrl === 'string' && baseUrl.trim() ? baseUrl.trim().slice(0, 200) : null,
     },
   })
   return NextResponse.json(relay)

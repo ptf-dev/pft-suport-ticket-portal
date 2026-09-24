@@ -12,6 +12,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   if (typeof body.enabled === 'boolean') data.enabled = body.enabled
   if (typeof body.name === 'string' && body.name.trim()) data.name = body.name.trim().slice(0, 100)
   if (typeof body.groupJid === 'string' && body.groupJid.trim()) data.groupJid = body.groupJid.trim()
+  if (typeof body.baseUrl === 'string') data.baseUrl = body.baseUrl.trim().slice(0, 200) || null
   if (body.rotateSecret === true) data.secret = randomBytes(24).toString('hex')
 
   const relay = await prisma.webhookRelay.update({ where: { id: params.id }, data })

@@ -497,6 +497,7 @@ model WebhookRelay {
   name        String
   groupJid    String
   secret      String?
+  baseUrl     String?
   enabled     Boolean   @default(true)
   lastEventAt DateTime?
   createdAt   DateTime  @default(now())
