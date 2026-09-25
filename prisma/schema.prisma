@@ -493,15 +493,17 @@ model WhatsappMessage {
 }
 
 model WebhookRelay {
-  id          String    @id @default(cuid())
-  name        String
-  groupJid    String
-  secret      String?
-  baseUrl     String?
-  enabled     Boolean   @default(true)
-  lastEventAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  name         String
+  groupJid     String
+  secret       String?
+  baseUrl      String?
+  enabled      Boolean   @default(true)
+  totalRevenue Float     @default(0)
+  eventCount   Int       @default(0)
+  lastEventAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@map("webhook_relays")
 }

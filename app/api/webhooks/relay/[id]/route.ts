@@ -40,7 +40,9 @@ function humanize(s: string): string {
   return s.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-function formatPurchase(relayName: string, d: Record<string, unknown>, baseUrl: string | null): string {
+interface RevenueStats { totalRevenue: number; eventCount: number }
+
+function formatPurchase(relayName: string, d: Record<string, unknown>, baseUrl: string | null, stats: RevenueStats | null): string {
   const amount = typeof d.amount === 'number' ? d.amount : typeof d.usdAmount === 'number' ? d.usdAmount : null
   const currency = typeof d.currency === 'string' ? d.currency : 'USD'
   const email = typeof d.email === 'string' ? d.email : null
@@ -57,7 +59,12 @@ function formatPurchase(relayName: string, d: Record<string, unknown>, baseUrl: 
   if (email) lines.push(`📧 ${email}`)
   if (programName) lines.push(`📦 ${programName}`)
   if (challenge) lines.push(`🏆 ${challenge} Challenge`)
-  if (baseUrl && paymentId) lines.push(`\n🔗 ${baseUrl.replace(/\/$/, '')}/admin/payments/${paymentId}`)
+  if (stats) {
+    const newTotal = stats.totalRevenue + (amount ?? 0)
+    const newCount = stats.eventCount + 1
+    lines.push(`\n📊 Total revenue: ${formatCurrency(newTotal, 'USD')} (${newCount} sales)`)
+  }
+  if (baseUrl && paymentId) lines.push(`🔗 ${baseUrl.replace(/\/$/, '')}/admin/payments/${paymentId}`)
 
   return lines.join('\n')
 }
@@ -80,7 +87,9 @@ function formatGeneric(relayName: string, event: string | null, d: Record<string
   return lines.length ? `${header}\n${lines.join('\n')}` : header
 }
 
-function formatEventMessage(relayName: string, rawBody: string, baseUrl: string | null): string {
+interface FormatResult { message: string; revenueIncrement: number | null }
+
+function formatEventMessage(relayName: string, rawBody: string, baseUrl: string | null, stats: RevenueStats | null): FormatResult {
   let payload: any
   try {
     payload = JSON.parse(rawBody)
@@ -90,15 +99,18 @@ function formatEventMessage(relayName: string, rawBody: string, baseUrl: string 
 
   if (payload === null || typeof payload !== 'object') {
     const text = rawBody.replace(/\s+/g, ' ').trim().slice(0, 400)
-    return `🔔 *${relayName}*\n${text || '(empty payload)'}`
+    return { message: `🔔 *${relayName}*\n${text || '(empty payload)'}`, revenueIncrement: null }
   }
 
   const event: string | null = payload.event ?? payload.type ?? payload.event_type ?? null
   const d = getEventData(payload)
 
-  if (event === 'purchase_completed') return formatPurchase(relayName, d, baseUrl)
+  if (event === 'purchase_completed') {
+    const amount = typeof d.amount === 'number' ? d.amount : typeof d.usdAmount === 'number' ? d.usdAmount : null
+    return { message: formatPurchase(relayName, d, baseUrl, stats), revenueIncrement: amount }
+  }
 
-  return formatGeneric(relayName, event, d, baseUrl)
+  return { message: formatGeneric(relayName, event, d, baseUrl), revenueIncrement: null }
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
@@ -117,7 +129,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
   }
 
-  const message = formatEventMessage(relay.name, rawBody, relay.baseUrl ?? null)
+  const stats: RevenueStats = { totalRevenue: relay.totalRevenue, eventCount: relay.eventCount }
+  const { message, revenueIncrement } = formatEventMessage(relay.name, rawBody, relay.baseUrl ?? null, stats)
   try {
     await sendGroupText(relay.groupJid, message)
   } catch (err) {
@@ -125,7 +138,12 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ error: 'Delivery failed' }, { status: 502 })
   }
 
-  prisma.webhookRelay.update({ where: { id: relay.id }, data: { lastEventAt: new Date() } }).catch(() => {})
+  const updateData: any = { lastEventAt: new Date() }
+  if (revenueIncrement !== null) {
+    updateData.totalRevenue = { increment: revenueIncrement }
+    updateData.eventCount = { increment: 1 }
+  }
+  prisma.webhookRelay.update({ where: { id: relay.id }, data: updateData }).catch(() => {})
 
   return NextResponse.json({ ok: true })
 }

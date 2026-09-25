@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "webhook_relays" ADD COLUMN "totalRevenue" DOUBLE PRECISION NOT NULL DEFAULT 0;
+ALTER TABLE "webhook_relays" ADD COLUMN "eventCount" INTEGER NOT NULL DEFAULT 0;
