@@ -46,20 +46,49 @@ function formatPurchase(relayName: string, d: Record<string, unknown>, baseUrl: 
   const amount = typeof d.amount === 'number' ? d.amount : typeof d.usdAmount === 'number' ? d.usdAmount : null
   const currency = typeof d.currency === 'string' ? d.currency : 'USD'
   const email = typeof d.email === 'string' ? d.email : null
+  const customerName = typeof d.customerName === 'string' && d.customerName.trim() ? d.customerName.trim() : null
   const method = typeof d.paymentMethod === 'string' ? humanize(d.paymentMethod) : null
   const challenge = typeof d.challengeType === 'string' ? humanize(d.challengeType) : null
-  const programName = typeof d.programName === 'string' ? d.programName : null
+  const challengePhase = typeof d.challengePhase === 'string' && d.challengePhase.trim() ? d.challengePhase.trim() : null
+  const programName = typeof d.programName === 'string' && d.programName.trim() ? d.programName.trim() : null
+  const accountSizeLabel = typeof d.accountSizeLabel === 'string' && d.accountSizeLabel.trim() ? d.accountSizeLabel.trim() : null
+  const country = typeof d.country === 'string' && d.country.trim() ? d.country.trim() : null
+  const city = typeof d.city === 'string' && d.city.trim() ? d.city.trim() : null
+  const couponCode = typeof d.couponCode === 'string' && d.couponCode.trim() ? d.couponCode.trim() : null
+  const discountAmount = typeof d.discountAmount === 'number' ? d.discountAmount : null
+  const isFree = d.isFree === true
+  const isPapRemaining = d.isPapRemainingPayment === true
   const paymentId = typeof d.paymentId === 'string' ? d.paymentId : null
 
-  const lines = [`💰 *${relayName}* — New Sale!`, '']
+  let header = `💰 *${relayName}* — New Sale!`
+  if (isFree) header = `🎁 *${relayName}* — Free Trial`
+  else if (isPapRemaining) header = `💰 *${relayName}* — Remaining Payment`
+
+  const lines = [header, '']
   if (amount !== null) {
     const price = formatCurrency(amount, currency)
     lines.push(method ? `${price} via ${method}` : price)
   }
-  if (email) lines.push(`📧 ${email}`)
-  if (programName) lines.push(`📦 ${programName}`)
-  if (challenge) lines.push(`🏆 ${challenge} Challenge`)
-  if (stats) {
+  if (customerName && email) lines.push(`👤 ${customerName} (${email})`)
+  else if (email) lines.push(`📧 ${email}`)
+  else if (customerName) lines.push(`👤 ${customerName}`)
+  if (city && country) lines.push(`🌍 ${city}, ${country}`)
+  else if (country) lines.push(`🌍 ${country}`)
+  const challengeParts: string[] = []
+  if (programName) challengeParts.push(programName)
+  else if (challenge) challengeParts.push(`${challenge} Challenge`)
+  if (challengePhase) challengeParts.push(challengePhase)
+  if (challengeParts.length) lines.push(`🏆 ${challengeParts.join(' — ')}`)
+  if (accountSizeLabel) lines.push(`📦 ${accountSizeLabel} Account`)
+  if (couponCode && discountAmount) lines.push(`🏷️ -${formatCurrency(discountAmount, currency)} (${couponCode})`)
+  else if (couponCode) lines.push(`🏷️ Coupon: ${couponCode}`)
+  const firmRevenue = typeof d.firmTotalRevenueUsd === 'number' ? d.firmTotalRevenueUsd : null
+  const firmUsers = typeof d.firmTotalUsers === 'number' ? d.firmTotalUsers : null
+  if (firmRevenue !== null) {
+    const parts = [formatCurrency(firmRevenue, 'USD')]
+    if (firmUsers !== null) parts.push(`${firmUsers} users`)
+    lines.push(`\n📊 Firm total: ${parts.join(' · ')}`)
+  } else if (stats) {
     const newTotal = stats.totalRevenue + (amount ?? 0)
     const newCount = stats.eventCount + 1
     lines.push(`\n📊 Total revenue: ${formatCurrency(newTotal, 'USD')} (${newCount} sales)`)
