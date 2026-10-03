@@ -149,7 +149,7 @@ export default function ModernAdminNav({ user, version, children }: ModernAdminN
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0">
-        <header className="h-16 bg-bg-elev border-b border-line flex items-center justify-between px-3 md:px-8 shrink-0 safe-pt safe-pr">
+        <header className="h-16 bg-bg-elev border-b border-line flex items-center justify-between px-3 md:px-8 shrink-0 safe-pt pr-[max(0.75rem,env(safe-area-inset-right))]">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setOpen(!open)}
@@ -189,7 +189,7 @@ export default function ModernAdminNav({ user, version, children }: ModernAdminN
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-bg p-4 md:p-8 bg-dots safe-pb safe-pr">
+        <main className="flex-1 overflow-y-auto bg-bg p-4 md:p-8 bg-dots pb-[max(1rem,env(safe-area-inset-bottom))] pr-[max(1rem,env(safe-area-inset-right))]">
           <div className="w-full">
             {children}
           </div>

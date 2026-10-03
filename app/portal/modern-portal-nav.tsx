@@ -114,7 +114,7 @@ export default function ModernPortalNav({ user, companyName, children }: ModernP
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0">
-        <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-3 md:px-8 shadow-sm shrink-0 safe-pt safe-pr">
+        <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-3 md:px-8 shadow-sm shrink-0 safe-pt pr-[max(0.75rem,env(safe-area-inset-right))]">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -147,7 +147,7 @@ export default function ModernPortalNav({ user, companyName, children }: ModernP
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 p-4 md:p-8 safe-pb safe-pr">
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950 p-4 md:p-8 pb-[max(1rem,env(safe-area-inset-bottom))] pr-[max(1rem,env(safe-area-inset-right))]">
           {children}
         </main>
       </div>

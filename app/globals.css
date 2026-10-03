@@ -102,6 +102,9 @@
 
   .tabular-nums { font-variant-numeric: tabular-nums; }
 
+  /* Each of these sets the whole side, so it overrides an un-prefixed padding
+     utility (p-4, px-3) on the same element. Where the element has its own
+     gutter, use e.g. pr-[max(1rem,env(safe-area-inset-right))] instead. */
   .safe-pt { padding-top: env(safe-area-inset-top); }
   .safe-pb { padding-bottom: env(safe-area-inset-bottom); }
   .safe-pl { padding-left: env(safe-area-inset-left); }
