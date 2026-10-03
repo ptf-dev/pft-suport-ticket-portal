@@ -6,6 +6,8 @@ import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TablePagination } from '@/components/ui/table-pagination'
 import { InteractiveTicketBoard } from './interactive-ticket-board'
 import { TicketSearch } from './ticket-search'
+import { ReporterFilter } from '../reporter-filter'
+import { isReportedByMe } from '@/lib/portal-ticket-scope'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import Link from 'next/link'
 
@@ -28,7 +30,7 @@ function applyDir(obj: any, dir: string): any {
 export default async function PortalTicketsPage({
   searchParams,
 }: {
-  searchParams: { page?: string; sort?: string; order?: string; view?: string; search?: string }
+  searchParams: { page?: string; sort?: string; order?: string; view?: string; search?: string; reporter?: string }
 }) {
   const session = await requireClient()
   const companyId = session.user.companyId!
@@ -64,10 +66,14 @@ export default async function PortalTicketsPage({
     ]
   }
 
-  const [total, tickets] = await Promise.all([
+  const mine = isReportedByMe(searchParams)
+  const mineWhere = { ...where, createdById: session.user.id }
+
+  const [allCount, mineCount, tickets] = await Promise.all([
     prisma.ticket.count({ where }),
+    prisma.ticket.count({ where: mineWhere }),
     prisma.ticket.findMany({
-      where,
+      where: mine ? mineWhere : where,
       orderBy: view === 'board' ? { createdAt: 'desc' } : orderBy,
       skip: view === 'board' ? 0 : (page - 1) * PAGE_SIZE,
       take: view === 'board' ? undefined : PAGE_SIZE,
@@ -80,19 +86,26 @@ export default async function PortalTicketsPage({
     }),
   ])
 
+  const total = mine ? mineCount : allCount
   const currentSort  = searchParams.sort ?? 'createdAt'
   const currentOrder = (order) as 'asc' | 'desc'
+  const reporterQuery = mine ? '&reporter=me' : ''
+  const reporterFilter = (
+    <ReporterFilter pathname="/portal/tickets" searchParams={searchParams} allCount={allCount} mineCount={mineCount} />
+  )
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tickets</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">All support requests for your company</p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+            {mine ? 'Support requests you reported' : 'All support requests for your company'}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-            <Link href="/portal/tickets?view=board">
+            <Link href={`/portal/tickets?view=board${reporterQuery}`}>
               <Button variant={view === 'board' ? 'default' : 'ghost'} size="sm" className="gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -100,7 +113,7 @@ export default async function PortalTicketsPage({
                 Board
               </Button>
             </Link>
-            <Link href="/portal/tickets?view=table">
+            <Link href={`/portal/tickets?view=table${reporterQuery}`}>
               <Button variant={view === 'table' ? 'default' : 'ghost'} size="sm" className="gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -117,11 +130,17 @@ export default async function PortalTicketsPage({
         </div>
       </div>
 
-      {/* Search Bar */}
-      {view === 'table' && <TicketSearch />}
+      {view === 'table' && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="min-w-[240px] flex-1">
+            <TicketSearch />
+          </div>
+          {reporterFilter}
+        </div>
+      )}
 
       {view === 'board' ? (
-        <InteractiveTicketBoard tickets={tickets} />
+        <InteractiveTicketBoard tickets={tickets} toolbarEnd={reporterFilter} />
       ) : (
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden">
         <div className="overflow-x-auto">
@@ -145,7 +164,9 @@ export default async function PortalTicketsPage({
                       <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
                         <span className="text-3xl">🎫</span>
                       </div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No tickets yet</p>
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                        {mine ? 'No tickets reported by you' : 'No tickets yet'}
+                      </p>
                       <Link href="/portal/tickets/new">
                         <Button size="sm" variant="outline">Create your first ticket</Button>
                       </Link>
@@ -238,7 +259,7 @@ export default async function PortalTicketsPage({
               <span className="text-sm">📊</span>
             </div>
             <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {total} ticket{total !== 1 ? 's' : ''} total
+              {total} ticket{total !== 1 ? 's' : ''} {mine ? 'reported by you' : 'total'}
             </div>
           </div>
         </div>

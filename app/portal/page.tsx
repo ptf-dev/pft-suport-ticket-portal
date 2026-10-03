@@ -6,6 +6,8 @@ import { SortableTh } from '@/components/ui/sortable-table-header'
 import { TicketStatus } from '@prisma/client'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { DashboardSearch } from './dashboard-search'
+import { ReporterFilter } from './reporter-filter'
+import { isReportedByMe } from '@/lib/portal-ticket-scope'
 import { ArrowUpRight, Plus, TicketIcon } from 'lucide-react'
 import Link from 'next/link'
 
@@ -20,7 +22,7 @@ import Link from 'next/link'
 export default async function PortalDashboard({
   searchParams,
 }: {
-  searchParams: { sort?: string; order?: string; search?: string }
+  searchParams: { sort?: string; order?: string; search?: string; reporter?: string }
 }) {
   const session = await requireClient()
   const companyId = session.user.companyId!
@@ -67,17 +69,22 @@ export default async function PortalDashboard({
     ]
   }
 
+  const mine = isReportedByMe(searchParams)
+  const mineWhere = { ...ticketWhere, createdById: session.user.id }
+
   // Get ticket counts by status for this company
-  const [totalTickets, openTickets, inProgressTickets, resolvedTickets] = await Promise.all([
+  const [totalTickets, openTickets, inProgressTickets, resolvedTickets, allCount, mineCount] = await Promise.all([
     prisma.ticket.count({ where: { companyId, isDeleted: false } }),
     prisma.ticket.count({ where: { companyId, status: TicketStatus.OPEN, isDeleted: false } }),
     prisma.ticket.count({ where: { companyId, status: TicketStatus.IN_PROGRESS, isDeleted: false } }),
     prisma.ticket.count({ where: { companyId, status: TicketStatus.RESOLVED, isDeleted: false } }),
+    prisma.ticket.count({ where: ticketWhere }),
+    prisma.ticket.count({ where: mineWhere }),
   ])
 
   // Get recent tickets for this company
   const recentTickets = await prisma.ticket.findMany({
-    where: ticketWhere,
+    where: mine ? mineWhere : ticketWhere,
     take: 10,
     orderBy,
     include: {
@@ -128,13 +135,18 @@ export default async function PortalDashboard({
             <h2 className="font-display text-2xl tracking-tightest text-ink">Recent tickets</h2>
             <p className="text-xs text-ink-mute mt-1">Your latest support requests, newest first.</p>
           </div>
-          <Link href="/portal/tickets" className="text-xs font-mono uppercase tracking-widest text-ink-mute hover:text-ink inline-flex items-center gap-1">
+          <Link href={mine ? '/portal/tickets?reporter=me' : '/portal/tickets'} className="text-xs font-mono uppercase tracking-widest text-ink-mute hover:text-ink inline-flex items-center gap-1">
             View all <ArrowUpRight className="w-3 h-3" />
           </Link>
         </div>
         <div className="rule mx-6" />
         <div className="px-6 py-5 space-y-4">
-          <DashboardSearch />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-[240px] flex-1">
+              <DashboardSearch />
+            </div>
+            <ReporterFilter pathname="/portal" searchParams={searchParams} allCount={allCount} mineCount={mineCount} />
+          </div>
 
           <div className="overflow-x-auto rounded-lg border border-line">
             <table className="min-w-full divide-y divide-line-soft">
@@ -154,7 +166,9 @@ export default async function PortalDashboard({
                     <td colSpan={6} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <TicketIcon className="w-10 h-10 text-ink-faint" strokeWidth={1.2} />
-                        <p className="font-display text-2xl tracking-tightest text-ink">No tickets yet.</p>
+                        <p className="font-display text-2xl tracking-tightest text-ink">
+                          {mine ? 'No tickets reported by you.' : 'No tickets yet.'}
+                        </p>
                         <Link href="/portal/tickets/new" className="text-sm font-medium text-accent hover:text-accent-ink">
                           Create your first ticket
                         </Link>

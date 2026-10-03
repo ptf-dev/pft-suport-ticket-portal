@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { TicketStatus, TicketPriority, Role } from '@prisma/client'
@@ -39,6 +39,7 @@ interface Ticket {
 interface TicketBoardProps {
   tickets: Ticket[]
   basePath?: string
+  toolbarEnd?: ReactNode
 }
 
 const STATUS_COLUMNS: {
@@ -75,7 +76,7 @@ function ts(d: Date | string | null | undefined): number {
   return d ? new Date(d).getTime() : 0
 }
 
-export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }: TicketBoardProps) {
+export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets', toolbarEnd }: TicketBoardProps) {
   const isAdmin = basePath.startsWith('/admin')
   const router = useRouter()
 
@@ -270,7 +271,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
 
   return (
     <div className="relative">
-      <div className="flex items-center justify-between gap-3 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2">
           <ListFilter className="w-3.5 h-3.5 text-ink-mute" />
           <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute">Sort</span>
@@ -284,6 +285,7 @@ export function InteractiveTicketBoard({ tickets, basePath = '/portal/tickets' }
             ))}
           </select>
         </div>
+        {toolbarEnd}
         {isAdmin && (
           <div className="flex items-center gap-2">
             {selected.size > 0 && (
