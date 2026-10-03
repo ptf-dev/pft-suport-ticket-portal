@@ -194,8 +194,8 @@ export default async function AdminTicketDetailPage({
       })()}
 
       {/* Edit and Add Attachments Actions */}
-      <div className="flex gap-2 items-center justify-between">
-        <div className="flex gap-2">
+      <div className="flex flex-wrap lg:flex-nowrap gap-2 items-center justify-between">
+        <div className="flex flex-wrap lg:flex-nowrap gap-2">
           <EditTicketForm
             ticketId={ticket.id}
             initialTitle={ticket.title}

@@ -234,7 +234,7 @@ export default async function AdminTicketsPage({
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between gap-4">
+      <header className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4">
         <div className="flex items-baseline gap-3 min-w-0">
           <h1 className="font-display text-2xl tracking-tightest text-ink leading-none">
             Every ticket, <em className="italic text-accent">one glance.</em>
@@ -243,7 +243,7 @@ export default async function AdminTicketsPage({
             Operations · All tickets
           </span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
           <div className="inline-flex rounded-lg border border-line p-0.5">
             <Link href={buildHref({ view: 'board' })}>
               <Button variant={view === 'board' ? 'default' : 'ghost'} size="sm" className="gap-2">
