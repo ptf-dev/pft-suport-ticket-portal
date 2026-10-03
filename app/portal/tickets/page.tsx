@@ -96,14 +96,14 @@ export default async function PortalTicketsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tickets</h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
             {mine ? 'Support requests you reported' : 'All support requests for your company'}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
             <Link href={`/portal/tickets?view=board${reporterQuery}`}>
               <Button variant={view === 'board' ? 'default' : 'ghost'} size="sm" className="gap-2">
