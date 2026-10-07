@@ -2,7 +2,7 @@ import { requireClient } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { SortableTh } from '@/components/ui/sortable-table-header'
+import { SortableTh, TABLE_TH_CLASS } from '@/components/ui/sortable-table-header'
 import { TablePagination } from '@/components/ui/table-pagination'
 import { InteractiveTicketBoard } from './interactive-ticket-board'
 import { TicketSearch } from './ticket-search'
@@ -164,9 +164,9 @@ export default async function PortalTicketsPage({
                   <SortableTh column="status"    label="Status"     currentSort={currentSort} currentOrder={currentOrder} />
                   <SortableTh column="priority"  label="Priority"   currentSort={currentSort} currentOrder={currentOrder} />
                   <SortableTh column="createdBy" label="Created by" currentSort={currentSort} currentOrder={currentOrder} />
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink-mute uppercase tracking-wider">Activity</th>
+                  <th className={TABLE_TH_CLASS}>Activity</th>
                   <SortableTh column="createdAt" label="Created"    currentSort={currentSort} currentOrder={currentOrder} />
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-ink-mute uppercase tracking-wider">Actions</th>
+                  <th className={`${TABLE_TH_CLASS} text-right`}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-soft">
@@ -187,10 +187,10 @@ export default async function PortalTicketsPage({
                 ) : (
                   tickets.map((ticket) => (
                     <tr key={ticket.id} className="group transition-colors hover:bg-bg-sunken">
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5 min-w-[260px]">
                         <div className="flex items-start gap-3">
                           <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${priorityMeta(ticket.priority).dotClass}`} />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <Link href={`/portal/tickets/${ticket.id}`} target="_blank" rel="noopener noreferrer"
                               className="font-medium text-ink hover:text-accent transition-colors line-clamp-1 block">
                               {ticket.title}
@@ -206,25 +206,25 @@ export default async function PortalTicketsPage({
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <Badge variant={statusVariant(ticket.status)}>
                           {ticket.status.replace(/_/g, ' ')}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <Badge variant={priorityMeta(ticket.priority).badgeVariant}>
                           {priorityLabel(ticket.priority)}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-ink text-bg flex items-center justify-center text-xs font-medium shrink-0">
+                          <div className="w-6 h-6 rounded-full bg-ink text-bg flex items-center justify-center text-[10px] font-semibold shrink-0">
                             {ticket.createdBy.name?.charAt(0).toUpperCase() ?? '?'}
                           </div>
                           <div className="text-sm text-ink">{ticket.createdBy.name}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-3 text-xs text-ink-mute tabular-nums">
                           {ticket._count.comments > 0 && (
                             <span className="inline-flex items-center gap-1">
@@ -239,10 +239,10 @@ export default async function PortalTicketsPage({
                           {ticket._count.comments === 0 && ticket._count.images === 0 && <span className="text-ink-faint">—</span>}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ink tabular-nums">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-sm text-ink tabular-nums">
                         {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-right">
                         <Link href={`/portal/tickets/${ticket.id}`} target="_blank" rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:text-accent-ink transition-colors">
                           View <ArrowUpRight className="w-3.5 h-3.5" />

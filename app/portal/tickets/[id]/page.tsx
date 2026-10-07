@@ -333,20 +333,18 @@ export default async function ClientTicketDetailPage({
           {access.manage && (
             <Card>
               <CardHeader>
-                <CardTitle>Status</CardTitle>
+                <CardTitle>Ticket Management</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute block mb-2">Current Status</div>
+                  <Badge variant={statusVariant(ticket.status)}>{ticket.status.replace('_', ' ')}</Badge>
+                </div>
                 <TicketStatusForm ticketId={ticket.id} currentStatus={ticket.status} />
-              </CardContent>
-            </Card>
-          )}
-
-          {access.manage && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Priority</CardTitle>
-              </CardHeader>
-              <CardContent>
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute block mb-2">Current Priority</div>
+                  <Badge variant={priorityMeta(ticket.priority).badgeVariant}>{priorityLabel(ticket.priority)}</Badge>
+                </div>
                 <TicketPriorityForm ticketId={ticket.id} currentPriority={ticket.priority} />
               </CardContent>
             </Card>
@@ -354,16 +352,20 @@ export default async function ClientTicketDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Details</CardTitle>
+              <CardTitle>Ticket Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {ticket.category && <InfoRow label="Category">{ticket.category}</InfoRow>}
-              <InfoRow label="Assigned to">
-                {ticket.assignedTo ? ticket.assignedTo.name : <span className="italic text-ink-faint">Not yet assigned</span>}
+              <InfoRow label="Company">{ticket.company.name}</InfoRow>
+              <InfoRow label="Created By">
+                {ticket.createdBy.name}
+                <div className="text-xs text-ink-mute">{ticket.createdBy.email}</div>
               </InfoRow>
-              <InfoRow label="Created by">{ticket.createdBy.name}</InfoRow>
+              <InfoRow label="Category">{ticket.category || 'N/A'}</InfoRow>
+              <InfoRow label="Assigned To">
+                {ticket.assignedTo ? ticket.assignedTo.name : <span className="italic text-ink-faint">Unassigned</span>}
+              </InfoRow>
               <InfoRow label="Created">{new Date(ticket.createdAt).toLocaleString()}</InfoRow>
-              <InfoRow label="Last updated">{new Date(ticket.updatedAt).toLocaleString()}</InfoRow>
+              <InfoRow label="Last Updated">{new Date(ticket.updatedAt).toLocaleString()}</InfoRow>
             </CardContent>
           </Card>
 

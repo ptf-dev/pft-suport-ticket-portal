@@ -2,7 +2,7 @@ import { requireClient } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { SortableTh } from '@/components/ui/sortable-table-header'
+import { SortableTh, TABLE_TH_CLASS } from '@/components/ui/sortable-table-header'
 import { TicketStatus } from '@prisma/client'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { DashboardSearch } from './dashboard-search'
@@ -155,9 +155,9 @@ export default async function PortalDashboard({
                   <SortableTh column="title"     label="Ticket"   currentSort={currentSort} currentOrder={currentOrder} />
                   <SortableTh column="status"    label="Status"   currentSort={currentSort} currentOrder={currentOrder} />
                   <SortableTh column="priority"  label="Priority" currentSort={currentSort} currentOrder={currentOrder} />
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink-mute uppercase tracking-wider">Assigned To</th>
+                  <th className={TABLE_TH_CLASS}>Assigned to</th>
                   <SortableTh column="createdAt" label="Created"  currentSort={currentSort} currentOrder={currentOrder} />
-                  <th className="px-6 py-3 text-right text-xs font-semibold text-ink-mute uppercase tracking-wider">Actions</th>
+                  <th className={`${TABLE_TH_CLASS} text-right`}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line-soft">
@@ -178,7 +178,7 @@ export default async function PortalDashboard({
                 ) : (
                   recentTickets.map((ticket) => (
                     <tr key={ticket.id} className="group transition-colors hover:bg-bg-sunken">
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3.5 min-w-[260px]">
                         <div className="flex items-start gap-3">
                           <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${priorityMeta(ticket.priority).dotClass}`} />
                           <div className="min-w-0 flex-1">
@@ -196,7 +196,7 @@ export default async function PortalDashboard({
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <Badge
                           variant={
                             ticket.status === 'OPEN'
@@ -215,22 +215,22 @@ export default async function PortalDashboard({
                           {ticket.status.replace(/_/g, ' ')}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         <Badge variant={priorityMeta(ticket.priority).badgeVariant}>
                           {priorityLabel(ticket.priority)}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
                         {ticket.assignedTo?.name ? (
                           <span className="text-sm text-ink">{ticket.assignedTo.name}</span>
                         ) : (
                           <span className="text-xs italic text-ink-faint">Not yet assigned</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ink tabular-nums">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-sm text-ink tabular-nums">
                         {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-right">
                         <Link
                           href={`/portal/tickets/${ticket.id}`}
                           className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:text-accent-ink transition-colors"

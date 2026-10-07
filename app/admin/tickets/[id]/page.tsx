@@ -248,14 +248,14 @@ export default async function AdminTicketDetailPage({
                           <img
                             src={image.url}
                             alt={image.filename}
-                            className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                            className="w-full h-32 object-cover rounded-lg border border-line"
                           />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity rounded-lg flex items-center justify-center">
+                          <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/60 transition-colors rounded-lg flex items-center justify-center">
                             <a
                               href={image.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-white opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium"
+                              className="text-bg opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium"
                             >
                               View Full Size
                             </a>
@@ -266,13 +266,13 @@ export default async function AdminTicketDetailPage({
                           href={image.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full h-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-1.5 hover:border-primary-400 transition-colors"
+                          className="w-full h-32 rounded-lg border border-line bg-bg-sunken flex flex-col items-center justify-center gap-1.5 hover:border-ink/40 transition-colors"
                         >
-                          <FileText className="w-8 h-8 text-gray-400" />
-                          <span className="text-xs text-primary-600 dark:text-primary-400">{attachmentOpenLabel(image.mimeType)}</span>
+                          <FileText className="w-8 h-8 text-ink-faint" strokeWidth={1.5} />
+                          <span className="text-xs text-accent">{attachmentOpenLabel(image.mimeType)}</span>
                         </a>
                       )}
-                      <div className="mt-1 text-xs text-gray-500 truncate">
+                      <div className="mt-1 text-xs text-ink-mute truncate">
                         {image.filename}
                       </div>
                     </div>
@@ -289,7 +289,7 @@ export default async function AdminTicketDetailPage({
             </CardHeader>
             <CardContent>
               {ticket.comments.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+                <p className="text-sm text-ink-mute text-center py-8">
                   No comments yet
                 </p>
               ) : (
@@ -299,13 +299,13 @@ export default async function AdminTicketDetailPage({
                       key={comment.id}
                       className={`p-4 rounded-lg border ${
                         comment.internal
-                          ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                          : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                          ? 'bg-warn-soft border-warn/40'
+                          : 'bg-bg-sunken border-line'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          <span className="text-sm font-medium text-ink">
                             {comment.author.name}
                           </span>
                           <Badge variant="secondary" className="text-xs">
@@ -318,7 +318,7 @@ export default async function AdminTicketDetailPage({
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">
                             {new Date(comment.createdAt).toLocaleString()}
                           </span>
                           <EditCommentButton
@@ -351,14 +351,14 @@ export default async function AdminTicketDetailPage({
                                   <img
                                     src={image.url}
                                     alt={image.filename}
-                                    className="w-full h-24 object-cover rounded border border-gray-300 dark:border-gray-600"
+                                    className="w-full h-24 object-cover rounded border border-line"
                                   />
-                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-opacity rounded flex items-center justify-center">
+                                  <div className="absolute inset-0 bg-ink/0 group-hover:bg-ink/50 transition-colors rounded flex items-center justify-center">
                                     <a
                                       href={image.url}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-white text-xs opacity-0 group-hover:opacity-100"
+                                      className="text-bg text-xs opacity-0 group-hover:opacity-100"
                                     >
                                       View
                                     </a>
@@ -369,10 +369,10 @@ export default async function AdminTicketDetailPage({
                                   href={image.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="w-full h-24 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center gap-1 hover:border-primary-400 transition-colors"
+                                  className="w-full h-24 rounded border border-line bg-bg-elev flex flex-col items-center justify-center gap-1 hover:border-ink/40 transition-colors"
                                 >
-                                  <FileText className="w-5 h-5 text-gray-400" />
-                                  <span className="text-[10px] text-primary-600 dark:text-primary-400">{attachmentOpenLabel(image.mimeType)}</span>
+                                  <FileText className="w-5 h-5 text-ink-faint" strokeWidth={1.5} />
+                                  <span className="text-[10px] text-accent">{attachmentOpenLabel(image.mimeType)}</span>
                                 </a>
                               )}
                             </div>
@@ -385,7 +385,7 @@ export default async function AdminTicketDetailPage({
               )}
               
               {/* Comment Form */}
-              <div className="border-t dark:border-gray-700 pt-6">
+              <div className="border-t border-line-soft pt-6">
                 <CommentForm ticketId={ticket.id} isAdmin={true} availableUsers={availableUsers} />
               </div>
             </CardContent>
@@ -402,7 +402,7 @@ export default async function AdminTicketDetailPage({
             <CardContent className="space-y-4">
               {/* Current Status */}
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                <label className="font-mono text-[10px] uppercase tracking-widest text-ink-mute block mb-2">
                   Current Status
                 </label>
                 <Badge
@@ -412,7 +412,7 @@ export default async function AdminTicketDetailPage({
                       : ticket.status === 'BLOCKED'
                       ? 'destructive'
                       : ticket.status === 'IN_PROGRESS'
-                      ? 'default'
+                      ? 'info'
                       : ticket.status === 'WAITING_CLIENT'
                       ? 'warning'
                       : ticket.status === 'RESOLVED'
@@ -429,7 +429,7 @@ export default async function AdminTicketDetailPage({
 
               {/* Current Priority */}
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                <label className="font-mono text-[10px] uppercase tracking-widest text-ink-mute block mb-2">
                   Current Priority
                 </label>
                 <Badge variant={priorityMeta(ticket.priority).badgeVariant}>
@@ -449,24 +449,24 @@ export default async function AdminTicketDetailPage({
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Company</div>
-                <div className="text-sm text-gray-900 dark:text-white">{ticket.company.name}</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Company</div>
+                <div className="text-sm text-ink">{ticket.company.name}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Contact Email</div>
-                <div className="text-sm text-gray-900 dark:text-white">{ticket.company.contactEmail}</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Contact Email</div>
+                <div className="text-sm text-ink">{ticket.company.contactEmail}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Created By</div>
-                <div className="text-sm text-gray-900 dark:text-white">{ticket.createdBy.name}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{ticket.createdBy.email}</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Created By</div>
+                <div className="text-sm text-ink">{ticket.createdBy.name}</div>
+                <div className="text-xs text-ink-mute">{ticket.createdBy.email}</div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</div>
-                <div className="text-sm text-gray-900 dark:text-white">{ticket.category || 'N/A'}</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Category</div>
+                <div className="text-sm text-ink">{ticket.category || 'N/A'}</div>
               </div>
-              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <div className="pt-3 border-t border-line-soft">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute mb-1">
                   Sprint
                   {ticket.sprint && (
                     <span className="ml-2 text-xs text-ink-mute font-normal">
@@ -477,24 +477,24 @@ export default async function AdminTicketDetailPage({
                 <TicketSprintForm ticketId={ticket.id} currentSprintId={ticket.sprintId} sprints={sprintOptions} />
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Assigned To</div>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Assigned To</div>
                 {ticket.assignedToId && !ticket.assignedTo ? (
-                  <div className="text-sm text-gray-500 dark:text-gray-400">User Deleted</div>
+                  <div className="text-sm italic text-ink-faint">User Deleted</div>
                 ) : ticket.assignedTo ? (
                   <>
-                    <div className="text-sm text-gray-900 dark:text-white">{ticket.assignedTo.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{ticket.assignedTo.email}</div>
+                    <div className="text-sm text-ink">{ticket.assignedTo.name}</div>
+                    <div className="text-xs text-ink-mute">{ticket.assignedTo.email}</div>
                     {ticket.assignedAt && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <div className="text-xs text-ink-mute mt-1">
                         Assigned {new Date(ticket.assignedAt).toLocaleString()}
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="text-sm text-gray-500 dark:text-gray-400">Unassigned</div>
+                  <div className="text-sm italic text-ink-faint">Unassigned</div>
                 )}
               </div>
-              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="pt-3 border-t border-line-soft">
                 <AssignmentDropdown
                   ticketId={ticket.id}
                   currentAssignedToId={ticket.assignedToId}
@@ -502,14 +502,14 @@ export default async function AdminTicketDetailPage({
                 />
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Created</div>
-                <div className="text-sm text-gray-900 dark:text-white">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Created</div>
+                <div className="text-sm text-ink">
                   {new Date(ticket.createdAt).toLocaleString()}
                 </div>
               </div>
               <div>
-                <div className="text-sm font-medium text-gray-700 dark:text-gray-300">Last Updated</div>
-                <div className="text-sm text-gray-900 dark:text-white">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Last Updated</div>
+                <div className="text-sm text-ink">
                   {new Date(ticket.updatedAt).toLocaleString()}
                 </div>
               </div>

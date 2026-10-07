@@ -185,7 +185,7 @@ export function TicketTable({ tickets, showDeleted, currentSort, currentOrder, m
                         </button>
                       </td>
                     )}
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 min-w-[280px]">
                       <div className="flex items-start gap-3">
                         <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${priorityMeta(ticket.priority).dotClass}`} />
                         <div className="min-w-0 flex-1">

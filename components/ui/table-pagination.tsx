@@ -1,6 +1,8 @@
 'use client'
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface TablePaginationProps {
   total: number
@@ -37,46 +39,43 @@ export function TablePagination({ total, page, pageSize }: TablePaginationProps)
     pages.push(totalPages)
   }
 
+  const navButton = 'inline-flex items-center gap-1 h-8 px-2.5 rounded-md border border-line text-xs font-medium text-ink-soft hover:text-ink hover:bg-mute transition-colors disabled:opacity-40 disabled:cursor-not-allowed'
+
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-      <p className="text-sm text-gray-600 dark:text-gray-400">
-        Showing <span className="font-semibold text-gray-900 dark:text-white">{from}–{to}</span> of{' '}
-        <span className="font-semibold text-gray-900 dark:text-white">{total}</span> results
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-line bg-bg-elev">
+      <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-ink-mute">
+        Showing <span className="text-ink tabular-nums">{from}–{to}</span> of{' '}
+        <span className="text-ink tabular-nums">{total}</span>
       </p>
 
       <div className="flex items-center gap-1">
-        <button
-          onClick={() => goTo(page - 1)}
-          disabled={page === 1}
-          className="px-3 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          ← Prev
+        <button type="button" onClick={() => goTo(page - 1)} disabled={page === 1} className={navButton} aria-label="Previous page">
+          <ChevronLeft className="w-3.5 h-3.5" /> Prev
         </button>
 
         {pages.map((p, i) =>
           p === '...' ? (
-            <span key={`ellipsis-${i}`} className="px-2 text-gray-400">…</span>
+            <span key={`ellipsis-${i}`} className="px-1.5 text-ink-faint">…</span>
           ) : (
             <button
               key={p}
+              type="button"
               onClick={() => goTo(p as number)}
-              className={`w-9 h-9 text-sm rounded-md border transition-colors ${
+              aria-current={p === page ? 'page' : undefined}
+              className={cn(
+                'w-8 h-8 rounded-md border text-xs tabular-nums transition-colors',
                 p === page
-                  ? 'bg-blue-600 border-blue-600 text-white font-semibold'
-                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-              }`}
+                  ? 'bg-ink border-ink text-bg font-semibold'
+                  : 'border-line text-ink-soft hover:text-ink hover:bg-mute',
+              )}
             >
               {p}
             </button>
           )
         )}
 
-        <button
-          onClick={() => goTo(page + 1)}
-          disabled={page === totalPages}
-          className="px-3 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          Next →
+        <button type="button" onClick={() => goTo(page + 1)} disabled={page === totalPages} className={navButton} aria-label="Next page">
+          Next <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>
