@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { getTenantCompany } from '@/lib/tenant'
 import ModernPortalNav from './modern-portal-nav'
+import { ImpersonationBanner } from './impersonation-banner'
 
 /**
  * Portal layout with modern navigation
@@ -30,10 +31,20 @@ export default async function PortalLayout({
     ? await getTenantCompany(session.user.companyId)
     : null
 
+  const companyName = company?.name || 'Unknown Company'
+  const banner = session.user.impersonatorId ? (
+    <ImpersonationBanner
+      userName={session.user.name}
+      companyName={companyName}
+      adminName={session.user.impersonatorName ?? 'Admin'}
+    />
+  ) : null
+
   return (
-    <ModernPortalNav 
-      user={session.user} 
-      companyName={company?.name || 'Unknown Company'} 
+    <ModernPortalNav
+      user={session.user}
+      companyName={companyName}
+      banner={banner}
     >
       {children}
     </ModernPortalNav>

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Mail, KeyRound, UserRound } from 'lucide-react'
+import { Mail, KeyRound, UserRound, Eye } from 'lucide-react'
 import { ResetPasswordModal } from './reset-password-modal'
 import { EditEmailModal } from './edit-email-modal'
 
@@ -20,6 +20,26 @@ interface User {
 export function UsersTable({ users }: { users: User[] }) {
   const [resetting, setResetting] = useState<{ id: string; name: string } | null>(null)
   const [editingEmail, setEditingEmail] = useState<{ id: string; name: string; email: string } | null>(null)
+  const [viewingAs, setViewingAs] = useState<string | null>(null)
+  const [viewAsError, setViewAsError] = useState<{ id: string; message: string } | null>(null)
+
+  const viewAs = async (user: User) => {
+    setViewingAs(user.id)
+    setViewAsError(null)
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/impersonate`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setViewAsError({ id: user.id, message: data.error ?? 'Could not open the portal as this user' })
+        return
+      }
+      window.location.assign('/portal')
+    } catch {
+      setViewAsError({ id: user.id, message: 'Could not open the portal as this user' })
+    } finally {
+      setViewingAs(null)
+    }
+  }
 
   if (users.length === 0) {
     return (
@@ -74,6 +94,18 @@ export function UsersTable({ users }: { users: User[] }) {
           </td>
           <td className="px-4 py-3.5 text-right">
             <div className="flex gap-2 justify-end">
+              {user.role === 'CLIENT' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={viewingAs === user.id}
+                  onClick={() => viewAs(user)}
+                  title="Open the client portal as this user (read-only)"
+                >
+                  <Eye className="w-3.5 h-3.5" /> {viewingAs === user.id ? 'Opening…' : 'View as'}
+                </Button>
+              )}
               <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setEditingEmail({ id: user.id, name: user.name, email: user.email })}>
                 <Mail className="w-3.5 h-3.5" /> Change email
               </Button>
@@ -81,6 +113,7 @@ export function UsersTable({ users }: { users: User[] }) {
                 <KeyRound className="w-3.5 h-3.5" /> Reset password
               </Button>
             </div>
+            {viewAsError?.id === user.id && <p className="mt-1.5 text-xs text-danger">{viewAsError.message}</p>}
           </td>
         </tr>
       ))}

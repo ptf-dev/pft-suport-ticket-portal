@@ -11,10 +11,11 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
+import type { BuildInfo } from '@/lib/build-info'
 
 interface ModernAdminNavProps {
   user: { name: string; email: string }
-  version: string
+  build: BuildInfo
   children: React.ReactNode
 }
 
@@ -31,7 +32,7 @@ const NAV_ITEMS = [
 
 const COLLAPSE_KEY = 'pft.sidebarCollapsed'
 
-export default function ModernAdminNav({ user, version, children }: ModernAdminNavProps) {
+export default function ModernAdminNav({ user, build, children }: ModernAdminNavProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -143,7 +144,12 @@ export default function ModernAdminNav({ user, version, children }: ModernAdminN
             </span>
           </div>
           <div className={cn('px-1', collapsed && 'md:hidden')}>
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint">v{version} · production</span>
+            <span
+              className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink-faint"
+              title={[build.commit && `Commit ${build.commit}`, build.time && `Built ${build.time}`].filter(Boolean).join(' · ') || undefined}
+            >
+              v{build.version}{build.month && ` · ${build.month}`} · {process.env.NODE_ENV === 'production' ? 'prod' : 'dev'}
+            </span>
           </div>
         </div>
       </aside>

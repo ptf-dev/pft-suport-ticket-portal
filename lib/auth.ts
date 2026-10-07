@@ -135,6 +135,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string
         session.user.role = token.role as Role
         session.user.companyId = token.companyId as string | undefined
+        session.user.impersonatorId = token.impersonatorId
+        session.user.impersonatorName = token.impersonatorName
       }
       return session
     },
@@ -154,6 +156,8 @@ declare module 'next-auth' {
       email: string
       role: Role
       companyId?: string
+      impersonatorId?: string
+      impersonatorName?: string
     }
   }
 
@@ -171,5 +175,7 @@ declare module 'next-auth/jwt' {
     id: string
     role: Role
     companyId?: string | null
+    impersonatorId?: string
+    impersonatorName?: string
   }
 }

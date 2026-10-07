@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import ModernAdminNav from './modern-admin-nav'
-import pkg from '@/package.json'
+import { buildInfo } from '@/lib/build-info'
 
 /**
  * Admin layout with modern sidebar navigation
@@ -26,7 +26,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <ModernAdminNav user={session.user} version={process.env.NEXT_PUBLIC_APP_VERSION ?? pkg.version}>
+    <ModernAdminNav user={session.user} build={buildInfo()}>
       {children}
     </ModernAdminNav>
   )

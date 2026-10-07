@@ -13,10 +13,11 @@ interface ModernPortalNavProps {
     email: string
   }
   companyName: string
+  banner?: React.ReactNode
   children: React.ReactNode
 }
 
-export default function ModernPortalNav({ user, companyName, children }: ModernPortalNavProps) {
+export default function ModernPortalNav({ user, companyName, banner, children }: ModernPortalNavProps) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -114,6 +115,7 @@ export default function ModernPortalNav({ user, companyName, children }: ModernP
       </aside>
 
       <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0">
+        {banner}
         <header className="h-16 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-3 md:px-8 shadow-sm shrink-0 safe-pt pr-[max(0.75rem,env(safe-area-inset-right))]">
           <div className="flex items-center gap-3 min-w-0">
             <button

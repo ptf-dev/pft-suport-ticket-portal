@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/prisma'
+import { isBlockedWhileImpersonating } from '@/lib/impersonation'
 
 /**
  * Extract subdomain from hostname
@@ -81,6 +82,13 @@ export async function middleware(request: NextRequest) {
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
   })
+
+  if (token?.impersonatorId && isBlockedWhileImpersonating(request.method, pathname)) {
+    return NextResponse.json(
+      { error: 'Read-only: you are viewing the portal as this user. Go back to admin to make changes.' },
+      { status: 403 },
+    )
+  }
 
   // --- Route Protection Logic ---
   
