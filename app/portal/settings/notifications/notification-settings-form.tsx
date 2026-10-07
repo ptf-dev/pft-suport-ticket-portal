@@ -14,6 +14,8 @@ interface NotificationSettingsFormProps {
   settings: NotificationSettings
 }
 
+const CHECKBOX_CLS = 'h-4 w-4 rounded border-line accent-ink'
+
 export default function NotificationSettingsForm({
   settings,
 }: NotificationSettingsFormProps) {
@@ -55,14 +57,21 @@ export default function NotificationSettingsForm({
     }
   }
 
+  const options = [
+    { id: 'notifyOnStatusChange', label: 'Notify when ticket status changes', checked: settings.notifyOnStatusChange },
+    { id: 'notifyOnNewComments', label: 'Notify when new comments are added', checked: settings.notifyOnNewComments },
+    { id: 'notifyOnTicketAssignment', label: 'Notify when tickets are assigned', checked: settings.notifyOnTicketAssignment },
+    { id: 'notifyOnTicketResolution', label: 'Notify when tickets are resolved', checked: settings.notifyOnTicketResolution },
+  ]
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {message && (
         <div
-          className={`px-4 py-3 rounded ${
+          className={`rounded-md border px-3 py-2 text-xs ${
             message.includes('success')
-              ? 'bg-green-50 border border-green-200 text-green-700'
-              : 'bg-red-50 border border-red-200 text-red-700'
+              ? 'border-ok/20 bg-ok-soft text-ok'
+              : 'border-danger/20 bg-danger-soft text-danger'
           }`}
         >
           {message}
@@ -70,77 +79,40 @@ export default function NotificationSettingsForm({
       )}
 
       <div className="space-y-4">
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           <input
             type="checkbox"
             id="emailNotificationsEnabled"
             name="emailNotificationsEnabled"
             defaultChecked={settings.emailNotificationsEnabled}
-            className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+            className={CHECKBOX_CLS}
           />
-          <Label htmlFor="emailNotificationsEnabled" className="ml-2">
+          <Label htmlFor="emailNotificationsEnabled" className="text-ink">
             Enable email notifications
           </Label>
         </div>
 
-        <div className="ml-6 space-y-3 border-l-2 border-gray-200 pl-4">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="notifyOnStatusChange"
-              name="notifyOnStatusChange"
-              defaultChecked={settings.notifyOnStatusChange}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-            <Label htmlFor="notifyOnStatusChange" className="ml-2 text-sm">
-              Notify when ticket status changes
-            </Label>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="notifyOnNewComments"
-              name="notifyOnNewComments"
-              defaultChecked={settings.notifyOnNewComments}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-            <Label htmlFor="notifyOnNewComments" className="ml-2 text-sm">
-              Notify when new comments are added
-            </Label>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="notifyOnTicketAssignment"
-              name="notifyOnTicketAssignment"
-              defaultChecked={settings.notifyOnTicketAssignment}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-            <Label htmlFor="notifyOnTicketAssignment" className="ml-2 text-sm">
-              Notify when tickets are assigned
-            </Label>
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="notifyOnTicketResolution"
-              name="notifyOnTicketResolution"
-              defaultChecked={settings.notifyOnTicketResolution}
-              className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-            />
-            <Label htmlFor="notifyOnTicketResolution" className="ml-2 text-sm">
-              Notify when tickets are resolved
-            </Label>
-          </div>
+        <div className="ml-2 space-y-3 border-l border-line pl-5">
+          {options.map((option) => (
+            <div key={option.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id={option.id}
+                name={option.id}
+                defaultChecked={option.checked}
+                className={CHECKBOX_CLS}
+              />
+              <Label htmlFor={option.id} className="text-sm text-ink-soft">
+                {option.label}
+              </Label>
+            </div>
+          ))}
         </div>
       </div>
 
       <div className="flex justify-end">
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : 'Save Settings'}
+          {isSubmitting ? 'Saving…' : 'Save settings'}
         </Button>
       </div>
     </form>

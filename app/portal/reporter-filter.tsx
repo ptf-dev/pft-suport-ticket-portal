@@ -20,7 +20,7 @@ export function ReporterFilter({ pathname, searchParams, allCount, mineCount }: 
   return (
     <nav
       aria-label="Filter tickets by reporter"
-      className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800"
+      className="inline-flex shrink-0 items-center rounded-lg border border-line p-0.5"
     >
       {options.map((option) => (
         <Link

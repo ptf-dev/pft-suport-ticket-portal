@@ -44,7 +44,7 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
     }
     setShowMentionDropdown(false)
     setMentionSearch('')
-    
+
     // Add @mention to message
     const user = availableUsers.find(u => u.email === email)
     if (user && textareaRef.current) {
@@ -66,7 +66,7 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!message.trim()) {
       setError('Comment cannot be empty')
       return
@@ -80,7 +80,7 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
       const response = await fetch(`/api/portal/tickets/${ticketId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message,
           mentionedUsers,
         }),
@@ -126,9 +126,9 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div>
-        <Label htmlFor="message" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Add a Comment
+      <div className="space-y-1">
+        <Label htmlFor="message" className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">
+          Add a comment
         </Label>
         <textarea
           ref={textareaRef}
@@ -136,13 +136,12 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={4}
-          placeholder="Type your comment here... Use @ to mention users"
+          placeholder="Type your comment here… Use @ to mention someone"
           disabled={isSubmitting}
-          className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50"
+          className="block w-full rounded-md border border-line bg-bg-elev px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none focus:ring-1 focus:ring-ink disabled:opacity-50 leading-relaxed"
         />
       </div>
 
-      {/* Mentioned Users */}
       {mentionedUsers.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {mentionedUsers.map(email => {
@@ -150,14 +149,15 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
             return (
               <span
                 key={email}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-md text-xs"
+                className="inline-flex items-center gap-1 rounded-md border border-accent/30 bg-accent-soft px-2 py-1 text-xs text-accent-ink"
               >
                 <AtSign className="h-3 w-3" />
                 {user?.name || email}
                 <button
                   type="button"
                   onClick={() => removeMention(email)}
-                  className="hover:text-blue-600 dark:hover:text-blue-400"
+                  className="hover:text-accent"
+                  aria-label={`Remove mention of ${user?.name || email}`}
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -167,7 +167,6 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
         </div>
       )}
 
-      {/* Selected Images Preview */}
       {selectedImages.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selectedImages.map((file, index) => (
@@ -177,18 +176,19 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
                 <img
                   src={URL.createObjectURL(file)}
                   alt={`Preview ${index + 1}`}
-                  className="h-20 w-20 object-cover rounded-md border border-gray-300 dark:border-gray-600"
+                  className="h-20 w-20 object-cover rounded-md border border-line"
                 />
               ) : (
-                <div className="h-20 w-20 flex flex-col items-center justify-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 px-1">
-                  <FileText className="h-6 w-6 text-gray-400" />
-                  <span className="text-[9px] text-gray-500 truncate w-full text-center">{file.name}</span>
+                <div className="h-20 w-20 flex flex-col items-center justify-center gap-1 rounded-md border border-line bg-bg-sunken px-1">
+                  <FileText className="h-6 w-6 text-ink-faint" strokeWidth={1.5} />
+                  <span className="text-[9px] text-ink-mute truncate w-full text-center">{file.name}</span>
                 </div>
               )}
               <button
                 type="button"
                 onClick={() => removeImage(index)}
-                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-2 -right-2 bg-danger text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                aria-label="Remove file"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -197,8 +197,7 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -216,7 +215,7 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
           disabled={isSubmitting}
         >
           <ImageIcon className="h-4 w-4 mr-1" />
-          Attach Files
+          Attach files
         </Button>
 
         {availableUsers.length > 0 && (
@@ -229,22 +228,22 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
               disabled={isSubmitting}
             >
               <AtSign className="h-4 w-4 mr-1" />
-              Mention User
+              Mention
             </Button>
 
             {showMentionDropdown && (
-              <div className="absolute z-10 mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-10 mt-1 w-64 rounded-md border border-line bg-bg-elev shadow-soft max-h-60 overflow-auto">
                 <input
                   type="text"
-                  placeholder="Search users..."
+                  placeholder="Search people…"
                   value={mentionSearch}
                   onChange={(e) => setMentionSearch(e.target.value)}
-                  className="w-full px-3 py-2 border-b border-gray-300 dark:border-gray-600 bg-transparent text-sm focus:outline-none"
+                  className="w-full border-b border-line bg-transparent px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:outline-none"
                 />
                 <div className="py-1">
                   {filteredUsers.length === 0 ? (
-                    <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                      No users found
+                    <div className="px-3 py-2 text-sm text-ink-mute">
+                      No one found
                     </div>
                   ) : (
                     filteredUsers.map(user => (
@@ -252,15 +251,11 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
                         key={user.email}
                         type="button"
                         onClick={() => handleMention(user.email)}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex flex-col"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-mute flex flex-col disabled:opacity-50"
                         disabled={mentionedUsers.includes(user.email)}
                       >
-                        <span className="font-medium text-gray-900 dark:text-gray-100">
-                          {user.name}
-                        </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {user.email}
-                        </span>
+                        <span className="font-medium text-ink">{user.name}</span>
+                        <span className="text-xs text-ink-mute">{user.email}</span>
                       </button>
                     ))
                   )}
@@ -272,7 +267,7 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
       </div>
 
       {error && (
-        <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-2">
+        <div className="text-xs text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
           {error}
         </div>
       )}
@@ -282,7 +277,7 @@ export function CommentForm({ ticketId, availableUsers = [] }: CommentFormProps)
         disabled={!message.trim() || isSubmitting}
         className="w-full"
       >
-        {isSubmitting ? 'Posting...' : 'Post Comment'}
+        {isSubmitting ? 'Posting…' : 'Post comment'}
       </Button>
     </form>
   )

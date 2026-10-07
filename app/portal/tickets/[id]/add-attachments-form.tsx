@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRouter } from 'next/navigation'
+import { FileText, Paperclip } from 'lucide-react'
 import { ATTACHMENT_ACCEPT, MAX_ATTACHMENT_SIZE, isAllowedAttachment } from '@/lib/attachments'
 
 interface AddAttachmentsFormProps {
@@ -26,7 +27,7 @@ export function AddAttachmentsForm({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files)
-      
+
       // Validate file types
       const invalidFiles = files.filter(f => !isAllowedAttachment(f.name, f.type))
 
@@ -37,7 +38,7 @@ export function AddAttachmentsForm({
 
       // Validate file sizes (10MB max)
       const oversizedFiles = files.filter(f => f.size > MAX_ATTACHMENT_SIZE)
-      
+
       if (oversizedFiles.length > 0) {
         setError('Files must be smaller than 10MB')
         return
@@ -78,7 +79,7 @@ export function AddAttachmentsForm({
       setSuccess(`Successfully uploaded ${data.count} image(s)`)
       setSelectedFiles([])
       setIsAdding(false)
-      
+
       // Refresh the page to show new images
       router.refresh()
     } catch (err) {
@@ -94,20 +95,21 @@ export function AddAttachmentsForm({
         onClick={() => setIsAdding(true)}
         variant="outline"
         size="sm"
+        className="gap-1.5"
       >
-        📎 Add Attachments
+        <Paperclip className="w-3.5 h-3.5" /> Add attachments
       </Button>
     )
   }
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 w-full">
       <CardHeader>
-        <CardTitle>Add Attachments</CardTitle>
+        <CardTitle>Add attachments</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div>
-          <Label htmlFor="images">Select Files</Label>
+        <div className="space-y-1">
+          <Label htmlFor="images" className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Select files</Label>
           <input
             id="images"
             type="file"
@@ -115,22 +117,22 @@ export function AddAttachmentsForm({
             multiple
             onChange={handleFileChange}
             disabled={isUploading}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+            className="block w-full text-sm text-ink-mute file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-mute file:text-ink hover:file:bg-line-soft"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-ink-mute">
             Accepted formats: JPEG, PNG, GIF, WebP, PDF, XLSX, XLS (max 10MB each)
           </p>
         </div>
 
         {selectedFiles.length > 0 && (
           <div className="space-y-2">
-            <p className="text-sm font-medium">Selected files:</p>
-            <ul className="text-sm text-gray-600 space-y-1">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">Selected files</p>
+            <ul className="text-sm text-ink-soft space-y-1">
               {selectedFiles.map((file, index) => (
                 <li key={index} className="flex items-center gap-2">
-                  <span>📄</span>
+                  <FileText className="w-4 h-4 text-ink-faint" strokeWidth={1.5} />
                   <span>{file.name}</span>
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-ink-mute">
                     ({(file.size / 1024 / 1024).toFixed(2)} MB)
                   </span>
                 </li>
@@ -140,13 +142,13 @@ export function AddAttachmentsForm({
         )}
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+          <div className="text-xs text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">
+          <div className="text-xs text-ok bg-ok-soft border border-ok/20 rounded-md px-3 py-2">
             {success}
           </div>
         )}
@@ -156,7 +158,7 @@ export function AddAttachmentsForm({
             onClick={handleUpload}
             disabled={isUploading || selectedFiles.length === 0}
           >
-            {isUploading ? 'Uploading...' : 'Upload'}
+            {isUploading ? 'Uploading…' : 'Upload'}
           </Button>
           <Button
             variant="outline"

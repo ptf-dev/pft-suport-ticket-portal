@@ -9,6 +9,7 @@ import { TicketSearch } from './ticket-search'
 import { ReporterFilter } from '../reporter-filter'
 import { isReportedByMe } from '@/lib/portal-ticket-scope'
 import { priorityMeta, priorityLabel } from '@/lib/priorities'
+import { ArrowUpRight, LayoutGrid, MessageSquare, Paperclip, Plus, Rows3, TicketIcon } from 'lucide-react'
 import Link from 'next/link'
 
 const PAGE_SIZE = 20
@@ -25,6 +26,22 @@ function applyDir(obj: any, dir: string): any {
   const r: any = {}
   for (const k of Object.keys(obj)) r[k] = typeof obj[k] === 'object' ? applyDir(obj[k], dir) : dir
   return r
+}
+
+function statusVariant(status: string) {
+  switch (status) {
+    case 'OPEN':
+    case 'BLOCKED':
+      return 'destructive' as const
+    case 'IN_PROGRESS':
+      return 'info' as const
+    case 'WAITING_CLIENT':
+      return 'warning' as const
+    case 'RESOLVED':
+      return 'success' as const
+    default:
+      return 'secondary' as const
+  }
 }
 
 export default async function PortalTicketsPage({
@@ -96,39 +113,35 @@ export default async function PortalTicketsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tickets</h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            {mine ? 'Support requests you reported' : 'All support requests for your company'}
-          </p>
+      <header className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-4">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="font-display text-2xl tracking-tightest text-ink leading-none">
+            Every request, <em className="italic text-accent">one place.</em>
+          </h1>
+          <span className="hidden md:inline font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute truncate">
+            Client portal · {mine ? 'Reported by you' : 'All tickets'}
+          </span>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+        <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
+          <div className="inline-flex rounded-lg border border-line p-0.5">
             <Link href={`/portal/tickets?view=board${reporterQuery}`}>
               <Button variant={view === 'board' ? 'default' : 'ghost'} size="sm" className="gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                </svg>
-                Board
+                <LayoutGrid className="w-4 h-4" />Board
               </Button>
             </Link>
             <Link href={`/portal/tickets?view=table${reporterQuery}`}>
               <Button variant={view === 'table' ? 'default' : 'ghost'} size="sm" className="gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                Table
+                <Rows3 className="w-4 h-4" />Table
               </Button>
             </Link>
           </div>
           <Link href="/portal/tickets/new">
-            <Button className="shadow-md hover:shadow-lg transition-shadow">
-              <span className="mr-2">➕</span>New Ticket
+            <Button variant="accent" className="gap-2">
+              <Plus className="w-4 h-4" />New ticket
             </Button>
           </Link>
         </div>
-      </div>
+      </header>
 
       {view === 'table' && (
         <div className="flex flex-wrap items-center gap-3">
@@ -142,126 +155,115 @@ export default async function PortalTicketsPage({
       {view === 'board' ? (
         <InteractiveTicketBoard tickets={tickets} toolbarEnd={reporterFilter} />
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
-              <tr>
-                <SortableTh column="title"     label="Ticket"     currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="status"    label="Status"     currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="priority"  label="Priority"   currentSort={currentSort} currentOrder={currentOrder} />
-                <SortableTh column="createdBy" label="Created By" currentSort={currentSort} currentOrder={currentOrder} />
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Activity</th>
-                <SortableTh column="createdAt" label="Created"    currentSort={currentSort} currentOrder={currentOrder} />
-                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-700">
-              {tickets.length === 0 ? (
+        <div className="bg-bg-elev border border-line rounded-xl shadow-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-line-soft">
+              <thead className="bg-bg-sunken">
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-                        <span className="text-3xl">🎫</span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                        {mine ? 'No tickets reported by you' : 'No tickets yet'}
-                      </p>
-                      <Link href="/portal/tickets/new">
-                        <Button size="sm" variant="outline">Create your first ticket</Button>
-                      </Link>
-                    </div>
-                  </td>
+                  <SortableTh column="title"     label="Ticket"     currentSort={currentSort} currentOrder={currentOrder} />
+                  <SortableTh column="status"    label="Status"     currentSort={currentSort} currentOrder={currentOrder} />
+                  <SortableTh column="priority"  label="Priority"   currentSort={currentSort} currentOrder={currentOrder} />
+                  <SortableTh column="createdBy" label="Created by" currentSort={currentSort} currentOrder={currentOrder} />
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-ink-mute uppercase tracking-wider">Activity</th>
+                  <SortableTh column="createdAt" label="Created"    currentSort={currentSort} currentOrder={currentOrder} />
+                  <th className="px-6 py-3 text-right text-xs font-semibold text-ink-mute uppercase tracking-wider">Actions</th>
                 </tr>
-              ) : (
-                tickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${priorityMeta(ticket.priority).dotClass}`}>
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                          </svg>
-                        </div>
-                        <div className="min-w-0">
-                          <Link href={`/portal/tickets/${ticket.id}`} target="_blank" rel="noopener noreferrer"
-                            className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors line-clamp-1 block">
-                            {ticket.title}
-                          </Link>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-0.5">
-                            #{ticket.id.slice(0, 8)}
-                            {ticket.companyId !== companyId && (
-                              <span className="ml-2 text-info">
-                                Watching · {ticket.company?.name}
-                              </span>
-                            )}
-                          </div>
-                        </div>
+              </thead>
+              <tbody className="divide-y divide-line-soft">
+                {tickets.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-16 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <TicketIcon className="w-10 h-10 text-ink-faint" strokeWidth={1.2} />
+                        <p className="font-display text-2xl tracking-tightest text-ink">
+                          {mine ? 'No tickets reported by you.' : 'No tickets yet.'}
+                        </p>
+                        <Link href="/portal/tickets/new" className="text-sm font-medium text-accent hover:text-accent-ink">
+                          Create your first ticket
+                        </Link>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant={
-                        ticket.status === 'OPEN' ? 'destructive' : ticket.status === 'BLOCKED' ? 'destructive' : ticket.status === 'IN_PROGRESS' ? 'default' :
-                        ticket.status === 'WAITING_CLIENT' ? 'warning' : ticket.status === 'RESOLVED' ? 'success' : 'secondary'
-                      } className="font-semibold text-xs whitespace-nowrap">
-                        {ticket.status.replace(/_/g, ' ')}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <Badge variant={priorityMeta(ticket.priority).badgeVariant}
-                        className="font-semibold text-xs">
-                        {priorityLabel(ticket.priority)}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shrink-0">
-                          <span className="text-xs font-bold text-white">{ticket.createdBy.name?.charAt(0).toUpperCase() ?? '?'}</span>
-                        </div>
-                        <div className="text-sm text-gray-900 dark:text-white font-medium">{ticket.createdBy.name}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 font-medium">
-                        {ticket._count.comments > 0 && <span>💬 {ticket._count.comments}</span>}
-                        {ticket._count.images > 0 && <span>📎 {ticket._count.images}</span>}
-                        {ticket._count.comments === 0 && ticket._count.images === 0 && <span className="text-gray-300 dark:text-gray-600">—</span>}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 dark:text-white font-medium">
-                        {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Link href={`/portal/tickets/${ticket.id}`} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium text-sm transition-colors">
-                        View
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </Link>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  tickets.map((ticket) => (
+                    <tr key={ticket.id} className="group transition-colors hover:bg-bg-sunken">
+                      <td className="px-6 py-4">
+                        <div className="flex items-start gap-3">
+                          <span className={`mt-1.5 inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${priorityMeta(ticket.priority).dotClass}`} />
+                          <div className="min-w-0">
+                            <Link href={`/portal/tickets/${ticket.id}`} target="_blank" rel="noopener noreferrer"
+                              className="font-medium text-ink hover:text-accent transition-colors line-clamp-1 block">
+                              {ticket.title}
+                            </Link>
+                            <div className="mt-1 text-[11px] font-mono text-ink-mute">
+                              {ticket.key ?? `#${ticket.id.slice(0, 8)}`}
+                              {ticket.companyId !== companyId && (
+                                <span className="ml-2 text-info">
+                                  Watching · {ticket.company?.name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant={statusVariant(ticket.status)}>
+                          {ticket.status.replace(/_/g, ' ')}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant={priorityMeta(ticket.priority).badgeVariant}>
+                          {priorityLabel(ticket.priority)}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-ink text-bg flex items-center justify-center text-xs font-medium shrink-0">
+                            {ticket.createdBy.name?.charAt(0).toUpperCase() ?? '?'}
+                          </div>
+                          <div className="text-sm text-ink">{ticket.createdBy.name}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3 text-xs text-ink-mute tabular-nums">
+                          {ticket._count.comments > 0 && (
+                            <span className="inline-flex items-center gap-1">
+                              <MessageSquare className="w-3 h-3" strokeWidth={1.75} />{ticket._count.comments}
+                            </span>
+                          )}
+                          {ticket._count.images > 0 && (
+                            <span className="inline-flex items-center gap-1">
+                              <Paperclip className="w-3 h-3" strokeWidth={1.75} />{ticket._count.images}
+                            </span>
+                          )}
+                          {ticket._count.comments === 0 && ticket._count.images === 0 && <span className="text-ink-faint">—</span>}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-ink tabular-nums">
+                        {new Date(ticket.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <Link href={`/portal/tickets/${ticket.id}`} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:text-accent-ink transition-colors">
+                          View <ArrowUpRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <TablePagination total={total} page={page} pageSize={PAGE_SIZE} />
         </div>
-        <TablePagination total={total} page={page} pageSize={PAGE_SIZE} />
-      </div>
       )}
 
       {total > 0 && (
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-md">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-              <span className="text-sm">📊</span>
-            </div>
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {total} ticket{total !== 1 ? 's' : ''} {mine ? 'reported by you' : 'total'}
-            </div>
-          </div>
+        <div className="bg-bg-elev border border-line rounded-xl shadow-card px-5 py-4 flex items-center gap-3">
+          <TicketIcon className="w-4 h-4 text-ink-mute" strokeWidth={1.75} />
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute">
+            <span className="text-ink tabular-nums">{total}</span> ticket{total !== 1 ? 's' : ''} {mine ? 'reported by you' : 'total'}
+          </span>
         </div>
       )}
     </div>

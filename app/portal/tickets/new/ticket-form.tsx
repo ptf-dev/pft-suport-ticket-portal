@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { PRIORITY_OPTIONS } from '@/lib/priorities'
 import { ATTACHMENT_ACCEPT, isAllowedAttachment, isSpreadsheetMime } from '@/lib/attachments'
+import {
+  AlertTriangle, ClipboardPaste, FileSpreadsheet, FileText, Image as ImageIcon, Loader2, Upload, X,
+} from 'lucide-react'
 import Link from 'next/link'
 
 interface FormErrors {
@@ -40,6 +43,17 @@ const CATEGORIES = [
   'Integration Problem',
   'Other',
 ]
+
+const LABEL_CLS = 'font-mono text-[10px] uppercase tracking-widest text-ink-mute'
+const HINT_CLS = 'text-xs text-ink-mute'
+const FIELD_ERROR_CLS = 'text-xs text-danger'
+
+function FileKindIcon({ file }: { file: File }) {
+  const cls = 'w-5 h-5 text-ink-mute shrink-0'
+  if (isSpreadsheetMime(file.type)) return <FileSpreadsheet className={cls} strokeWidth={1.5} />
+  if (file.type === 'application/pdf') return <FileText className={cls} strokeWidth={1.5} />
+  return <ImageIcon className={cls} strokeWidth={1.5} />
+}
 
 export function TicketForm() {
   const router = useRouter()
@@ -199,30 +213,26 @@ export function TicketForm() {
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className="shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-primary-50 to-blue-50 dark:from-gray-800 dark:to-gray-800 border-b dark:border-gray-700">
-          <CardTitle className="text-xl">Ticket Details</CardTitle>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Fill in the information below to create your support ticket</p>
+      <Card>
+        <CardHeader className="border-b border-line-soft">
+          <CardTitle>Ticket details</CardTitle>
+          <CardDescription>Fill in the information below to open your support ticket.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 pt-6">
-          {/* General Error */}
           {errors.general && (
-            <div className="bg-red-50 border-l-4 border-red-500 text-red-700 px-4 py-3 rounded shadow-sm">
-              <div className="flex items-center">
-                <span className="text-xl mr-2">⚠️</span>
-                <span>{errors.general}</span>
-              </div>
+            <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" strokeWidth={2} />
+              <span>{errors.general}</span>
             </div>
           )}
 
-          {/* Possible duplicate warning */}
           {duplicateTicket && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 text-amber-800 dark:text-amber-200 px-4 py-3 rounded shadow-sm space-y-3">
+            <div className="rounded-lg border border-warn/40 bg-warn-soft px-4 py-3 text-sm text-ink space-y-3">
               <div className="flex items-start gap-2">
-                <span className="text-xl">⚠️</span>
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-warn" strokeWidth={2} />
                 <span>
                   This looks similar to an existing open ticket:{' '}
-                  <strong>{duplicateTicket.key ?? duplicateTicket.id.slice(0, 8)}</strong> — &quot;{duplicateTicket.title}&quot;.
+                  <strong className="font-semibold">{duplicateTicket.key ?? duplicateTicket.id.slice(0, 8)}</strong> — &quot;{duplicateTicket.title}&quot;.
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -236,10 +246,9 @@ export function TicketForm() {
             </div>
           )}
 
-          {/* Title */}
-          <div className="space-y-2">
-            <Label htmlFor="title" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Title <span className="text-red-500">*</span>
+          <div className="space-y-1.5">
+            <Label htmlFor="title" className={LABEL_CLS}>
+              Title <span className="text-danger">*</span>
             </Label>
             <Input
               id="title"
@@ -248,83 +257,55 @@ export function TicketForm() {
               placeholder="Brief summary of your issue"
               required
               disabled={isSubmitting}
-              className="text-base"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <span>💡</span>
-              <span>Provide a clear, concise title that describes your issue</span>
-            </p>
-            {errors.title && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <span>❌</span>
-                <span>{errors.title[0]}</span>
-              </p>
-            )}
+            <p className={HINT_CLS}>A clear, concise title that describes the issue.</p>
+            {errors.title && <p className={FIELD_ERROR_CLS}>{errors.title[0]}</p>}
           </div>
 
-          {/* Priority */}
-          <div className="space-y-2">
-            <Label htmlFor="priority" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Priority <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              id="priority"
-              name="priority"
-              required
-              disabled={isSubmitting}
-              className="text-base"
-            >
-              <option value="">Select priority level</option>
-              {PRIORITIES.map(p => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </Select>
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <span>🎯</span>
-              <span>The time in brackets is the resolution turnaround the PFT team commits to at that priority.</span>
-            </p>
-            {errors.priority && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <span>❌</span>
-                <span>{errors.priority[0]}</span>
-              </p>
-            )}
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="priority" className={LABEL_CLS}>
+                Priority <span className="text-danger">*</span>
+              </Label>
+              <Select
+                id="priority"
+                name="priority"
+                required
+                disabled={isSubmitting}
+              >
+                <option value="">Select priority level</option>
+                {PRIORITIES.map(p => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </Select>
+              <p className={HINT_CLS}>The time in brackets is the resolution turnaround the PFT team commits to at that priority.</p>
+              {errors.priority && <p className={FIELD_ERROR_CLS}>{errors.priority[0]}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="category" className={LABEL_CLS}>Category</Label>
+              <Select
+                id="category"
+                name="category"
+                disabled={isSubmitting}
+              >
+                <option value="">Select a category (optional)</option>
+                {CATEGORIES.map(cat => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </Select>
+              <p className={HINT_CLS}>Helps us route your ticket to the right team.</p>
+              {errors.category && <p className={FIELD_ERROR_CLS}>{errors.category[0]}</p>}
+            </div>
           </div>
 
-          {/* Category */}
-          <div className="space-y-2">
-            <Label htmlFor="category" className="text-sm font-semibold text-gray-700 dark:text-gray-300">Category</Label>
-            <Select
-              id="category"
-              name="category"
-              disabled={isSubmitting}
-              className="text-base"
-            >
-              <option value="">Select a category (optional)</option>
-              {CATEGORIES.map(cat => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </Select>
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <span>📁</span>
-              <span>Help us route your ticket to the right team</span>
-            </p>
-            {errors.category && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <span>❌</span>
-                <span>{errors.category[0]}</span>
-              </p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Description <span className="text-red-500">*</span>
+          <div className="space-y-1.5">
+            <Label htmlFor="description" className={LABEL_CLS}>
+              Description <span className="text-danger">*</span>
             </Label>
             <textarea
               id="description"
@@ -341,26 +322,17 @@ Please include:
 • Any relevant account or transaction details"
               required
               disabled={isSubmitting}
-              className="flex w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-3 text-base text-gray-900 dark:text-gray-100 ring-offset-white dark:ring-offset-gray-900 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
+              className="flex w-full rounded-md border border-line bg-bg-elev px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ink disabled:cursor-not-allowed disabled:opacity-50 leading-relaxed"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              <span>📝</span>
-              <span>The more details you provide, the faster we can help you</span>
-            </p>
-            {errors.description && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <span>❌</span>
-                <span>{errors.description[0]}</span>
-              </p>
-            )}
+            <p className={HINT_CLS}>The more detail you provide, the faster we can help.</p>
+            {errors.description && <p className={FIELD_ERROR_CLS}>{errors.description[0]}</p>}
           </div>
 
-          {/* Image Upload */}
           <div className="space-y-2">
-            <Label htmlFor="images" className="text-sm font-semibold text-gray-700 dark:text-gray-300">Attachments</Label>
-            <div 
+            <Label htmlFor="images" className={LABEL_CLS}>Attachments</Label>
+            <div
               ref={dropZoneRef}
-              className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="rounded-xl border border-dashed border-line bg-bg-sunken p-8 text-center hover:bg-mute transition-colors"
             >
               <input
                 type="file"
@@ -375,23 +347,11 @@ Please include:
                 htmlFor="images"
                 className="cursor-pointer flex flex-col items-center"
               >
-                <svg
-                  className="w-16 h-16 text-gray-400 dark:text-gray-500 mb-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                <span className="text-base text-gray-700 dark:text-gray-300 font-medium mb-1">
+                <Upload className="w-10 h-10 text-ink-faint mb-3" strokeWidth={1.25} />
+                <span className="text-sm font-medium text-ink mb-1">
                   Click to upload attachments or drag and drop
                 </span>
-                <span className="text-sm text-gray-500 dark:text-gray-400">
+                <span className="text-xs text-ink-mute">
                   PNG, JPG, GIF, WebP, PDF, XLSX, XLS up to 10MB (max 5 files)
                 </span>
               </label>
@@ -399,45 +359,37 @@ Please include:
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
                   onClick={handlePasteFromClipboard}
                   disabled={isSubmitting}
-                  className="shadow-sm"
+                  className="gap-2"
                 >
-                  <span className="flex items-center gap-2">
-                    <span>📋</span>
-                    <span>Paste from Clipboard</span>
-                  </span>
+                  <ClipboardPaste className="w-3.5 h-3.5" /> Paste from clipboard
                 </Button>
               </div>
             </div>
 
-            {/* Selected Files */}
             {selectedFiles.length > 0 && (
               <div className="mt-4 space-y-2">
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                  <span>📎</span>
-                  <span>Selected files ({selectedFiles.length}/5):</span>
-                </p>
+                <p className={LABEL_CLS}>Selected files ({selectedFiles.length}/5)</p>
                 {selectedFiles.map((file, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                    className="flex items-center justify-between rounded-lg border border-line bg-bg-elev px-3 py-2"
                   >
                     <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <span className="text-2xl">{isSpreadsheetMime(file.type) ? '📊' : file.type === 'application/pdf' ? '📄' : '🖼️'}</span>
-                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate font-medium">
-                        {file.name}
-                      </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                        ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                      <FileKindIcon file={file} />
+                      <span className="text-sm text-ink truncate">{file.name}</span>
+                      <span className="text-xs text-ink-mute whitespace-nowrap tabular-nums">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => removeFile(index)}
-                      className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium ml-3 px-3 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="ml-3 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-danger hover:bg-danger-soft transition-colors"
                     >
-                      Remove
+                      <X className="w-3 h-3" /> Remove
                     </button>
                   </div>
                 ))}
@@ -446,27 +398,15 @@ Please include:
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between bg-gray-50 dark:bg-gray-800 border-t dark:border-gray-700 py-4">
+        <CardFooter className="flex justify-between border-t border-line-soft bg-bg-sunken/60 py-4">
           <Link href="/portal/tickets">
-            <Button type="button" variant="outline" disabled={isSubmitting} className="shadow-sm">
+            <Button type="button" variant="outline" disabled={isSubmitting}>
               Cancel
             </Button>
           </Link>
-          <Button type="submit" disabled={isSubmitting} className="shadow-md hover:shadow-lg transition-shadow">
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                <span>Creating Ticket...</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <span>✓</span>
-                <span>Create Ticket</span>
-              </span>
-            )}
+          <Button type="submit" variant="accent" disabled={isSubmitting} className="gap-2">
+            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            {isSubmitting ? 'Creating ticket…' : 'Create ticket'}
           </Button>
         </CardFooter>
       </Card>

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { getTenantCompany } from '@/lib/tenant'
 import ModernPortalNav from './modern-portal-nav'
 import { ImpersonationBanner } from './impersonation-banner'
+import { buildInfo } from '@/lib/build-info'
 
 /**
  * Portal layout with modern navigation
@@ -44,6 +45,7 @@ export default async function PortalLayout({
     <ModernPortalNav
       user={session.user}
       companyName={companyName}
+      build={buildInfo()}
       banner={banner}
     >
       {children}
