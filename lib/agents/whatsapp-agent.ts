@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { uniqueTicketKey } from '@/lib/ticket-key'
 import { explicitTicketIntent, fallbackTicketTitle, fallbackTicketDescription } from './ticket-intent'
+import { formatTranscript, displayJid } from './whatsapp-transcript'
 import { autoSprintIdForPriority } from '@/lib/auto-sprint'
 import { getSouls } from './soul'
 import { findLikelyDuplicateTicket } from '@/lib/ticket-duplicate'
@@ -51,7 +52,7 @@ WHEN TO ignore_message (the default — most messages land here):
 
 WHEN YOU DO create_ticket:
 - Set a specific, searchable title (imperative or noun phrase; no emoji; no "fix", no "help").
-- Description: 2-4 lines summarizing the reporter's message. Include reproduction steps if given.
+- Description: 2-4 lines summarizing the reporter's message. Include reproduction steps if given. The recent WhatsApp thread is attached to the ticket automatically — summarize, don't transcribe.
 - Priority: default MEDIUM. HIGH/URGENT only if the reporter clearly indicates blocking/outage/money/security. Feature requests are MEDIUM at most.
 - Category: "Bug Report", "Feature Request", "Account Issue", "Billing Question", "Data Issue", "Platform Access" or "Other" — pick the closest.
 - replyText: short "Got it, opened X" (bot code appends the ticket key + link). This is a confirmation, not a conversation opener — don't ask a question in it.
@@ -327,12 +328,25 @@ async function callAgent(prompt: string, tools: typeof TOOLS = TOOLS): Promise<{
 }
 
 
+/** Last 20 group messages, oldest first, for the ticket's conversation block. */
+async function loadTranscript(group: WhatsappGroup): Promise<string> {
+  const rows = await prisma.whatsappMessage.findMany({
+    where: { groupJid: group.groupJid },
+    orderBy: { createdAt: 'desc' },
+    take: 20,
+    select: { senderName: true, senderJid: true, body: true, createdAt: true, filterReason: true },
+  })
+  return formatTranscript(group.name, rows.reverse())
+}
+
 async function createTicketFromAgent(
   group: WhatsappGroup & { company: { name: string } },
-  input: { title: string; description: string; priority: string; category?: string },
+  input: { title: string; description: string; priority: string; category?: string; transcript?: string },
   senderName: string | null,
+  senderJid?: string,
 ): Promise<{ id: string; key: string | null }> {
   const botUserId = await getBotUserId()
+  const reporter = senderName?.trim() || (senderJid ? displayJid(senderJid) : 'unknown')
   const priority = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'].includes(input.priority) ? input.priority : 'MEDIUM'
   const key = await uniqueTicketKey(group.companyId)
   const sprintId = await autoSprintIdForPriority(priority as any)
@@ -340,7 +354,7 @@ async function createTicketFromAgent(
     data: {
       key,
       title: input.title.slice(0, 200),
-      description: `${input.description}\n\n---\n_Opened from WhatsApp group ${group.name} by ${senderName ?? 'unknown'}._`,
+      description: `${input.description}${input.transcript ?? ''}\n\n---\n_Opened from WhatsApp group ${group.name} by ${reporter}._`,
       priority: priority as any,
       category: input.category?.slice(0, 100),
       status: 'OPEN',
@@ -391,12 +405,17 @@ async function openTicket(input: AgentInput, draft: TicketDraft): Promise<AgentR
       return { action: 'comment_on_ticket', reply: link ? `${body}\n${link}` : body, ticketId }
     }
   }
+  const transcript = await loadTranscript(input.group).catch((err) => {
+    console.error('[whatsapp-agent] transcript load failed, ticket goes without it', err)
+    return ''
+  })
   const ticket = await createTicketFromAgent(input.group, {
     title: draft.title,
     description: draft.description,
     priority: draft.priority,
     category: draft.category,
-  }, input.senderName)
+    transcript,
+  }, input.senderName, input.senderJid)
   const keyLabel = ticket.key ?? ticket.id.slice(0, 8)
   const link = ticketLink(ticket.id)
   const body = draft.replyText ? `${draft.replyText.slice(0, 300)} (${keyLabel})` : `Opened ticket ${keyLabel}.`

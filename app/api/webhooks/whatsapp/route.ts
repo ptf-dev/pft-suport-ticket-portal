@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
   const body: string = msg?.body ?? msg?.text ?? ''
   const waMessageId: string = msg?.id ?? `${chatId}-${Date.now()}`
   const senderJid: string = msg?.participant ?? msg?.author ?? msg?.from ?? ''
-  const senderName: string | null = msg?.notifyName ?? msg?._data?.notifyName ?? null
+  const senderName: string | null = msg?.notifyName ?? msg?._data?.notifyName ?? msg?._data?.pushName ?? msg?.pushName ?? null
   const fromMe = Boolean(msg?.fromMe)
   // Text of the message this one replies to — "@Bob feature request" quoting the actual ask.
   const quotedBody: string | null =
