@@ -30,3 +30,16 @@ export function fallbackTicketTitle(body: string, intent: TicketIntent): string 
   const base = (firstSentence || cleaned || intent.category).slice(0, 90).trim()
   return base.charAt(0).toUpperCase() + base.slice(1)
 }
+
+/**
+ * Description for the no-LLM fallback. A trigger message that is just "feature request"
+ * carries no content of its own, so lean on what it replies to, else on the recent thread.
+ */
+export function fallbackTicketDescription(body: string, quotedBody: string | null | undefined, recentThread: string): string {
+  const own = body.trim()
+  const quoted = quotedBody?.trim()
+  if (quoted) return `${own}\n\nReplying to:\n${quoted}`
+  const stripped = own.replace(/@\S+/g, ' ').replace(/#?(bug\s*report|feature\s*request|new\s*ticket)\b|#(bug|feature|ticket)\b|\b(bug|feature|ticket)\s*:/gi, ' ').trim()
+  if (stripped.length >= 40 || !recentThread.trim() || recentThread.trim() === '(none)') return own
+  return `${own}\n\nRecent thread:\n${recentThread.trim()}`
+}

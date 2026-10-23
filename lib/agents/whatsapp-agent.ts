@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { uniqueTicketKey } from '@/lib/ticket-key'
-import { explicitTicketIntent, fallbackTicketTitle, type TicketIntent } from './ticket-intent'
+import { explicitTicketIntent, fallbackTicketTitle, fallbackTicketDescription } from './ticket-intent'
 import { autoSprintIdForPriority } from '@/lib/auto-sprint'
 import { getSouls } from './soul'
 import { findLikelyDuplicateTicket } from '@/lib/ticket-duplicate'
@@ -69,7 +69,7 @@ Referenced tickets (details for any ticket key mentioned in this message):
 Recent messages (oldest→newest):
 {recentMessages}
 
-@ mention from {senderName}: {messageText}
+{quoted}@ mention from {senderName}: {messageText}
 {explicitIntent}
 Reply now using exactly ONE tool call (create_ticket, comment_on_ticket, or ignore_message).`
 
@@ -82,6 +82,7 @@ interface AgentInput {
   senderJid: string
   senderName: string | null
   body: string
+  quotedBody?: string | null
   waMessageId: string
   wasMentioned?: boolean
 }
@@ -184,7 +185,7 @@ async function loadContext(group: WhatsappGroup, body: string): Promise<{ recent
     prisma.whatsappMessage.findMany({
       where: { groupJid: group.groupJid },
       orderBy: { createdAt: 'desc' },
-      take: 10,
+      take: 15,
       select: { senderName: true, body: true, agentAction: true },
     }),
     loadReferencedTickets(group.companyId, body),
@@ -194,7 +195,7 @@ async function loadContext(group: WhatsappGroup, body: string): Promise<{ recent
       ? tickets.map((t) => `- ${t.key} [${t.status} · ${t.priority}] ${t.title}`).join('\n')
       : '(none)',
     recentMessages: messages.length
-      ? messages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 200)}`).join('\n')
+      ? messages.reverse().map((m) => `- ${m.senderName ?? 'unknown'}: ${m.body.slice(0, 400)}`).join('\n')
       : '(none)',
     referencedTickets,
   }
@@ -430,6 +431,7 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
     .replace('{recentTickets}', ctx.recentTickets)
     .replace('{referencedTickets}', ctx.referencedTickets)
     .replace('{recentMessages}', ctx.recentMessages)
+    .replace('{quoted}', input.quotedBody?.trim() ? `The message replies to (quoted): ${input.quotedBody.trim().slice(0, 1500)}\n` : '')
     .replace('{senderName}', input.senderName ?? 'unknown')
     .replace('{messageText}', input.body)
 
@@ -439,8 +441,8 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
   // LLM miss (or outage) must still end in a ticket — just a plainer one.
   if (intent && (!call || call.name === 'ignore_message')) {
     return openTicket(input, {
-      title: fallbackTicketTitle(input.body, intent),
-      description: input.body.trim(),
+      title: fallbackTicketTitle(input.quotedBody?.trim() || input.body, intent),
+      description: fallbackTicketDescription(input.body, input.quotedBody, ctx.recentMessages),
       priority: 'MEDIUM',
       category: intent.category,
       replyText: `Logged your ${intent.label}`,

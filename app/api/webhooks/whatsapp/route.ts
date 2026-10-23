@@ -233,6 +233,13 @@ export async function POST(request: NextRequest) {
   const senderJid: string = msg?.participant ?? msg?.author ?? msg?.from ?? ''
   const senderName: string | null = msg?.notifyName ?? msg?._data?.notifyName ?? null
   const fromMe = Boolean(msg?.fromMe)
+  // Text of the message this one replies to — "@Bob feature request" quoting the actual ask.
+  const quotedBody: string | null =
+    msg?.replyTo?.body ??
+    msg?._data?.quotedMsg?.body ??
+    msg?._data?.contextInfo?.quotedMessage?.conversation ??
+    msg?._data?.contextInfo?.quotedMessage?.extendedTextMessage?.text ??
+    null
 
   if (isDirect) {
     return handleDirectMessage({ chatId, body, waMessageId, senderJid, senderName, fromMe, msg })
@@ -307,6 +314,7 @@ export async function POST(request: NextRequest) {
       senderJid,
       senderName,
       body,
+      quotedBody,
       waMessageId,
       wasMentioned: mentionsBot,
     })

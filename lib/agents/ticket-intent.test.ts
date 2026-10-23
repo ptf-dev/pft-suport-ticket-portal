@@ -1,4 +1,4 @@
-import { explicitTicketIntent, fallbackTicketTitle } from './ticket-intent'
+import { explicitTicketIntent, fallbackTicketTitle, fallbackTicketDescription } from './ticket-intent'
 
 describe('explicitTicketIntent', () => {
   it('recognises the trigger words in any position and case', () => {
@@ -35,5 +35,24 @@ describe('fallbackTicketTitle', () => {
 
   it('falls back to the category when nothing is left', () => {
     expect(fallbackTicketTitle('@Bob #ticket', { label: 'ticket', category: 'Other' })).toBe('Other')
+  })
+})
+
+describe('fallbackTicketDescription', () => {
+  const thread = '- Nicola: we need a Reports tab\n- Bob: walk me through it'
+
+  it('uses the quoted message when the trigger replies to one', () => {
+    expect(fallbackTicketDescription('@Bob feature request', 'Add a Reports tab with registrations and purchases', thread))
+      .toBe('@Bob feature request\n\nReplying to:\nAdd a Reports tab with registrations and purchases')
+  })
+
+  it('falls back to the recent thread when the trigger message is only the tag', () => {
+    expect(fallbackTicketDescription('@Bob feature request based on the chat', null, thread))
+      .toBe('@Bob feature request based on the chat\n\nRecent thread:\n' + thread)
+  })
+
+  it('keeps a self-contained message as is', () => {
+    const msg = '@Bob feature request: add a status filter to the accounts list so we stop scrolling'
+    expect(fallbackTicketDescription(msg, null, thread)).toBe(msg)
   })
 })
