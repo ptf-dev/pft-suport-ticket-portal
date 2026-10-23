@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { uniqueTicketKey } from '@/lib/ticket-key'
+import { explicitTicketIntent, fallbackTicketTitle, type TicketIntent } from './ticket-intent'
 import { autoSprintIdForPriority } from '@/lib/auto-sprint'
 import { getSouls } from './soul'
 import { findLikelyDuplicateTicket } from '@/lib/ticket-duplicate'
@@ -69,8 +70,12 @@ Recent messages (oldest→newest):
 {recentMessages}
 
 @ mention from {senderName}: {messageText}
-
+{explicitIntent}
 Reply now using exactly ONE tool call (create_ticket, comment_on_ticket, or ignore_message).`
+
+const EXPLICIT_INTENT_BLOCK = `
+EXPLICIT REQUEST: the reporter tagged this message as a {label}. They are asking you to log it, not describing something for you to judge. You MUST call create_ticket (or comment_on_ticket if it clearly belongs to an open ticket) with category "{category}" — never ignore_message, even if details are thin: put whatever is there in the description and the team will follow up.
+`
 
 interface AgentInput {
   group: WhatsappGroup & { company: { name: string } }
@@ -365,6 +370,39 @@ async function commentOnTicket(ticketKey: string, comment: string, companyId: st
   return ticket.id
 }
 
+interface TicketDraft {
+  title: string
+  description: string
+  priority: string
+  category?: string
+  replyText: string | null
+}
+
+async function openTicket(input: AgentInput, draft: TicketDraft): Promise<AgentResult> {
+  const duplicate = await findLikelyDuplicateTicket(input.group.companyId, draft.title)
+  if (duplicate) {
+    const mergedComment = `${draft.description}\n\n_(Reported again via WhatsApp by ${input.senderName ?? 'unknown'} — looked like a duplicate of this ticket, merged instead of opening a new one.)_`
+    const ticketId = await commentOnTicket(duplicate.key ?? '', mergedComment, input.group.companyId, input.senderName)
+    if (ticketId) {
+      const keyLabel = duplicate.key ?? duplicate.id.slice(0, 8)
+      const link = ticketLink(ticketId)
+      const body = `Looks like the same issue as ${keyLabel} — added your details there instead of opening a duplicate.`
+      return { action: 'comment_on_ticket', reply: link ? `${body}\n${link}` : body, ticketId }
+    }
+  }
+  const ticket = await createTicketFromAgent(input.group, {
+    title: draft.title,
+    description: draft.description,
+    priority: draft.priority,
+    category: draft.category,
+  }, input.senderName)
+  const keyLabel = ticket.key ?? ticket.id.slice(0, 8)
+  const link = ticketLink(ticket.id)
+  const body = draft.replyText ? `${draft.replyText.slice(0, 300)} (${keyLabel})` : `Opened ticket ${keyLabel}.`
+  const confirmation = link ? `${body}\n${link}` : body
+  return { action: 'create_ticket', reply: confirmation, ticketId: ticket.id }
+}
+
 export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> {
   if (!LLM_API_KEY) {
     return { action: 'ignore' }
@@ -380,9 +418,11 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
   if (input.group.autoTicket === false) return { action: 'ignore' }
 
   const ctx = await loadContext(input.group, input.body)
+  const intent = explicitTicketIntent(input.body)
   const souls = getSouls()
   const soulText = souls.professional
   const prompt = SYSTEM_PROMPT_MENTIONED
+    .replace('{explicitIntent}', intent ? EXPLICIT_INTENT_BLOCK.replace('{label}', intent.label).replace('{category}', intent.category) : '')
     .replace('{soul}', soulText)
     .replace(/\{companyName\}/g, input.group.company.name)
     .replace(/\{groupName\}/g, input.group.name)
@@ -394,38 +434,31 @@ export async function runWhatsappAgent(input: AgentInput): Promise<AgentResult> 
     .replace('{messageText}', input.body)
 
   const call = await callAgent(prompt, TOOLS)
+
+  // A tagged "bug report" / "feature request" / "#ticket" is an instruction, so an
+  // LLM miss (or outage) must still end in a ticket — just a plainer one.
+  if (intent && (!call || call.name === 'ignore_message')) {
+    return openTicket(input, {
+      title: fallbackTicketTitle(input.body, intent),
+      description: input.body.trim(),
+      priority: 'MEDIUM',
+      category: intent.category,
+      replyText: `Logged your ${intent.label}`,
+    })
+  }
   if (!call) return { action: 'ignore' }
 
   switch (call.name) {
     case 'ignore_message':
       return { action: 'ignore' }
-    case 'create_ticket': {
-      const proposedTitle = String(call.input.title ?? '').trim()
-      const duplicate = await findLikelyDuplicateTicket(input.group.companyId, proposedTitle)
-      if (duplicate) {
-        const mergedComment = `${String(call.input.description ?? '').trim()}\n\n_(Reported again via WhatsApp by ${input.senderName ?? 'unknown'} — looked like a duplicate of this ticket, merged instead of opening a new one.)_`
-        const ticketId = await commentOnTicket(duplicate.key ?? '', mergedComment, input.group.companyId, input.senderName)
-        if (ticketId) {
-          const keyLabel = duplicate.key ?? duplicate.id.slice(0, 8)
-          const link = ticketLink(ticketId)
-          const body = `Looks like the same issue as ${keyLabel} — added your details there instead of opening a duplicate.`
-          return { action: 'comment_on_ticket', reply: link ? `${body}\n${link}` : body, ticketId }
-        }
-      }
-      const ticket = await createTicketFromAgent(input.group, {
-        title: proposedTitle,
+    case 'create_ticket':
+      return openTicket(input, {
+        title: String(call.input.title ?? '').trim(),
         description: String(call.input.description ?? '').trim(),
         priority: String(call.input.priority ?? 'MEDIUM'),
-        category: call.input.category ? String(call.input.category) : undefined,
-      }, input.senderName)
-      const keyLabel = ticket.key ?? ticket.id.slice(0, 8)
-      const link = ticketLink(ticket.id)
-      const body = call.input.replyText
-        ? `${String(call.input.replyText).slice(0, 300)} (${keyLabel})`
-        : `Opened ticket ${keyLabel}.`
-      const confirmation = link ? `${body}\n${link}` : body
-      return { action: 'create_ticket', reply: confirmation, ticketId: ticket.id }
-    }
+        category: call.input.category ? String(call.input.category) : intent?.category,
+        replyText: call.input.replyText ? String(call.input.replyText) : null,
+      })
     case 'comment_on_ticket': {
       const ticketId = await commentOnTicket(
         String(call.input.ticketKey ?? ''),
