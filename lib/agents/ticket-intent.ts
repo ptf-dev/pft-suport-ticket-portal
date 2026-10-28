@@ -7,7 +7,12 @@ export interface TicketIntent {
 const INTENTS: { pattern: RegExp; label: string; category: string }[] = [
   { pattern: /\bbug\s*report\b|#bug\b|\bbug\s*:/i, label: 'bug report', category: 'Bug Report' },
   { pattern: /\bfeature\s*request\b|#feature\b|\bfeature\s*:/i, label: 'feature request', category: 'Feature Request' },
-  { pattern: /\bnew\s*ticket\b|#ticket\b|\bticket\s*:/i, label: 'ticket', category: 'Other' },
+  {
+    // "new ticket", "#ticket", "ticket:", "ticket pls", "create/open/make/log/raise … a ticket", "summarise … ticket"
+    pattern: /\bnew\s*ticket\b|#ticket\b|\bticket\s*:|\bticket\s*(pls|please|now)\b|\b(create|open|make|log|raise|file|add|start|generate)\b[\s\w,'-]{0,40}?\btickets?\b|\bsummari[sz]e\b[\s\S]{0,80}\bticket\b|\bticket\b[\s\S]{0,80}\bsummari[sz]e\b/i,
+    label: 'ticket',
+    category: 'Other',
+  },
 ]
 
 /** A reporter who writes "bug report" / "feature request" / "#ticket" is asking for a ticket, not describing one. */
@@ -26,6 +31,13 @@ export function fallbackTicketTitle(body: string, intent: TicketIntent): string 
     .replace(/\s+/g, ' ')
     .replace(/^[\s:;,.\-–—]+/, '')
     .trim()
+  // "pls summarise above chat and create a ticket" names no issue — title it after the thread instead.
+  const meta = cleaned
+    .replace(/\b(pls|please|can you|could you|summari[sz]e|create|open|make|log|raise|file|add|start|generate|above|previous|the|this|that|chat|thread|conversation|messages?|exchange|and|a|an|of|it|into|from|for|us|me|now)\b/gi, ' ')
+    .replace(/\btickets?\b/gi, ' ')
+    .replace(/[^\w]+/g, ' ')
+    .trim()
+  if (meta.length < 12) return `${intent.category === 'Other' ? 'Request' : intent.category} from WhatsApp thread`
   const firstSentence = cleaned.split(/(?<=[.!?])\s+/)[0] ?? cleaned
   const base = (firstSentence || cleaned || intent.category).slice(0, 90).trim()
   return base.charAt(0).toUpperCase() + base.slice(1)

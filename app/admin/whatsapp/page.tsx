@@ -1,6 +1,7 @@
 import { requireAdmin } from '@/lib/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { WhatsappGroupsClient } from './whatsapp-groups-client'
+import { BotActivity } from './bot-activity'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,8 @@ export default async function WhatsappAdminPage() {
       </header>
 
       <WhatsappGroupsClient companies={companies} />
+
+      <BotActivity />
     </div>
   )
 }

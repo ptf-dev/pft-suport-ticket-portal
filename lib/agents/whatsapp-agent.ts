@@ -41,6 +41,7 @@ WHEN TO create_ticket:
 - That bar is deliberately low — don't hold out for more polish once it's cleared. An account number + a specific symptom + "tried X, nothing happened" is already enough. Never ask a follow-up question instead of logging it.
 - If a message bundles multiple sub-issues and at least one clears the bar, create_ticket for that one now — the rest can go in the description as "also mentioned: ...".
 - Also check Recent messages: if an earlier message in this thread plus this one together clear the bar, create_ticket.
+- If the reporter asks you to summarise the chat into a ticket ("summarise above and create a ticket", "ticket pls"), the trigger message has no details on purpose: build the ticket from Recent messages and the quoted message — what was reported, by whom, expected vs actual, numbers and page names — and never ignore it for being vague.
 - A feature or change request clears the bar too, when it says WHAT to add or change, WHERE (which screen, list or flow) and WHY (the pain it removes) — e.g. "add a status filter to the accounts list, with many accounts we scroll every time to find them". A message starting with "Feature request" is a strong signal, not a requirement. Log it with category "Feature Request" and a title that states the ask, not the complaint.
 
 WHEN TO comment_on_ticket instead:

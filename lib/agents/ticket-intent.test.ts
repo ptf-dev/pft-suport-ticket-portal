@@ -7,6 +7,9 @@ describe('explicitTicketIntent', () => {
     expect(explicitTicketIntent('can you log this as a new ticket please')?.category).toBe('Other')
     expect(explicitTicketIntent('#feature dark mode for the trader dashboard')?.category).toBe('Feature Request')
     expect(explicitTicketIntent('bug: login loops')?.category).toBe('Bug Report')
+    expect(explicitTicketIntent('@Bob pls summarise above chat and create a ticket')?.category).toBe('Other')
+    expect(explicitTicketIntent('ticket pls')?.category).toBe('Other')
+    expect(explicitTicketIntent('@Bob can you open a ticket for the sales overview totals')?.category).toBe('Other')
   })
 
   it('ignores plain conversation', () => {
@@ -33,8 +36,11 @@ describe('fallbackTicketTitle', () => {
     expect(title.length).toBeLessThanOrEqual(90)
   })
 
-  it('falls back to the category when nothing is left', () => {
-    expect(fallbackTicketTitle('@Bob #ticket', { label: 'ticket', category: 'Other' })).toBe('Other')
+  it('names meta requests after the thread instead of echoing them', () => {
+    expect(fallbackTicketTitle('@Bob pls summarise above chat and create a ticket', { label: 'ticket', category: 'Other' }))
+      .toBe('Request from WhatsApp thread')
+    expect(fallbackTicketTitle('@Bob #ticket', { label: 'ticket', category: 'Other' })).toBe('Request from WhatsApp thread')
+    expect(fallbackTicketTitle('@Bob feature request, the one above', feature)).toBe('Feature Request from WhatsApp thread')
   })
 })
 
