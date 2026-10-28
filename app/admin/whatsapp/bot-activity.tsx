@@ -44,7 +44,7 @@ export async function BotActivity() {
         <table className="min-w-full divide-y divide-line-soft">
           <thead className="bg-bg-sunken">
             <tr>
-              {['When', 'Chat', 'From', 'Message', 'Tagged', 'Decision', 'Ticket'].map((h) => (
+              {['When (UTC)', 'Chat', 'From', 'Message', 'Tagged', 'Decision', 'Ticket'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-mono text-[10px] uppercase tracking-[0.15em] text-ink-mute whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -60,7 +60,7 @@ export async function BotActivity() {
               return (
                 <tr key={m.id} className="hover:bg-bg-sunken transition-colors align-top">
                   <td className="px-4 py-3 whitespace-nowrap font-mono text-[11px] text-ink-mute">
-                    {new Date(m.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(m.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })}
                   </td>
                   <td className="px-4 py-3 text-sm text-ink whitespace-nowrap max-w-[180px] truncate">{chat}</td>
                   <td className="px-4 py-3 text-sm text-ink-soft whitespace-nowrap">{m.senderName?.trim() || m.senderJid.split('@')[0]}</td>
