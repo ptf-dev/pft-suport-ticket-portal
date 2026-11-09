@@ -8,9 +8,9 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { PRIORITY_OPTIONS } from '@/lib/priorities'
-import { ATTACHMENT_ACCEPT, isAllowedAttachment, isSpreadsheetMime } from '@/lib/attachments'
+import { ATTACHMENT_ACCEPT, isAllowedAttachment, isArchiveMime, isSpreadsheetMime } from '@/lib/attachments'
 import {
-  AlertTriangle, ClipboardPaste, FileSpreadsheet, FileText, Image as ImageIcon, Loader2, Upload, X,
+  AlertTriangle, ClipboardPaste, FileArchive, FileSpreadsheet, FileText, Image as ImageIcon, Loader2, Upload, X,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -51,6 +51,7 @@ const FIELD_ERROR_CLS = 'text-xs text-danger'
 function FileKindIcon({ file }: { file: File }) {
   const cls = 'w-5 h-5 text-ink-mute shrink-0'
   if (isSpreadsheetMime(file.type)) return <FileSpreadsheet className={cls} strokeWidth={1.5} />
+  if (isArchiveMime(file.type) || file.name.toLowerCase().endsWith('.zip')) return <FileArchive className={cls} strokeWidth={1.5} />
   if (file.type === 'application/pdf') return <FileText className={cls} strokeWidth={1.5} />
   return <ImageIcon className={cls} strokeWidth={1.5} />
 }
@@ -352,7 +353,7 @@ Please include:
                   Click to upload attachments or drag and drop
                 </span>
                 <span className="text-xs text-ink-mute">
-                  PNG, JPG, GIF, WebP, PDF, XLSX, XLS up to 10MB (max 5 files)
+                  PNG, JPG, GIF, WebP, PDF, XLSX, XLS, ZIP up to 10MB (max 5 files)
                 </span>
               </label>
               <div className="mt-4">

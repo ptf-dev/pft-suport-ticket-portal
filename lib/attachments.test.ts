@@ -2,7 +2,9 @@ import {
   ALLOWED_ATTACHMENT_TYPES,
   ATTACHMENT_ACCEPT,
   ATTACHMENT_EXT_CONTENT_TYPE,
+  ATTACHMENT_TYPES_LABEL,
   isAllowedAttachment,
+  isArchiveMime,
   isSpreadsheetMime,
   resolveAttachmentMime,
   attachmentOpenLabel,
@@ -85,5 +87,48 @@ describe('attachmentOpenLabel', () => {
 
   it('falls back to a generic label for anything else', () => {
     expect(attachmentOpenLabel('application/octet-stream')).toBe('Open file')
+  })
+})
+
+describe('zip archives', () => {
+  const ZIP = 'application/zip'
+
+  it('accepts a .zip by its proper MIME type', () => {
+    expect(isAllowedAttachment('FOU-103 Release Checklist.zip', ZIP)).toBe(true)
+  })
+
+  it('accepts the names Windows and other browsers use, only for files named .zip', () => {
+    expect(isAllowedAttachment('bundle.zip', 'application/x-zip-compressed')).toBe(true)
+    expect(isAllowedAttachment('bundle.ZIP', 'application/x-zip')).toBe(true)
+    expect(isAllowedAttachment('payload.exe', 'application/x-zip-compressed')).toBe(false)
+    expect(isAllowedAttachment('notes.txt', 'multipart/x-zip')).toBe(false)
+  })
+
+  it('falls back to the extension when the browser reports a generic type', () => {
+    expect(isAllowedAttachment('bundle.zip', 'application/octet-stream')).toBe(true)
+    expect(isAllowedAttachment('bundle.zip', '')).toBe(true)
+  })
+
+  it('still rejects other archive formats', () => {
+    expect(isAllowedAttachment('bundle.rar', 'application/vnd.rar')).toBe(false)
+    expect(isAllowedAttachment('bundle.7z', 'application/x-7z-compressed')).toBe(false)
+    expect(isAllowedAttachment('bundle.tar.gz', 'application/gzip')).toBe(false)
+  })
+
+  it('stores every zip flavour as application/zip', () => {
+    expect(resolveAttachmentMime('bundle.zip', 'application/x-zip-compressed')).toBe(ZIP)
+    expect(resolveAttachmentMime('bundle.zip', 'application/octet-stream')).toBe(ZIP)
+    expect(resolveAttachmentMime('bundle.zip', ZIP)).toBe(ZIP)
+  })
+
+  it('is offered by the file picker, served back as a zip, and labelled for download', () => {
+    expect(ATTACHMENT_ACCEPT).toContain('.zip')
+    expect(ATTACHMENT_ACCEPT).toContain(ZIP)
+    expect(ATTACHMENT_EXT_CONTENT_TYPE.zip).toBe(ZIP)
+    expect(attachmentOpenLabel(ZIP)).toBe('Download ZIP')
+    expect(attachmentOpenLabel('application/x-zip-compressed')).toBe('Download ZIP')
+    expect(isArchiveMime(ZIP)).toBe(true)
+    expect(isArchiveMime('application/pdf')).toBe(false)
+    expect(ATTACHMENT_TYPES_LABEL).toContain('ZIP')
   })
 })

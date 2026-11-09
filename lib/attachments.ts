@@ -7,7 +7,16 @@ export const ALLOWED_ATTACHMENT_TYPES = [
   // Excel — .xlsx first, then legacy .xls
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-excel',
+  'application/zip',
 ]
+
+/** Human-readable list of what can be attached, for upload hints and API errors. */
+export const ATTACHMENT_TYPES_LABEL = 'JPEG, PNG, GIF, WebP, PDF, XLSX, XLS, ZIP'
+
+// Windows reports .zip as application/x-zip-compressed and a few others use the
+// x-zip / multipart names. Accepted only when the file is actually named .zip,
+// and always stored as application/zip.
+const ZIP_MIME_ALIASES = ['application/x-zip-compressed', 'application/x-zip', 'multipart/x-zip']
 
 // Extensions are listed alongside the MIME types: some browsers/OS combinations
 // report Office files as application/octet-stream (or an empty string), and the
@@ -20,8 +29,10 @@ export const ATTACHMENT_ACCEPT = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-excel',
+  'application/zip',
   '.xlsx',
   '.xls',
+  '.zip',
 ].join(',')
 
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024 // 10MB
@@ -35,6 +46,7 @@ export const ATTACHMENT_EXT_CONTENT_TYPE: Record<string, string> = {
   pdf: 'application/pdf',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   xls: 'application/vnd.ms-excel',
+  zip: 'application/zip',
 }
 
 export function isImageMime(mimeType: string): boolean {
@@ -52,6 +64,10 @@ export function isSpreadsheetMime(mimeType: string): boolean {
   )
 }
 
+export function isArchiveMime(mimeType: string): boolean {
+  return mimeType === 'application/zip' || ZIP_MIME_ALIASES.includes(mimeType)
+}
+
 /**
  * Label for a stored non-image attachment tile. Kept generic rather than
  * assuming PDF — every non-image attachment used to be labelled "Open PDF",
@@ -60,6 +76,7 @@ export function isSpreadsheetMime(mimeType: string): boolean {
 export function attachmentOpenLabel(mimeType: string): string {
   if (isPdfMime(mimeType)) return 'Open PDF'
   if (isSpreadsheetMime(mimeType)) return 'Open Excel'
+  if (isArchiveMime(mimeType)) return 'Download ZIP'
   return 'Open file'
 }
 
@@ -79,6 +96,7 @@ function extensionOf(fileName: string): string {
  */
 export function isAllowedAttachment(fileName: string, mimeType: string): boolean {
   if (ALLOWED_ATTACHMENT_TYPES.includes(mimeType)) return true
+  if (ZIP_MIME_ALIASES.includes(mimeType)) return extensionOf(fileName) === 'zip'
   const generic = !mimeType || mimeType === 'application/octet-stream'
   if (!generic) return false
   return Boolean(ATTACHMENT_EXT_CONTENT_TYPE[extensionOf(fileName)])
@@ -87,5 +105,6 @@ export function isAllowedAttachment(fileName: string, mimeType: string): boolean
 /** Content type to persist for a file, normalising generic browser values. */
 export function resolveAttachmentMime(fileName: string, mimeType: string): string {
   if (ALLOWED_ATTACHMENT_TYPES.includes(mimeType)) return mimeType
+  if (ZIP_MIME_ALIASES.includes(mimeType) && extensionOf(fileName) === 'zip') return 'application/zip'
   return ATTACHMENT_EXT_CONTENT_TYPE[extensionOf(fileName)] ?? mimeType
 }

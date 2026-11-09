@@ -32,7 +32,7 @@ export function AddAttachmentsForm({
       const invalidFiles = files.filter(f => !isAllowedAttachment(f.name, f.type))
 
       if (invalidFiles.length > 0) {
-        setError('Only JPEG, PNG, GIF, WebP images, PDFs and Excel files are allowed')
+        setError('Only images, PDFs, Excel files and ZIP archives are allowed')
         return
       }
 
@@ -120,7 +120,7 @@ export function AddAttachmentsForm({
             className="block w-full text-sm text-ink-mute file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-mute file:text-ink hover:file:bg-line-soft"
           />
           <p className="text-xs text-ink-mute">
-            Accepted formats: JPEG, PNG, GIF, WebP, PDF, XLSX, XLS (max 10MB each)
+            Accepted formats: JPEG, PNG, GIF, WebP, PDF, XLSX, XLS, ZIP (max 10MB each)
           </p>
         </div>
 

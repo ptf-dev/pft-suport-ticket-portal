@@ -319,7 +319,7 @@ export function AdminTicketForm({ companies }: Props) {
             </svg>
             Click to upload attachments
             <span className="block text-xs text-gray-400 dark:text-gray-500 mt-1">
-              PNG, JPG, GIF, WebP, PDF, XLSX, XLS up to 10MB (max 5 files)
+              PNG, JPG, GIF, WebP, PDF, XLSX, XLS, ZIP up to 10MB (max 5 files)
             </span>
           </button>
         </div>

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE, isAllowedAttachment, resolveAttachmentMime } from '@/lib/attachments'
+import { ATTACHMENT_TYPES_LABEL, MAX_ATTACHMENT_SIZE as MAX_FILE_SIZE, isAllowedAttachment, resolveAttachmentMime } from '@/lib/attachments'
 import { ticketAccess } from '@/lib/ticket-access'
 
 /**
@@ -12,7 +12,7 @@ import { ticketAccess } from '@/lib/ticket-access'
  *
  * POST /api/portal/tickets/[id]/comments/[commentId]/images
  * - Client authentication required
- * - Validates file types (JPEG, PNG, GIF, WebP, PDF)
+ * - Validates file types (see ATTACHMENT_TYPES_LABEL)
  * - Validates file size (max 10MB)
  * - Stores images and creates CommentImage records
  */
@@ -70,7 +70,7 @@ export async function POST(
     for (const file of files) {
       if (!isAllowedAttachment(file.name, file.type)) {
         return NextResponse.json(
-          { error: `Invalid file type: ${file.type}. Allowed types: JPEG, PNG, GIF, WebP, PDF` },
+          { error: `Invalid file type: ${file.type}. Allowed types: ${ATTACHMENT_TYPES_LABEL}` },
           { status: 400 }
         )
       }
