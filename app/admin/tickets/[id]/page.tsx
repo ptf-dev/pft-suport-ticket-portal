@@ -12,6 +12,9 @@ import { DeleteTicketButton } from './delete-ticket-button'
 import { ShareClientLinkButton } from './share-client-link-button'
 import { AssignmentDropdown } from './assignment-dropdown'
 import { EditCommentButton } from './edit-comment-button'
+import { CopyCommentLink } from '@/components/copy-comment-link'
+import { CommentHashScroll } from '@/components/comment-hash-scroll'
+import { commentAnchorId } from '@/lib/comment-anchor'
 import { DeleteImageButton } from '@/components/delete-image-button'
 import { DeleteCommentImageButton } from '@/components/delete-comment-image-button'
 import { ScheduleTicketButton } from './schedule-ticket-button'
@@ -142,6 +145,7 @@ export default async function AdminTicketDetailPage({
 
   return (
     <div className="space-y-6">
+      <CommentHashScroll />
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute mb-2">
@@ -297,13 +301,14 @@ export default async function AdminTicketDetailPage({
                   {ticket.comments.map((comment) => (
                     <div
                       key={comment.id}
-                      className={`p-4 rounded-lg border ${
+                      id={commentAnchorId(comment.id)}
+                      className={`scroll-mt-6 p-4 rounded-lg border ${
                         comment.internal
                           ? 'bg-warn-soft border-warn/40'
                           : 'bg-bg-sunken border-line'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-ink">
                             {comment.author.name}
@@ -318,9 +323,10 @@ export default async function AdminTicketDetailPage({
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">
+                          <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute whitespace-nowrap">
                             {new Date(comment.createdAt).toLocaleString()}
                           </span>
+                          <CopyCommentLink commentId={comment.id} />
                           <EditCommentButton
                             ticketId={ticket.id}
                             commentId={comment.id}

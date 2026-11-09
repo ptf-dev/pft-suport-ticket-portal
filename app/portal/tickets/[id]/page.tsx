@@ -18,6 +18,9 @@ import { priorityMeta, priorityLabel } from '@/lib/priorities'
 import { isImageMime, attachmentOpenLabel } from '@/lib/attachments'
 import { ArrowLeft, FileText, Plus } from 'lucide-react'
 import { WatchersPanel } from '@/components/watchers-panel'
+import { CopyCommentLink } from '@/components/copy-comment-link'
+import { CommentHashScroll } from '@/components/comment-hash-scroll'
+import { commentAnchorId } from '@/lib/comment-anchor'
 import type { Metadata } from 'next'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -145,6 +148,7 @@ export default async function ClientTicketDetailPage({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      <CommentHashScroll />
       <header className="space-y-3">
         <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-mute">
           <Link href="/portal/tickets" className="inline-flex items-center gap-1 hover:text-ink transition-colors">
@@ -254,7 +258,8 @@ export default async function ClientTicketDetailPage({
                 ticket.comments.map((comment) => (
                   <div
                     key={comment.id}
-                    className="p-4 rounded-lg border border-line bg-bg-sunken"
+                    id={commentAnchorId(comment.id)}
+                    className="scroll-mt-6 p-4 rounded-lg border border-line bg-bg-sunken"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                       <div className="flex items-center gap-2">
@@ -263,9 +268,12 @@ export default async function ClientTicketDetailPage({
                         </span>
                         <Badge variant="secondary">{comment.author.role}</Badge>
                       </div>
-                      <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute">
-                        {new Date(comment.createdAt).toLocaleString()}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-ink-mute whitespace-nowrap">
+                          {new Date(comment.createdAt).toLocaleString()}
+                        </span>
+                        <CopyCommentLink commentId={comment.id} />
+                      </div>
                     </div>
                     <div className="text-sm">
                       <MarkdownRenderer content={comment.message} />

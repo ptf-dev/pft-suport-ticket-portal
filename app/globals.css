@@ -135,3 +135,12 @@
     color: hsl(var(--bg));
   }
 }
+
+/* Comment reached through a #comment-… link: hold a highlight, then fade to the comment's own background.
+   Deliberately outside @layer: Tailwind drops layered classes it cannot find in the files it scans, and this
+   class name is only applied from lib/comment-anchor.ts. */
+.comment-target { animation: commentFlash 2.4s ease-out; }
+@keyframes commentFlash {
+  0%, 35% { box-shadow: 0 0 0 3px hsl(var(--accent)); background-color: hsl(var(--accent-soft)); }
+  100%    { box-shadow: 0 0 0 3px hsl(var(--accent) / 0); }
+}
