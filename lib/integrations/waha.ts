@@ -15,6 +15,13 @@ export function isWahaConfigured(): boolean {
 // our endpoint dead and drops the event. Always bound the call.
 const WAHA_TIMEOUT_MS = 15_000
 
+// Sending sits inside an inbound webhook request, so it has to finish before
+// the gateway in front of us gives up. ForRealFunding's delivery log puts that
+// cutoff at ~10.3–11.1s (every 502 landed there) while healthy deliveries
+// finished in 2.2–3.5s, so bound a send well under the cutoff: we would rather
+// record a failed send and answer 200 than be cut off mid-request.
+const WAHA_SEND_TIMEOUT_MS = 8_000
+
 async function wahaFetch(path: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
   if (!WAHA_URL || !WAHA_API_KEY) throw new Error('WAHA not configured')
   const { timeoutMs = WAHA_TIMEOUT_MS, ...rest } = init
@@ -40,6 +47,7 @@ async function wahaFetch(path: string, init: RequestInit & { timeoutMs?: number 
 export async function sendGroupText(groupJid: string, text: string): Promise<void> {
   const res = await wahaFetch(`/api/sendText`, {
     method: 'POST',
+    timeoutMs: WAHA_SEND_TIMEOUT_MS,
     body: JSON.stringify({ session: WAHA_SESSION, chatId: groupJid, text }),
   })
   if (!res.ok) {
