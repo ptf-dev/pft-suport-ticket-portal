@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { sendGroupText } from '@/lib/integrations/waha'
 import { formatEventMessage, type RevenueStats } from '@/lib/webhook-relay-message'
+import { alertRelayDeliveryFailure } from '@/lib/services/whatsapp-relay-alert'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,6 +68,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     updateData.eventCount = { increment: 1 }
   }
   prisma.webhookRelay.update({ where: { id: relay.id }, data: updateData }).catch(() => {})
+
+  // Answering 200 means the sender stops telling us when delivery breaks, so
+  // raise our own alert on the healthy → failing transition. Deliberately not
+  // awaited: diagnosing the cause means another call to the WAHA that just
+  // failed us, and the sender should not wait for it.
+  if (failure && !relay.lastFailureAt) {
+    void alertRelayDeliveryFailure(relay, failure).catch((err) =>
+      console.error('[webhook-relay] alert failed', relay.id, err)
+    )
+  }
 
   return NextResponse.json({ ok: true, delivered: !failure })
 }
