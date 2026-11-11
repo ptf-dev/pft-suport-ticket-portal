@@ -33,6 +33,8 @@ interface WebhookRelay {
   baseUrl: string | null
   enabled: boolean
   lastEventAt: string | null
+  lastFailureAt: string | null
+  lastFailureError: string | null
 }
 interface DmUser {
   id: string
@@ -506,6 +508,12 @@ export function WhatsappGroupsClient({ companies }: { companies: Company[] }) {
                       <div className="text-xs text-ink-mute truncate">
                         {r.lastEventAt ? `Last event ${new Date(r.lastEventAt).toLocaleString()}` : 'No events received yet'}
                       </div>
+                      {r.lastFailureAt && (
+                        <div className="text-xs text-red-600 dark:text-red-400 mt-0.5 break-words">
+                          Event received but not sent to WhatsApp — {new Date(r.lastFailureAt).toLocaleString()}
+                          {r.lastFailureError ? `: ${r.lastFailureError}` : ''}
+                        </div>
+                      )}
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => removeRelay(r.id)} className="text-red-600 shrink-0">
                       <Trash2 className="w-4 h-4" />

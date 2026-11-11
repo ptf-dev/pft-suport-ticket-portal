@@ -45,19 +45,28 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
   const stats: RevenueStats = { totalRevenue: relay.totalRevenue, eventCount: relay.eventCount }
   const { message, revenueIncrement } = formatEventMessage(relay.name, rawBody, relay.baseUrl ?? null, stats)
+
+  // Senders treat a non-2xx as "this endpoint is broken": they stop delivering
+  // and never retry, so a WhatsApp outage would silently lose real sales
+  // events. Acknowledge the event once it is accepted and authenticated, and
+  // keep delivery problems on our side of the line — recorded on the relay and
+  // surfaced in Admin → WhatsApp rather than pushed back to the sender.
+  let failure: string | null = null
   try {
     await sendGroupText(relay.groupJid, message)
   } catch (err) {
+    failure = err instanceof Error ? err.message : String(err)
     console.error('[webhook-relay] send failed', relay.id, err)
-    return NextResponse.json({ error: 'Delivery failed' }, { status: 502 })
   }
 
-  const updateData: any = { lastEventAt: new Date() }
-  if (revenueIncrement !== null) {
+  const updateData: any = failure
+    ? { lastFailureAt: new Date(), lastFailureError: failure.slice(0, 500) }
+    : { lastEventAt: new Date(), lastFailureAt: null, lastFailureError: null }
+  if (revenueIncrement !== null && !failure) {
     updateData.totalRevenue = { increment: revenueIncrement }
     updateData.eventCount = { increment: 1 }
   }
   prisma.webhookRelay.update({ where: { id: relay.id }, data: updateData }).catch(() => {})
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, delivered: !failure })
 }

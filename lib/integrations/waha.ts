@@ -9,17 +9,32 @@ export function isWahaConfigured(): boolean {
   return Boolean(WAHA_URL && WAHA_API_KEY)
 }
 
-async function wahaFetch(path: string, init: RequestInit = {}): Promise<Response> {
+// WAHA talks to WhatsApp over a socket that can stall without closing. An
+// un-timed fetch then holds our request open until the proxy in front of us
+// gives up with a 502 — which, for an inbound webhook, means the sender marks
+// our endpoint dead and drops the event. Always bound the call.
+const WAHA_TIMEOUT_MS = 15_000
+
+async function wahaFetch(path: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
   if (!WAHA_URL || !WAHA_API_KEY) throw new Error('WAHA not configured')
-  return fetch(`${WAHA_URL}${path}`, {
-    ...init,
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Api-Key': WAHA_API_KEY,
-      ...(init.headers ?? {}),
-    },
-  })
+  const { timeoutMs = WAHA_TIMEOUT_MS, ...rest } = init
+  try {
+    return await fetch(`${WAHA_URL}${path}`, {
+      ...rest,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(timeoutMs),
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Api-Key': WAHA_API_KEY,
+        ...(init.headers ?? {}),
+      },
+    })
+  } catch (err) {
+    if (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
+      throw new Error(`WAHA request to ${path} timed out after ${timeoutMs}ms`)
+    }
+    throw err
+  }
 }
 
 export async function sendGroupText(groupJid: string, text: string): Promise<void> {

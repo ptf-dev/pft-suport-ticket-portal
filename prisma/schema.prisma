@@ -502,6 +502,10 @@ model WebhookRelay {
   totalRevenue Float     @default(0)
   eventCount   Int       @default(0)
   lastEventAt  DateTime?
+  // Delivery to WhatsApp is best-effort and never fails the inbound webhook,
+  // so a failure has to be recorded here to be visible anywhere.
+  lastFailureAt    DateTime?
+  lastFailureError String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
