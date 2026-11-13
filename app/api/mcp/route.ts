@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { TOOLS, callTool, UnknownToolError } from '@/lib/mcp/tools'
 
 /**
  * MCP API: the protocol endpoint.
@@ -29,6 +30,7 @@ const SERVER_INFO = { name: 'pft-ticket-portal', version: '1.0.0' }
 const PARSE_ERROR = -32700
 const INVALID_REQUEST = -32600
 const METHOD_NOT_FOUND = -32601
+const INVALID_PARAMS = -32602
 
 type JsonRpcId = string | number
 
@@ -66,7 +68,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     return new NextResponse(null, { status: 202 })
   }
 
-  return dispatch(id, message.method)
+  return dispatch(id, message.method, message.params)
 }
 
 export async function GET(): Promise<Response> {
@@ -83,7 +85,7 @@ export async function GET(): Promise<Response> {
  * for methods that need no I/O, which is every method that the client's
  * connection probe depends on; a method that does need I/O returns one.
  */
-function dispatch(id: JsonRpcId, method: string): Response | Promise<Response> {
+function dispatch(id: JsonRpcId, method: string, params: unknown): Response | Promise<Response> {
   switch (method) {
     case 'initialize':
       return jsonRpcResult(id, {
@@ -92,11 +94,60 @@ function dispatch(id: JsonRpcId, method: string): Response | Promise<Response> {
         serverInfo: SERVER_INFO,
       })
 
+    case 'tools/list':
+      return jsonRpcResult(id, { tools: TOOLS })
+
+    case 'tools/call':
+      return handleToolCall(id, params)
+
     default:
       // `server/discover` arrives here too, and the -32601 is what makes the
       // client drop to the legacy handshake instead of giving up.
       return jsonRpcError(id, METHOD_NOT_FOUND, `Method not found: ${method}`)
   }
+}
+
+/**
+ * Runs one tool. The split between the two failure channels is deliberate:
+ * an unknown tool means client and server disagree about what exists, a
+ * protocol fault, so it is a JSON-RPC error the client can tell apart from a
+ * refused action. Every other failure is a tool execution failure, which MCP
+ * carries as a successful result with isError so the model reads the message
+ * and can retry. Nothing is allowed to escape as a 500.
+ */
+async function handleToolCall(id: JsonRpcId, params: unknown): Promise<Response> {
+  const { name, arguments: args } = isRecord(params) ? params : ({} as Record<string, unknown>)
+
+  // A call that names no tool is a malformed request, not a tool failure.
+  if (typeof name !== 'string' || name === '') {
+    return jsonRpcError(id, INVALID_PARAMS, 'Invalid params: tool name is required')
+  }
+
+  // Absent arguments are legal (parameterless tools); present-but-not-an-object
+  // ones are the model's mistake, so it gets to read about it.
+  if (args !== undefined && !isRecord(args)) {
+    return toolResult(id, 'Invalid arguments: expected an object', true)
+  }
+
+  try {
+    const result = await callTool(name, args ?? {})
+    // JSON.stringify yields undefined for an undefined result, which would
+    // break the text block's contract.
+    return toolResult(id, JSON.stringify(result, null, 2) ?? 'null', false)
+  } catch (error) {
+    if (error instanceof UnknownToolError) {
+      return jsonRpcError(id, METHOD_NOT_FOUND, error.message)
+    }
+    return toolResult(id, error instanceof Error ? error.message : String(error), true)
+  }
+}
+
+function toolResult(id: JsonRpcId, text: string, isError: boolean): Response {
+  return jsonRpcResult(id, { content: [{ type: 'text', text }], isError })
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isAuthorized(request: NextRequest): boolean {
