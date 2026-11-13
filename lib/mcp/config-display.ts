@@ -7,9 +7,9 @@
 export const KEY_PLACEHOLDER = '<key>'
 
 const MASK = '•'
-// Below this length, showing even a four-character tail would reveal a large
-// share of the key, so short keys are masked completely.
-const MIN_LENGTH_FOR_TAIL = 12
+// Below this length a four-character tail would reveal a quarter or more of
+// the key, so shorter keys are masked completely.
+const MIN_LENGTH_FOR_TAIL = 16
 
 export function maskKey(key: string): string {
   if (key.length < MIN_LENGTH_FOR_TAIL) return MASK.repeat(Math.max(key.length, 8))
