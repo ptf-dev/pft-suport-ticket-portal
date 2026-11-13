@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Ticket, Building2, Users, Settings, LogOut, Menu, X,
-  Rocket, PanelLeftClose, PanelLeftOpen, MessageCircle, UserPlus,
+  Rocket, PanelLeftClose, PanelLeftOpen, MessageCircle, UserPlus, Plug,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -28,6 +28,7 @@ const NAV_ITEMS = [
   { href: '/admin/access-requests', label: 'Access Requests', icon: UserPlus },
   { href: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { href: '/admin/settings/smtp', label: 'SMTP', icon: Settings },
+  { href: '/admin/settings/mcp', label: 'MCP', icon: Plug },
 ]
 
 const COLLAPSE_KEY = 'pft.sidebarCollapsed'
