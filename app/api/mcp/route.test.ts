@@ -2,6 +2,19 @@ import { NextRequest } from 'next/server'
 import { GET, POST } from './route'
 import { callTool } from '@/lib/mcp/tools'
 import { NotFoundError } from '@/lib/mcp/operations'
+import { prisma } from '@/lib/prisma'
+
+// Stubbed for the end-to-end describe at the bottom, which runs the real
+// operations: no test in this file may reach a database.
+jest.mock('@/lib/prisma', () => ({
+  prisma: {
+    ticket: { findUnique: jest.fn() },
+    ticketComment: { findMany: jest.fn() },
+    ticketRelation: { create: jest.fn() },
+    user: { findFirst: jest.fn() },
+    $transaction: jest.fn(),
+  },
+}))
 
 // Only callTool is replaced: the real TOOLS list and error classes are what the
 // route must discriminate on, and no test here should reach Prisma.
@@ -289,4 +302,60 @@ describe('tools/list and tools/call', () => {
       expect(mockCallTool).not.toHaveBeenCalled()
     }
   )
+})
+
+// The two guards exercised here live in lib/mcp/operations, and only protect a
+// model if nothing between the JSON-RPC body and Prisma swallows or re-labels
+// them. So these run the real dispatcher and the real operations end to end,
+// with Prisma stubbed, rather than asserting against a mocked callTool.
+describe('operation guards reach the model as tool errors', () => {
+  const db = prisma as unknown as Record<string, any>
+  const { callTool: realCallTool } = jest.requireActual('@/lib/mcp/tools')
+
+  const callReal = async (name: string, args: unknown) =>
+    (await POST(req({ id: 7, method: 'tools/call', params: { name, arguments: args } }))).json()
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockCallTool.mockImplementation(realCallTool)
+  })
+
+  afterEach(() => {
+    mockCallTool.mockReset()
+  })
+
+  it('refuses add_relation to the same ticket without attempting a write', async () => {
+    const body = await callReal('add_relation', {
+      id: 't1',
+      targetTicketId: 't1',
+      relationType: 'BLOCKS',
+    })
+
+    expect(body.error).toBeUndefined()
+    expect(body.result.isError).toBe(true)
+    expect(body.result.content[0].text).toBe('Cannot create a relation to the same ticket')
+    expect(db.ticketRelation.create).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
+  })
+
+  it('reports list_comments for an unknown ticket as an error, not an empty thread', async () => {
+    db.ticket.findUnique.mockResolvedValue(null)
+
+    const body = await callReal('list_comments', { id: 'nope' })
+
+    expect(body.error).toBeUndefined()
+    expect(body.result.isError).toBe(true)
+    expect(body.result.content[0].text).toMatch(/not found/i)
+    expect(db.ticketComment.findMany).not.toHaveBeenCalled()
+  })
+
+  it('still returns the thread when the ticket exists', async () => {
+    db.ticket.findUnique.mockResolvedValue({ id: 't1' })
+    db.ticketComment.findMany.mockResolvedValue([])
+
+    const body = await callReal('list_comments', { id: 't1' })
+
+    expect(body.result.isError).toBe(false)
+    expect(JSON.parse(body.result.content[0].text)).toEqual({ ticketId: 't1', comments: [], count: 0 })
+  })
 })

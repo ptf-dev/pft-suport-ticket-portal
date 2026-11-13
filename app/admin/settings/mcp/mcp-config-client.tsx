@@ -44,8 +44,11 @@ export function McpConfigClient({ apiKey, baseUrl, toolNames }: Props) {
   }
 
   const shownKey = revealed ? apiKey : maskKey(apiKey)
-  const shownCommand = connectCommand(baseUrl).replace(KEY_PLACEHOLDER, shownKey)
-  const realCommand = () => connectCommand(baseUrl).replace(KEY_PLACEHOLDER, apiKey)
+  // The replacer must be a function: as a string it is a replacement pattern,
+  // so a dollar sequence in the key — MCP_API_KEY is hand-typed in Coolify —
+  // would silently rewrite the command instead of being pasted into it.
+  const shownCommand = connectCommand(baseUrl).replace(KEY_PLACEHOLDER, () => shownKey)
+  const realCommand = () => connectCommand(baseUrl).replace(KEY_PLACEHOLDER, () => apiKey)
 
   return (
     <>

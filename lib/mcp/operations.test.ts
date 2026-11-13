@@ -4,6 +4,7 @@ import { notifyTicketNewComment } from '@/lib/services/whatsapp-notify'
 import { autoSprintIdForPriority } from '@/lib/auto-sprint'
 import { uniqueTicketKey } from '@/lib/ticket-key'
 import {
+  InvalidOperationError,
   NotFoundError,
   addComment,
   addRelation,
@@ -611,6 +612,35 @@ describe('listComments', () => {
       count: 0,
     })
   })
+
+  it('does not look the ticket up unless asked, which is what keeps REST at 200', async () => {
+    db.ticketComment.findMany.mockResolvedValue([])
+
+    await listComments('nope', { baseUrl: 'https://portal.test' })
+
+    expect(db.ticket.findUnique).not.toHaveBeenCalled()
+  })
+
+  it('throws NotFoundError for an unknown ticket when the caller requires one', async () => {
+    // What the MCP tool asks for: an empty success would read to a model as
+    // "this ticket has no comments" rather than "there is no such ticket".
+    db.ticket.findUnique.mockResolvedValue(null)
+
+    await expect(listComments('nope', {}, { requireTicket: true }))
+      .rejects.toBeInstanceOf(NotFoundError)
+    expect(db.ticketComment.findMany).not.toHaveBeenCalled()
+  })
+
+  it('reads the thread as usual when the required ticket exists', async () => {
+    db.ticket.findUnique.mockResolvedValue({ id: 't1' })
+    db.ticketComment.findMany.mockResolvedValue([row])
+
+    const result = await listComments('t1', { baseUrl: 'https://portal.test' }, { requireTicket: true })
+
+    expect(db.ticket.findUnique).toHaveBeenCalledWith({ where: { id: 't1' }, select: { id: true } })
+    expect(result.count).toBe(1)
+    expect(result.comments[0].images[0].url).toBe('https://portal.test/up/a.png')
+  })
 })
 
 describe('addComment', () => {
@@ -974,6 +1004,18 @@ describe('addRelation', () => {
     await addRelation('t1', { targetTicketId: 't2', relationType: 'BLOCKS' })
 
     expect(db.ticketRelation.create.mock.calls[0][0].data.createdById).toBeNull()
+  })
+
+  it('refuses a self-relation before reading or writing anything', async () => {
+    // Otherwise both rows land and the ticket blocks and is blocked by itself.
+    // The REST route rejects this with a 400 of its own first, so this guard
+    // exists for the MCP tool, which has no other.
+    await expect(addRelation('t1', { targetTicketId: 't1', relationType: 'BLOCKS' }))
+      .rejects.toBeInstanceOf(InvalidOperationError)
+
+    expect(db.ticket.findUnique).not.toHaveBeenCalled()
+    expect(db.ticketRelation.create).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
   })
 
   it('names the source ticket when that end is missing', async () => {

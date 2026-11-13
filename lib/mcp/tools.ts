@@ -234,7 +234,9 @@ export async function callTool(name: string, args: Args = {}): Promise<unknown> 
         companyId: requiredString(a, 'companyId'),
       })
     case 'list_comments':
-      return listComments(requiredString(a, 'id'))
+      // requireTicket only on this path: the REST route keeps its empty-200
+      // for an unknown id, but a model would read that as "no comments".
+      return listComments(requiredString(a, 'id'), {}, { requireTicket: true })
     case 'add_comment':
       return addComment(requiredString(a, 'id'), {
         content: requiredString(a, 'content'),

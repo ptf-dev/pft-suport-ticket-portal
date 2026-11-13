@@ -34,6 +34,22 @@ export class NotFoundError extends Error {
 }
 
 /**
+ * The arguments name a write the domain forbids even though every resource
+ * they reference exists. Kept apart from NotFoundError so a transport can say
+ * "change the arguments" rather than "the ticket is missing"; the protocol
+ * endpoint surfaces it as a tool error the model can act on.
+ *
+ * Declared here rather than imported from ./tools because operations must not
+ * depend on the tool layer that depends on it.
+ */
+export class InvalidOperationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvalidOperationError'
+  }
+}
+
+/**
  * Image URLs are stored site-relative. HTTP callers pass the request origin to
  * prefix them with; omitting it leaves them relative.
  */
@@ -396,8 +412,34 @@ export async function createTicket(input: CreateTicketInput) {
   }
 }
 
-export async function listComments(ticketId: string, options: ImageUrlOptions = {}) {
+export interface ListCommentsOptions {
+  /**
+   * Throw NotFoundError when the ticket does not exist, instead of returning
+   * an empty thread. Off by default because the REST route has always answered
+   * an unknown id with an empty 200 and its callers rely on that. The MCP tool
+   * opts in: a model reads `{comments: [], count: 0}` as "this ticket has no
+   * comments", so a mistyped id would become a confident wrong answer.
+   */
+  requireTicket?: boolean
+}
+
+export async function listComments(
+  ticketId: string,
+  options: ImageUrlOptions = {},
+  { requireTicket = false }: ListCommentsOptions = {}
+) {
   const baseUrl = options.baseUrl ?? ''
+
+  if (requireTicket) {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true },
+    })
+
+    if (!ticket) {
+      throw new NotFoundError('Ticket not found', 'ticket')
+    }
+  }
 
   const comments = await prisma.ticketComment.findMany({
     where: {
@@ -621,6 +663,14 @@ export interface AddRelationInput {
 
 export async function addRelation(ticketId: string, input: AddRelationInput) {
   const { targetTicketId, relationType } = input
+
+  // A ticket related to itself would be written as two rows saying it both
+  // blocks and is blocked by itself, which nothing downstream can untangle.
+  // The REST route rejects this with its own 400 before it gets here; the
+  // guard lives in the operation so the MCP tool is covered too.
+  if (ticketId === targetTicketId) {
+    throw new InvalidOperationError('Cannot create a relation to the same ticket')
+  }
 
   // Verify both tickets exist
   const [sourceTicket, targetTicket] = await Promise.all([

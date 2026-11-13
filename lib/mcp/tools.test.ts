@@ -122,6 +122,15 @@ describe('callTool', () => {
     await callTool('get_ticket', { id: 't1' })
     expect(mocked.getTicket).toHaveBeenCalledWith('t1')
     await callTool('list_comments', { id: 't1' })
-    expect(mocked.listComments).toHaveBeenCalledWith('t1')
+    expect(mocked.listComments.mock.calls[0][1]).toEqual({})
+  })
+
+  it('makes list_comments verify the ticket, unlike the REST route', async () => {
+    // The REST route answers an unknown id with an empty 200; a model would
+    // read that as "no comments" instead of "no such ticket", so the tool path
+    // asks for the existence check the route deliberately skips.
+    await callTool('list_comments', { id: 't1' })
+
+    expect(mocked.listComments).toHaveBeenCalledWith('t1', {}, { requireTicket: true })
   })
 })
