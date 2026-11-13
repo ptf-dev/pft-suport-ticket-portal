@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { PRIORITY_VALUES } from '@/lib/priorities'
-import { autoSprintIdForPriority } from '@/lib/auto-sprint'
-import { uniqueTicketKey } from '@/lib/ticket-key'
+import { NotFoundError, createTicket } from '@/lib/mcp/operations'
 
 /**
  * MCP API: Create Ticket
@@ -45,87 +42,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate priority
-    const validPriorities = PRIORITY_VALUES
-    const ticketPriority = (priority && validPriorities.includes(priority)) ? priority : 'MEDIUM'
+    const response = await createTicket({ title, description, priority, category, companyId })
 
-    // Verify company exists
-    const company = await prisma.company.findUnique({
-      where: { id: companyId },
-    })
-
-    if (!company) {
+    return NextResponse.json(response, { status: 201 })
+  } catch (error) {
+    if (error instanceof NotFoundError) {
       return NextResponse.json(
         { error: 'Company not found' },
         { status: 404 }
       )
     }
 
-    // Get or create MCP bot user
-    let mcpUser = await prisma.user.findFirst({
-      where: { email: 'mcp-bot@propfirmstech.com' },
-    })
-
-    if (!mcpUser) {
-      mcpUser = await prisma.user.create({
-        data: {
-          email: 'mcp-bot@propfirmstech.com',
-          name: 'PFT AI Agent (Bot)',
-          password: 'mcp-bot-no-login',
-          role: 'ADMIN',
-          isActive: true,
-        },
-      })
-    }
-
-    const sprintId = await autoSprintIdForPriority(ticketPriority)
-    const key = await uniqueTicketKey(companyId)
-
-    // Create ticket
-    const ticket = await prisma.ticket.create({
-      data: {
-        key,
-        title: title.trim(),
-        description: description.trim(),
-        priority: ticketPriority,
-        category: category || null,
-        status: 'OPEN',
-        companyId,
-        createdById: mcpUser.id,
-        sprintId,
-      },
-      include: {
-        company: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    })
-
-    return NextResponse.json({
-      success: true,
-      ticket: {
-        id: ticket.id,
-        title: ticket.title,
-        description: ticket.description,
-        status: ticket.status,
-        priority: ticket.priority,
-        category: ticket.category,
-        company: ticket.company,
-        createdBy: ticket.createdBy,
-        createdAt: ticket.createdAt,
-      },
-    }, { status: 201 })
-  } catch (error) {
     console.error('MCP API Error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

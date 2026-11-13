@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { TicketRelationType } from '@prisma/client'
-import { RELATION_INVERSE, RELATION_TYPES } from '@/lib/relations'
+import { RELATION_TYPES } from '@/lib/relations'
+import { NotFoundError, addRelation, listRelations } from '@/lib/mcp/operations'
 
 /**
  * MCP API: Get Ticket Relations
@@ -21,41 +20,12 @@ export async function GET(
       )
     }
 
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: params.id },
-      select: { id: true, title: true },
-    })
-
-    if (!ticket) {
+    return NextResponse.json(await listRelations(params.id))
+  } catch (error) {
+    if (error instanceof NotFoundError) {
       return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
     }
 
-    const relationsAsSource = await prisma.ticketRelation.findMany({
-      where: { sourceTicketId: params.id },
-      include: {
-        targetTicket: {
-          select: { id: true, title: true, status: true, priority: true },
-        },
-        createdBy: {
-          select: { name: true },
-        },
-      },
-    })
-
-    return NextResponse.json({
-      ticketId: params.id,
-      ticketTitle: ticket.title,
-      relations: relationsAsSource.map(r => ({
-        id: r.id,
-        type: r.relationType,
-        direction: 'outgoing' as const,
-        relatedTicket: r.targetTicket,
-        createdBy: r.createdBy?.name || 'System',
-        createdAt: r.createdAt,
-      })),
-      count: relationsAsSource.length,
-    })
-  } catch (error) {
     console.error('MCP API Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -104,64 +74,17 @@ export async function POST(
       )
     }
 
-    // Verify both tickets exist
-    const [sourceTicket, targetTicket] = await Promise.all([
-      prisma.ticket.findUnique({ where: { id: params.id }, select: { id: true, title: true } }),
-      prisma.ticket.findUnique({ where: { id: targetTicketId }, select: { id: true, title: true } }),
-    ])
+    const response = await addRelation(params.id, { targetTicketId, relationType })
 
-    if (!sourceTicket) {
-      return NextResponse.json({ error: 'Source ticket not found' }, { status: 404 })
-    }
-
-    if (!targetTicket) {
-      return NextResponse.json({ error: 'Target ticket not found' }, { status: 404 })
-    }
-
-    // Get MCP bot user
-    const mcpUser = await prisma.user.findFirst({
-      where: { email: 'mcp-bot@propfirmstech.com' },
-    })
-
-    const inverseType = RELATION_INVERSE[relationType as TicketRelationType]
-
-    // Create the relation and its inverse in a transaction
-    const [relation] = await prisma.$transaction([
-      prisma.ticketRelation.create({
-        data: {
-          sourceTicketId: params.id,
-          targetTicketId,
-          relationType,
-          createdById: mcpUser?.id || null,
-        },
-        include: {
-          sourceTicket: { select: { id: true, title: true } },
-          targetTicket: { select: { id: true, title: true } },
-        },
-      }),
-      // Always create the reciprocal row so the relation shows on BOTH tickets
-      // (symmetric types like RELATES_TO map to themselves).
-      prisma.ticketRelation.create({
-        data: {
-          sourceTicketId: targetTicketId,
-          targetTicketId: params.id,
-          relationType: inverseType,
-          createdById: mcpUser?.id || null,
-        },
-      }),
-    ])
-
-    return NextResponse.json({
-      success: true,
-      relation: {
-        id: relation.id,
-        type: relation.relationType,
-        sourceTicket: relation.sourceTicket,
-        targetTicket: relation.targetTicket,
-        createdAt: relation.createdAt,
-      },
-    }, { status: 201 })
+    return NextResponse.json(response, { status: 201 })
   } catch (error: any) {
+    if (error instanceof NotFoundError) {
+      return NextResponse.json(
+        { error: error.resource === 'targetTicket' ? 'Target ticket not found' : 'Source ticket not found' },
+        { status: 404 }
+      )
+    }
+
     console.error('MCP API Error:', error)
     
     if (error.code === 'P2002') {

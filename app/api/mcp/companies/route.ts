@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { listCompanies } from '@/lib/mcp/operations'
 
 /**
  * MCP API: List Companies
@@ -17,31 +17,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const companies = await prisma.company.findMany({
-      select: {
-        id: true,
-        name: true,
-        _count: {
-          select: {
-            tickets: true,
-            users: true,
-          },
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    })
-
-    return NextResponse.json({
-      companies: companies.map(company => ({
-        id: company.id,
-        name: company.name,
-        ticketCount: company._count.tickets,
-        userCount: company._count.users,
-      })),
-      count: companies.length,
-    })
+    return NextResponse.json(await listCompanies())
   } catch (error) {
     console.error('MCP API Error:', error)
     return NextResponse.json(

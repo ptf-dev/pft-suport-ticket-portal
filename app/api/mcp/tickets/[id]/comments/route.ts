@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { ActivityService } from '@/lib/services/activity'
-import { notifyTicketNewComment } from '@/lib/services/whatsapp-notify'
+import { NotFoundError, addComment, listComments } from '@/lib/mcp/operations'
 
 /**
  * MCP API: Get Ticket Comments
@@ -26,53 +24,7 @@ export async function GET(
     const host = request.headers.get('host') || 'localhost:3000'
     const baseUrl = `${proto}://${host}`
 
-    const comments = await prisma.ticketComment.findMany({
-      where: {
-        ticketId: params.id,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        images: {
-          select: {
-            id: true,
-            url: true,
-            filename: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    })
-
-    return NextResponse.json({
-      ticketId: params.id,
-      comments: comments.map(comment => ({
-        id: comment.id,
-        content: comment.message,
-        internal: comment.internal,
-        author: {
-          id: comment.author.id,
-          name: comment.author.name,
-          email: comment.author.email,
-          role: comment.author.role,
-        },
-        createdAt: comment.createdAt,
-        images: comment.images.map((img: any) => ({
-          id: img.id,
-          url: `${baseUrl}${img.url}`,
-          filename: img.filename,
-        })),
-      })),
-      count: comments.length,
-    })
+    return NextResponse.json(await listComments(params.id, { baseUrl }))
   } catch (error) {
     console.error('MCP API Error:', error)
     return NextResponse.json(
@@ -103,7 +55,6 @@ export async function POST(
 
     const body = await request.json()
     const { content, internal } = body
-    const isInternal = internal === true
 
     if (!content || typeof content !== 'string') {
       return NextResponse.json(
@@ -112,78 +63,15 @@ export async function POST(
       )
     }
 
-    // Verify ticket exists
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: params.id },
-    })
-
-    if (!ticket) {
+    return NextResponse.json(await addComment(params.id, { content, internal }))
+  } catch (error) {
+    if (error instanceof NotFoundError) {
       return NextResponse.json(
         { error: 'Ticket not found' },
         { status: 404 }
       )
     }
 
-    // Get or create MCP bot user
-    let mcpUser = await prisma.user.findFirst({
-      where: { email: 'mcp-bot@propfirmstech.com' },
-    })
-
-    if (!mcpUser) {
-      mcpUser = await prisma.user.create({
-        data: {
-          email: 'mcp-bot@propfirmstech.com',
-          name: 'PFT AI Agent (Bot)',
-          password: 'mcp-bot-no-login',
-          role: 'ADMIN',
-          isActive: true,
-        },
-      })
-    } else if (mcpUser.name !== 'PFT AI Agent (Bot)') {
-      mcpUser = await prisma.user.update({
-        where: { id: mcpUser.id },
-        data: { name: 'PFT AI Agent (Bot)' },
-      })
-    }
-
-    const comment = await prisma.ticketComment.create({
-      data: {
-        ticketId: params.id,
-        authorId: mcpUser.id,
-        message: content,
-        internal: isInternal,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
-    })
-
-    ActivityService.commented(params.id, mcpUser.id, comment.id, isInternal, content).catch(() => {})
-
-    if (!isInternal) {
-      notifyTicketNewComment(params.id, comment.id).catch((err) => {
-        console.error('[mcp/comments] whatsapp notify failed', err)
-      })
-    }
-
-    return NextResponse.json({
-      success: true,
-      comment: {
-        id: comment.id,
-        content: comment.message,
-        internal: comment.internal,
-        author: comment.author,
-        createdAt: comment.createdAt,
-      },
-    })
-  } catch (error) {
     console.error('MCP API Error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { searchTickets } from '@/lib/mcp/operations'
 
 /**
  * MCP API: Search Tickets
@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams
     const query = searchParams.get('q')
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50)
 
     if (!query) {
       return NextResponse.json(
@@ -29,61 +28,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Search tickets
-    const tickets = await prisma.ticket.findMany({
-      where: {
-        isDeleted: false,
-        OR: [
-          { title: { contains: query, mode: 'insensitive' } },
-          { description: { contains: query, mode: 'insensitive' } },
-          { id: { contains: query, mode: 'insensitive' } },
-        ],
-      },
-      take: limit,
-      orderBy: {
-        updatedAt: 'desc',
-      },
-      include: {
-        company: {
-          select: {
-            name: true,
-          },
-        },
-        createdBy: {
-          select: {
-            name: true,
-          },
-        },
-        assignedTo: {
-          select: {
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            comments: true,
-          },
-        },
-      },
+    const response = await searchTickets({
+      q: query,
+      limit: parseInt(searchParams.get('limit') || '10'),
     })
-
-    const response = {
-      query,
-      results: tickets.map(ticket => ({
-        id: ticket.id,
-        key: ticket.key,
-        title: ticket.title,
-        description: ticket.description.substring(0, 150) + '...',
-        status: ticket.status,
-        priority: ticket.priority,
-        company: ticket.company.name,
-        createdBy: ticket.createdBy.name,
-        assignedTo: ticket.assignedTo?.name || 'Unassigned',
-        commentCount: ticket._count.comments,
-        updatedAt: ticket.updatedAt,
-      })),
-      count: tickets.length,
-    }
 
     return NextResponse.json(response)
   } catch (error) {
